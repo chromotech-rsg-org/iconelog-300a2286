@@ -11,8 +11,10 @@ import {
 } from "@/data/mockData";
 
 const Index = () => {
-  const [selectedMonth, setSelectedMonth] = useState(1);
-  const [selectedYear, setSelectedYear] = useState(2025);
+  // Use current month and year automatically
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [selectedRegion, setSelectedRegion] = useState("all");
   const [lastUpdate] = useState(new Date());
   
@@ -24,21 +26,38 @@ const Index = () => {
   const regionalData = useMemo(() => generateRegionalData(), [selectedMonth, selectedYear]);
   const dailyData = useMemo(() => generateAllRegionalDailyData(), [selectedMonth, selectedYear]);
 
-  // Filter data based on selected region
-  const filteredRegionalData = useMemo(() => {
-    if (selectedRegion === "all") return regionalData;
-    return regionalData.filter((item) => item.name === selectedRegion);
-  }, [regionalData, selectedRegion]);
-
+  // Filter daily data based on selected region
   const filteredDailyData = useMemo(() => {
     if (selectedRegion === "all") return dailyData;
     return dailyData.filter((item) => item.region === selectedRegion);
   }, [dailyData, selectedRegion]);
 
+  // Calculate bar chart data - shows day-specific data when a day is selected
+  const barChartData = useMemo(() => {
+    let baseData = regionalData;
+    
+    // If a specific day is selected, recalculate from daily data for that day
+    if (selectedDay !== null) {
+      baseData = dailyData.map((regional) => {
+        const dayData = regional.data.find(d => d.day === selectedDay);
+        return {
+          name: regional.region,
+          expedidas: dayData?.expedidas || 0,
+          baixadas: dayData?.baixadas || 0,
+        };
+      });
+    }
+    
+    // Filter by region if one is selected
+    if (selectedRegion !== "all") {
+      return baseData.filter((item) => item.name === selectedRegion);
+    }
+    
+    return baseData;
+  }, [regionalData, dailyData, selectedDay, selectedRegion]);
+
   // Calculate totals based on filters
   const totals = useMemo(() => {
-    let data = filteredRegionalData;
-    
     // If a specific day is selected, recalculate from daily data
     if (selectedDay !== null) {
       const dayTotals = filteredDailyData.reduce(
@@ -55,8 +74,8 @@ const Index = () => {
       return { totalExpedidas: dayTotals.expedidas, totalBaixadas: dayTotals.baixadas };
     }
     
-    return calculateTotals(data);
-  }, [filteredRegionalData, filteredDailyData, selectedDay]);
+    return calculateTotals(barChartData);
+  }, [barChartData, filteredDailyData, selectedDay]);
 
   // Handler for clicking on a region
   const handleRegionClick = useCallback((region: string) => {
@@ -76,6 +95,13 @@ const Index = () => {
   // Handler for clicking on a specific bar (region + metric)
   const handleBarClick = useCallback((region: string, metric: "expedidas" | "baixadas") => {
     setSelectedRegion(prev => prev === region ? "all" : region);
+    setSelectedMetric(prev => prev === metric ? null : metric);
+  }, []);
+
+  // Handler for clicking on a specific point in line chart (region + day + metric)
+  const handleLinePointClick = useCallback((region: string, day: number, metric: "expedidas" | "baixadas") => {
+    setSelectedRegion(prev => prev === region ? "all" : region);
+    setSelectedDay(prev => prev === day ? null : day);
     setSelectedMetric(prev => prev === metric ? null : metric);
   }, []);
 
@@ -128,7 +154,7 @@ const Index = () => {
         {/* Left column - Regional bar chart (30%) */}
         <div className="w-[30%]">
           <RegionalBarChart 
-            data={filteredRegionalData}
+            data={barChartData}
             selectedMetric={selectedMetric}
             selectedRegion={selectedRegion}
             onRegionClick={handleRegionClick}
@@ -146,6 +172,7 @@ const Index = () => {
             selectedRegion={selectedRegion}
             onDayClick={handleDayClick}
             onRegionClick={handleRegionClick}
+            onLinePointClick={handleLinePointClick}
           />
         </div>
       </div>

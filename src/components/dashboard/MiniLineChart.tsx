@@ -24,6 +24,7 @@ interface MiniLineChartProps {
   isSelected: boolean;
   onDayClick: (day: number) => void;
   onRegionClick: (region: string) => void;
+  onLinePointClick: (region: string, day: number, metric: "expedidas" | "baixadas") => void;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -36,7 +37,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             {entry.name}: {formatNumber(entry.value)}
           </p>
         ))}
-        <p className="mt-1 text-xs text-muted-foreground">Clique para filtrar</p>
+        <p className="mt-1 text-xs text-muted-foreground">Clique na bolinha para filtrar</p>
       </div>
     );
   }
@@ -51,15 +52,10 @@ export const MiniLineChart = ({
   selectedMetric,
   isSelected,
   onDayClick,
-  onRegionClick 
+  onRegionClick,
+  onLinePointClick 
 }: MiniLineChartProps) => {
-  const handleChartClick = (e: any) => {
-    if (e && e.activePayload && e.activePayload[0]) {
-      const day = e.activePayload[0].payload.day;
-      onDayClick(day);
-    }
-  };
-
+  
   const getLineOpacity = (metric: "expedidas" | "baixadas") => {
     if (selectedMetric === null) return 1;
     return selectedMetric === metric ? 1 : 0.2;
@@ -70,9 +66,16 @@ export const MiniLineChart = ({
     return selectedMetric === metric ? 3 : 1;
   };
 
+  // Handler for clicking on a specific dot
+  const handleDotClick = (metric: "expedidas" | "baixadas") => (data: any) => {
+    if (data && data.payload) {
+      onLinePointClick(region, data.payload.day, metric);
+    }
+  };
+
   return (
     <div 
-      className={`rounded-lg border bg-dashboard-card p-4 transition-all duration-300 animate-fade-in cursor-pointer ${
+      className={`rounded-lg border bg-dashboard-card p-4 transition-all duration-300 animate-fade-in ${
         isSelected 
           ? "border-dashboard-accent shadow-lg shadow-dashboard-accent/20" 
           : "border-dashboard-border hover:border-dashboard-accent/50"
@@ -92,7 +95,6 @@ export const MiniLineChart = ({
         <LineChart 
           data={data} 
           margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
-          onClick={handleChartClick}
         >
           <XAxis
             dataKey="day"
@@ -120,8 +122,14 @@ export const MiniLineChart = ({
             name="Expedidas"
             stroke="hsl(var(--dashboard-blue))"
             strokeWidth={getLineStrokeWidth("expedidas")}
-            dot={{ r: 4, fill: "hsl(var(--dashboard-blue))", strokeWidth: 0 }}
-            activeDot={{ r: 6, cursor: 'pointer', strokeWidth: 2, stroke: "hsl(var(--dashboard-card))" }}
+            dot={{ r: 4, fill: "hsl(var(--dashboard-blue))", strokeWidth: 0, cursor: 'pointer' }}
+            activeDot={{ 
+              r: 7, 
+              cursor: 'pointer', 
+              strokeWidth: 2, 
+              stroke: "hsl(var(--dashboard-accent))",
+              onClick: handleDotClick("expedidas")
+            }}
             animationDuration={1000}
             animationBegin={index * 100}
             opacity={getLineOpacity("expedidas")}
@@ -132,8 +140,14 @@ export const MiniLineChart = ({
             name="Baixadas"
             stroke="hsl(var(--dashboard-orange))"
             strokeWidth={getLineStrokeWidth("baixadas")}
-            dot={{ r: 4, fill: "hsl(var(--dashboard-orange))", strokeWidth: 0 }}
-            activeDot={{ r: 6, cursor: 'pointer', strokeWidth: 2, stroke: "hsl(var(--dashboard-card))" }}
+            dot={{ r: 4, fill: "hsl(var(--dashboard-orange))", strokeWidth: 0, cursor: 'pointer' }}
+            activeDot={{ 
+              r: 7, 
+              cursor: 'pointer', 
+              strokeWidth: 2, 
+              stroke: "hsl(var(--dashboard-accent))",
+              onClick: handleDotClick("baixadas")
+            }}
             animationDuration={1000}
             animationBegin={index * 100 + 200}
             opacity={getLineOpacity("baixadas")}

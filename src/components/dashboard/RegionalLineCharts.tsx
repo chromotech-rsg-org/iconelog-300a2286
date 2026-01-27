@@ -19,6 +19,7 @@ interface RegionalLineChartsProps {
   selectedRegion: string;
   onDayClick: (day: number) => void;
   onRegionClick: (region: string) => void;
+  onLinePointClick: (region: string, day: number, metric: "expedidas" | "baixadas") => void;
 }
 
 export const RegionalLineCharts = ({ 
@@ -27,7 +28,8 @@ export const RegionalLineCharts = ({
   selectedMetric,
   selectedRegion,
   onDayClick,
-  onRegionClick 
+  onRegionClick,
+  onLinePointClick 
 }: RegionalLineChartsProps) => {
   return (
     <div className="h-full rounded-lg border border-dashboard-border bg-dashboard-card/50 p-4">
@@ -52,6 +54,7 @@ export const RegionalLineCharts = ({
               isSelected={selectedRegion === regionalData.region}
               onDayClick={onDayClick}
               onRegionClick={onRegionClick}
+              onLinePointClick={onLinePointClick}
             />
           ))}
         </div>
