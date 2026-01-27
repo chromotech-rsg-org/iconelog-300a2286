@@ -14,13 +14,30 @@ interface RegionalDailyData {
 
 interface RegionalLineChartsProps {
   data: RegionalDailyData[];
+  selectedDay: number | null;
+  selectedMetric: "expedidas" | "baixadas" | null;
+  selectedRegion: string;
+  onDayClick: (day: number) => void;
+  onRegionClick: (region: string) => void;
 }
 
-export const RegionalLineCharts = ({ data }: RegionalLineChartsProps) => {
+export const RegionalLineCharts = ({ 
+  data, 
+  selectedDay,
+  selectedMetric,
+  selectedRegion,
+  onDayClick,
+  onRegionClick 
+}: RegionalLineChartsProps) => {
   return (
     <div className="h-full rounded-lg border border-dashboard-border bg-dashboard-card/50 p-4">
       <h3 className="mb-4 text-sm font-semibold text-dashboard-accent">
         Evolução Diária por Regional
+        {selectedDay !== null && (
+          <span className="ml-2 text-xs font-normal text-muted-foreground">
+            (Dia {selectedDay} destacado)
+          </span>
+        )}
       </h3>
       <ScrollArea className="h-[calc(100%-2rem)]">
         <div className="flex flex-col gap-4 pr-4">
@@ -30,6 +47,11 @@ export const RegionalLineCharts = ({ data }: RegionalLineChartsProps) => {
               region={regionalData.region}
               data={regionalData.data}
               index={index}
+              selectedDay={selectedDay}
+              selectedMetric={selectedMetric}
+              isSelected={selectedRegion === regionalData.region}
+              onDayClick={onDayClick}
+              onRegionClick={onRegionClick}
             />
           ))}
         </div>
