@@ -1,4 +1,4 @@
-import { Clock, Construction } from "lucide-react";
+import { Clock, Construction, Menu, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { months, years, regions } from "@/data/mockData";
 import { toast } from "sonner";
-import logo99Food from "@/assets/99food-logo.png";
+import logo from "@/assets/logo.jpg";
 
 const navigationItems = [
   { label: "B-Side Entregas", active: false },
@@ -43,7 +43,9 @@ interface DashboardHeaderProps {
   onMonthChange: (month: number) => void;
   onYearChange: (year: number) => void;
   onRegionChange: (region: string) => void;
+  onClearAllFilters?: () => void;
   lastUpdate: Date;
+  hasActiveFilters?: boolean;
 }
 
 export const DashboardHeader = ({
@@ -53,7 +55,9 @@ export const DashboardHeader = ({
   onMonthChange,
   onYearChange,
   onRegionChange,
+  onClearAllFilters,
   lastUpdate,
+  hasActiveFilters = false,
 }: DashboardHeaderProps) => {
   const formatLastUpdate = (date: Date) => {
     return date.toLocaleString('pt-BR', {
@@ -72,13 +76,10 @@ export const DashboardHeader = ({
         {/* Logo */}
         <div className="flex items-center gap-3">
           <img 
-            src={logo99Food} 
-            alt="99 Food Logo" 
-            className="h-10 w-10 rounded-lg"
+            src={logo} 
+            alt="Logo" 
+            className="h-12 w-12 rounded-full object-cover border-2 border-dashboard-accent"
           />
-          <span className="text-xl font-bold text-dashboard-accent">
-            99 Food
-          </span>
         </div>
 
         {/* Last update */}
@@ -87,14 +88,18 @@ export const DashboardHeader = ({
           <span>Última atualização: {formatLastUpdate(lastUpdate)}</span>
         </div>
 
-        {/* Navigation dropdown */}
+        {/* Navigation dropdown - icon only */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border hover:text-dashboard-accent">
-              Menu de Navegação
+            <Button 
+              variant="outline" 
+              size="icon"
+              className="border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border hover:text-dashboard-accent"
+            >
+              <Menu className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-dashboard-card border-dashboard-border" align="end">
+          <DropdownMenuContent className="bg-dashboard-card border-dashboard-border z-50" align="end">
             {navigationItems.map((item) => (
               <DropdownMenuItem
                 key={item.label}
@@ -142,7 +147,7 @@ export const DashboardHeader = ({
           <SelectTrigger className="w-24 border-dashboard-border bg-dashboard-card text-foreground">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-dashboard-card border-dashboard-border">
+          <SelectContent className="bg-dashboard-card border-dashboard-border z-50">
             {years.map((year) => (
               <SelectItem key={year} value={year.toString()} className="text-foreground hover:bg-dashboard-border">
                 {year}
@@ -159,7 +164,7 @@ export const DashboardHeader = ({
           <SelectTrigger className="w-48 border-dashboard-border bg-dashboard-card text-foreground">
             <SelectValue placeholder="Todas as Regionais" />
           </SelectTrigger>
-          <SelectContent className="bg-dashboard-card border-dashboard-border">
+          <SelectContent className="bg-dashboard-card border-dashboard-border z-50">
             <SelectItem value="all" className="text-foreground hover:bg-dashboard-border">
               Todas as Regionais
             </SelectItem>
@@ -170,6 +175,19 @@ export const DashboardHeader = ({
             ))}
           </SelectContent>
         </Select>
+
+        {/* Clear all filters button */}
+        {hasActiveFilters && onClearAllFilters && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClearAllFilters}
+            className="ml-auto border-dashboard-accent/50 text-dashboard-accent hover:bg-dashboard-accent hover:text-dashboard-dark"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Limpar Filtros
+          </Button>
+        )}
       </div>
     </header>
   );
