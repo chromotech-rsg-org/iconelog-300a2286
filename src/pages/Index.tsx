@@ -82,6 +82,9 @@ const Index = () => {
     setSelectedRegion("all");
   }, []);
 
+  // Check if any filters are active
+  const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegion !== "all";
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header with logo, navigation, and filters */}
@@ -92,7 +95,9 @@ const Index = () => {
         onMonthChange={setSelectedMonth}
         onYearChange={setSelectedYear}
         onRegionChange={setSelectedRegion}
+        onClearAllFilters={clearAllFilters}
         lastUpdate={lastUpdate}
+        hasActiveFilters={hasActiveFilters}
       />
 
       {/* Active filters display */}
