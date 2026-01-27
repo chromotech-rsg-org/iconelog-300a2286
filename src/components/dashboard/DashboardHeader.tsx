@@ -1,4 +1,4 @@
-import { Package, Truck, FileText, Clock } from "lucide-react";
+import { Clock, Construction } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -7,7 +7,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { months, years, regions } from "@/data/mockData";
+import { toast } from "sonner";
+import logo99Food from "@/assets/99food-logo.png";
+
+const navigationItems = [
+  { label: "B-Side Entregas", active: false },
+  { label: "B-Side Estoque", active: false },
+  { label: "Tracking Consolidado", active: false },
+  { label: "Estoque Consolidado", active: false },
+  { label: "Faturamento", active: false },
+  { label: "Analítico", active: false },
+  { label: "Minutas Expedidas x Baixadas", active: true },
+  { label: "Painel de Controle", active: false },
+];
+
+const handleNavClick = (item: typeof navigationItems[0]) => {
+  if (!item.active) {
+    toast.info(`${item.label} - Em desenvolvimento`, {
+      icon: <Construction className="h-4 w-4" />,
+    });
+  }
+};
 
 interface DashboardHeaderProps {
   selectedMonth: number;
@@ -44,11 +71,13 @@ export const DashboardHeader = ({
       <div className="flex items-center justify-between px-6 py-4">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-dashboard-accent">
-            <Truck className="h-6 w-6 text-dashboard-dark" />
-          </div>
+          <img 
+            src={logo99Food} 
+            alt="99 Food Logo" 
+            className="h-10 w-10 rounded-lg"
+          />
           <span className="text-xl font-bold text-dashboard-accent">
-            ICONE LOG
+            99 Food
           </span>
         </div>
 
@@ -58,21 +87,30 @@ export const DashboardHeader = ({
           <span>Última atualização: {formatLastUpdate(lastUpdate)}</span>
         </div>
 
-        {/* Navigation buttons */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" className="text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border">
-            <Package className="mr-2 h-4 w-4" />
-            Estoque
-          </Button>
-          <Button variant="ghost" className="text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border">
-            <Truck className="mr-2 h-4 w-4" />
-            Tracking Entrega
-          </Button>
-          <Button variant="ghost" className="text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border">
-            <FileText className="mr-2 h-4 w-4" />
-            Faturamento
-          </Button>
-        </div>
+        {/* Navigation dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border hover:text-dashboard-accent">
+              Menu de Navegação
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-dashboard-card border-dashboard-border" align="end">
+            {navigationItems.map((item) => (
+              <DropdownMenuItem
+                key={item.label}
+                onClick={() => handleNavClick(item)}
+                className={`cursor-pointer ${
+                  item.active 
+                    ? "bg-dashboard-accent text-dashboard-dark font-medium" 
+                    : "text-foreground hover:bg-dashboard-border hover:text-dashboard-accent"
+                }`}
+              >
+                {item.label}
+                {!item.active && <Construction className="ml-2 h-3 w-3 text-muted-foreground" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Filters bar */}
