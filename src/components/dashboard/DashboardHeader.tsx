@@ -78,7 +78,7 @@ export const DashboardHeader = ({
           <img 
             src={logo} 
             alt="Logo" 
-            className="h-12 w-12 rounded-full object-cover border-2 border-dashboard-accent"
+            className="h-12 w-12 rounded-lg object-cover border-2 border-dashboard-accent"
           />
         </div>
 

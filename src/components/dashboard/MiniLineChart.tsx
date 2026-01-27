@@ -120,8 +120,8 @@ export const MiniLineChart = ({
             name="Expedidas"
             stroke="hsl(var(--dashboard-blue))"
             strokeWidth={getLineStrokeWidth("expedidas")}
-            dot={selectedDay !== null ? { r: 3 } : false}
-            activeDot={{ r: 5, cursor: 'pointer' }}
+            dot={{ r: 4, fill: "hsl(var(--dashboard-blue))", strokeWidth: 0 }}
+            activeDot={{ r: 6, cursor: 'pointer', strokeWidth: 2, stroke: "hsl(var(--dashboard-card))" }}
             animationDuration={1000}
             animationBegin={index * 100}
             opacity={getLineOpacity("expedidas")}
@@ -132,8 +132,8 @@ export const MiniLineChart = ({
             name="Baixadas"
             stroke="hsl(var(--dashboard-orange))"
             strokeWidth={getLineStrokeWidth("baixadas")}
-            dot={selectedDay !== null ? { r: 3 } : false}
-            activeDot={{ r: 5, cursor: 'pointer' }}
+            dot={{ r: 4, fill: "hsl(var(--dashboard-orange))", strokeWidth: 0 }}
+            activeDot={{ r: 6, cursor: 'pointer', strokeWidth: 2, stroke: "hsl(var(--dashboard-card))" }}
             animationDuration={1000}
             animationBegin={index * 100 + 200}
             opacity={getLineOpacity("baixadas")}
