@@ -73,6 +73,12 @@ const Index = () => {
     setSelectedMetric(prev => prev === metric ? null : metric);
   }, []);
 
+  // Handler for clicking on a specific bar (region + metric)
+  const handleBarClick = useCallback((region: string, metric: "expedidas" | "baixadas") => {
+    setSelectedRegion(prev => prev === region ? "all" : region);
+    setSelectedMetric(prev => prev === metric ? null : metric);
+  }, []);
+
   // Clear filters
   const clearDayFilter = useCallback(() => setSelectedDay(null), []);
   const clearMetricFilter = useCallback(() => setSelectedMetric(null), []);
@@ -124,8 +130,10 @@ const Index = () => {
           <RegionalBarChart 
             data={filteredRegionalData}
             selectedMetric={selectedMetric}
+            selectedRegion={selectedRegion}
             onRegionClick={handleRegionClick}
             onMetricClick={handleMetricClick}
+            onBarClick={handleBarClick}
           />
         </div>
 
