@@ -19,8 +19,10 @@ interface RegionalData {
 interface RegionalBarChartProps {
   data: RegionalData[];
   selectedMetric: "expedidas" | "baixadas" | null;
+  selectedRegion: string;
   onRegionClick: (region: string) => void;
   onMetricClick: (metric: "expedidas" | "baixadas") => void;
+  onBarClick: (region: string, metric: "expedidas" | "baixadas") => void;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -43,12 +45,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export const RegionalBarChart = ({ 
   data, 
   selectedMetric,
+  selectedRegion,
   onRegionClick, 
-  onMetricClick 
+  onMetricClick,
+  onBarClick 
 }: RegionalBarChartProps) => {
-  const handleBarClick = (data: any) => {
+  const handleBarClick = (data: any, metric: "expedidas" | "baixadas") => {
     if (data && data.name) {
-      onRegionClick(data.name);
+      onBarClick(data.name, metric);
     }
   };
 
@@ -129,7 +133,7 @@ export const RegionalBarChart = ({
                 animationDuration={800}
                 animationBegin={0}
                 cursor="pointer"
-                onClick={(data) => handleBarClick(data)}
+                onClick={(data) => handleBarClick(data, "expedidas")}
                 opacity={getBarOpacity("expedidas")}
               />
               <Bar
@@ -140,7 +144,7 @@ export const RegionalBarChart = ({
                 animationDuration={800}
                 animationBegin={200}
                 cursor="pointer"
-                onClick={(data) => handleBarClick(data)}
+                onClick={(data) => handleBarClick(data, "baixadas")}
                 opacity={getBarOpacity("baixadas")}
               />
             </BarChart>
