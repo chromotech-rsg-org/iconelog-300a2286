@@ -5,9 +5,9 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  Cell,
   Legend,
 } from "recharts";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatNumber } from "@/data/mockData";
 
 interface RegionalData {
@@ -27,7 +27,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border border-dashboard-border bg-dashboard-card p-3 shadow-lg z-50">
-        <p className="mb-2 font-semibold text-foreground">{label}</p>
+        <p className="mb-2 font-semibold text-foreground text-base">{label}</p>
         {payload.map((entry: any, index: number) => (
           <p key={index} className="text-sm" style={{ color: entry.color }}>
             {entry.name}: {formatNumber(entry.value)}
@@ -46,7 +46,7 @@ export const RegionalBarChart = ({
   onRegionClick, 
   onMetricClick 
 }: RegionalBarChartProps) => {
-  const handleBarClick = (data: any, dataKey: string) => {
+  const handleBarClick = (data: any) => {
     if (data && data.name) {
       onRegionClick(data.name);
     }
@@ -61,71 +61,92 @@ export const RegionalBarChart = ({
     return selectedMetric === metric ? 1 : 0.3;
   };
 
+  // Calculate height based on number of items - each bar needs ~55px
+  const chartHeight = Math.max(data.length * 55, 400);
+
   return (
-    <div className="h-full rounded-lg border border-dashboard-border bg-dashboard-card p-4">
-      <h3 className="mb-4 text-sm font-semibold text-dashboard-accent">
-        Comparativo por Regional
-      </h3>
-      <ResponsiveContainer width="100%" height="90%">
-        <BarChart
-          layout="vertical"
-          data={data}
-          margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-          barGap={2}
-          barSize={8}
-        >
-          <XAxis
-            type="number"
-            stroke="#4a5568"
-            tick={{ fill: '#a0aec0', fontSize: 10 }}
-            tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-          />
-          <YAxis
-            type="category"
-            dataKey="name"
-            stroke="#4a5568"
-            tick={{ fill: '#a0aec0', fontSize: 10, cursor: 'pointer' }}
-            width={80}
-            onClick={(e: any) => {
-              if (e && e.value) {
-                onRegionClick(e.value);
-              }
-            }}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend 
-            wrapperStyle={{ paddingTop: '10px', cursor: 'pointer' }}
-            onClick={(e) => handleLegendClick(e.dataKey as string)}
-            formatter={(value) => (
-              <span className="text-xs hover:text-dashboard-accent transition-colors">
-                {value}
-              </span>
-            )}
-          />
-          <Bar
-            dataKey="expedidas"
-            name="Expedidas"
-            fill="hsl(var(--dashboard-blue))"
-            radius={[0, 4, 4, 0]}
-            animationDuration={800}
-            animationBegin={0}
-            cursor="pointer"
-            onClick={(data) => handleBarClick(data, "expedidas")}
-            opacity={getBarOpacity("expedidas")}
-          />
-          <Bar
-            dataKey="baixadas"
-            name="Baixadas"
-            fill="hsl(var(--dashboard-orange))"
-            radius={[0, 4, 4, 0]}
-            animationDuration={800}
-            animationBegin={200}
-            cursor="pointer"
-            onClick={(data) => handleBarClick(data, "baixadas")}
-            opacity={getBarOpacity("baixadas")}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="h-full rounded-lg border border-dashboard-border bg-dashboard-card p-4 flex flex-col">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-semibold text-dashboard-accent">
+          Comparativo por Regional
+        </h3>
+        <div className="flex gap-4 text-sm">
+          <button
+            onClick={() => onMetricClick("expedidas")}
+            className={`flex items-center gap-2 transition-opacity cursor-pointer hover:opacity-100 ${
+              selectedMetric === "baixadas" ? "opacity-40" : "opacity-100"
+            }`}
+          >
+            <span className="w-3 h-3 rounded-sm bg-dashboard-blue" />
+            <span className="text-foreground">Expedidas</span>
+          </button>
+          <button
+            onClick={() => onMetricClick("baixadas")}
+            className={`flex items-center gap-2 transition-opacity cursor-pointer hover:opacity-100 ${
+              selectedMetric === "expedidas" ? "opacity-40" : "opacity-100"
+            }`}
+          >
+            <span className="w-3 h-3 rounded-sm bg-dashboard-orange" />
+            <span className="text-foreground">Baixadas</span>
+          </button>
+        </div>
+      </div>
+      
+      <ScrollArea className="flex-1">
+        <div style={{ height: chartHeight }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              layout="vertical"
+              data={data}
+              margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+              barGap={4}
+              barSize={14}
+            >
+              <XAxis
+                type="number"
+                stroke="#4a5568"
+                tick={{ fill: '#a0aec0', fontSize: 12 }}
+                tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                stroke="#4a5568"
+                tick={{ fill: '#e2e8f0', fontSize: 13, cursor: 'pointer' }}
+                width={110}
+                onClick={(e: any) => {
+                  if (e && e.value) {
+                    onRegionClick(e.value);
+                  }
+                }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar
+                dataKey="expedidas"
+                name="Expedidas"
+                fill="hsl(var(--dashboard-blue))"
+                radius={[0, 6, 6, 0]}
+                animationDuration={800}
+                animationBegin={0}
+                cursor="pointer"
+                onClick={(data) => handleBarClick(data)}
+                opacity={getBarOpacity("expedidas")}
+              />
+              <Bar
+                dataKey="baixadas"
+                name="Baixadas"
+                fill="hsl(var(--dashboard-orange))"
+                radius={[0, 6, 6, 0]}
+                animationDuration={800}
+                animationBegin={200}
+                cursor="pointer"
+                onClick={(data) => handleBarClick(data)}
+                opacity={getBarOpacity("baixadas")}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </ScrollArea>
     </div>
   );
 };
