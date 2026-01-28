@@ -227,10 +227,10 @@ const Index = () => {
         onMetricClick={handleMetricClick}
       />
 
-      {/* Main content - Split screen layout */}
-      <div className="flex gap-4 px-6 pb-6" style={{ height: "calc(100vh - 320px)" }}>
-        {/* Left column - Regional bar chart (30%) */}
-        <div className="w-[30%]">
+      {/* Main content - Split screen layout on desktop, stacked on mobile */}
+      <div className="flex flex-col md:flex-row gap-4 px-6 pb-6 md:h-[calc(100vh-320px)]">
+        {/* Left column - Regional bar chart (30% on desktop, full width on mobile) */}
+        <div className="w-full md:w-[30%] h-[400px] md:h-full">
           <RegionalBarChart 
             data={barChartData}
             selectedMetric={selectedMetric}
@@ -241,8 +241,8 @@ const Index = () => {
           />
         </div>
 
-        {/* Right column - Scrollable line charts (70%) */}
-        <div className="w-[70%]">
+        {/* Right column - Scrollable line charts (70% on desktop, full width on mobile) */}
+        <div className="w-full md:w-[70%] h-[500px] md:h-full">
           <RegionalLineCharts 
             data={aggregatedDailyData}
             selectedDay={selectedDay}

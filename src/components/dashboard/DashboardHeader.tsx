@@ -175,8 +175,8 @@ export const DashboardHeader = ({
 
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-4 px-6 py-3 border-t border-dashboard-border">
-        {/* Month selection - inline */}
-        <div className="flex flex-wrap gap-1">
+        {/* Month selection - dropdown on mobile, inline on desktop */}
+        <div className="hidden md:flex flex-wrap gap-1">
           {months.map((month) => (
             <Button
               key={month.value}
@@ -193,6 +193,38 @@ export const DashboardHeader = ({
             </Button>
           ))}
         </div>
+
+        {/* Month dropdown for mobile */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="md:hidden w-32 justify-between border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border"
+            >
+              {getMonthsLabel()}
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-3 bg-dashboard-card border-dashboard-border z-50">
+            <div className="flex flex-wrap gap-2">
+              {months.map((month) => (
+                <Button
+                  key={month.value}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleMonth(month.value)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+                    selectedMonths.includes(month.value)
+                      ? "bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent"
+                      : "text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
+                  }`}
+                >
+                  {month.short}
+                </Button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Year multi-select */}
         <Popover>
