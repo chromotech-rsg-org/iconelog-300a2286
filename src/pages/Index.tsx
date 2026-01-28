@@ -228,7 +228,7 @@ const Index = () => {
       {/* Main content - Split screen layout on desktop, stacked on mobile */}
       <div className="flex flex-col md:flex-row gap-4 px-6 pb-6 md:h-[calc(100vh-280px)]">
         {/* Left column - KPI Cards + Regional bar chart (30% on desktop, full width on mobile) */}
-        <div className="w-full md:w-[30%] flex flex-col gap-4">
+        <div className="w-full md:w-[30%] flex flex-col gap-4 md:h-full">
           {/* KPI Cards - side by side within left column */}
           <KPICards
             totalExpedidas={totals.totalExpedidas}
@@ -238,7 +238,7 @@ const Index = () => {
           />
           
           {/* Bar chart fills remaining height */}
-          <div className="h-[400px] md:flex-1">
+          <div className="h-[400px] md:flex-1 md:min-h-0">
             <RegionalBarChart 
               data={barChartData}
               selectedMetric={selectedMetric}
