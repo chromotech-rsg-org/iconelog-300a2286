@@ -35,6 +35,11 @@ export const months = [
 
 export const years = [2024, 2025, 2026];
 
+// Get number of days in a month
+export const getDaysInMonth = (month: number, year: number): number => {
+  return new Date(year, month, 0).getDate();
+};
+
 // Generate random data for regional comparison
 export const generateRegionalData = () => {
   return regions.map(region => ({
@@ -44,25 +49,40 @@ export const generateRegionalData = () => {
   }));
 };
 
-// Generate daily data for a month (30 days)
-export const generateDailyData = (region: string) => {
+// Generate daily data for a specific month/year (with correct number of days)
+export const generateDailyData = (region: string, month: number = 1, year: number = 2025) => {
+  const daysInMonth = getDaysInMonth(month, year);
   const days = [];
-  for (let i = 1; i <= 30; i++) {
+  for (let i = 1; i <= daysInMonth; i++) {
     days.push({
       day: i,
+      month,
+      year,
       expedidas: Math.floor(Math.random() * 2000) + 500,
       baixadas: Math.floor(Math.random() * 1800) + 450
     });
   }
   return {
     region,
+    month,
+    year,
     data: days
   };
 };
 
-// Generate all regional daily data
-export const generateAllRegionalDailyData = () => {
-  return regions.map(region => generateDailyData(region));
+// Generate all regional daily data for multiple months/years
+export const generateAllRegionalDailyData = (months: number[], years: number[]) => {
+  const allData: { region: string; month: number; year: number; data: { day: number; month: number; year: number; expedidas: number; baixadas: number; }[] }[] = [];
+  
+  regions.forEach(region => {
+    years.forEach(year => {
+      months.forEach(month => {
+        allData.push(generateDailyData(region, month, year));
+      });
+    });
+  });
+  
+  return allData;
 };
 
 // Calculate totals

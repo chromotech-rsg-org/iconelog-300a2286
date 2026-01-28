@@ -1,21 +1,21 @@
 import { Clock, Construction, Menu, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { months, years, regions } from "@/data/mockData";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg";
+import { ChevronDown } from "lucide-react";
 
 const navigationItems = [
   { label: "B-Side Entregas", active: false },
@@ -37,24 +37,24 @@ const handleNavClick = (item: typeof navigationItems[0]) => {
 };
 
 interface DashboardHeaderProps {
-  selectedMonth: number;
-  selectedYear: number;
-  selectedRegion: string;
-  onMonthChange: (month: number) => void;
-  onYearChange: (year: number) => void;
-  onRegionChange: (region: string) => void;
+  selectedMonths: number[];
+  selectedYears: number[];
+  selectedRegions: string[];
+  onMonthsChange: (months: number[]) => void;
+  onYearsChange: (years: number[]) => void;
+  onRegionsChange: (regions: string[]) => void;
   onClearAllFilters?: () => void;
   lastUpdate: Date;
   hasActiveFilters?: boolean;
 }
 
 export const DashboardHeader = ({
-  selectedMonth,
-  selectedYear,
-  selectedRegion,
-  onMonthChange,
-  onYearChange,
-  onRegionChange,
+  selectedMonths,
+  selectedYears,
+  selectedRegions,
+  onMonthsChange,
+  onYearsChange,
+  onRegionsChange,
   onClearAllFilters,
   lastUpdate,
   hasActiveFilters = false,
@@ -67,6 +67,59 @@ export const DashboardHeader = ({
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const toggleMonth = (monthValue: number) => {
+    if (selectedMonths.includes(monthValue)) {
+      if (selectedMonths.length > 1) {
+        onMonthsChange(selectedMonths.filter(m => m !== monthValue));
+      }
+    } else {
+      onMonthsChange([...selectedMonths, monthValue].sort((a, b) => a - b));
+    }
+  };
+
+  const toggleYear = (year: number) => {
+    if (selectedYears.includes(year)) {
+      if (selectedYears.length > 1) {
+        onYearsChange(selectedYears.filter(y => y !== year));
+      }
+    } else {
+      onYearsChange([...selectedYears, year].sort((a, b) => a - b));
+    }
+  };
+
+  const toggleRegion = (region: string) => {
+    if (region === "all") {
+      onRegionsChange([]);
+      return;
+    }
+    if (selectedRegions.includes(region)) {
+      onRegionsChange(selectedRegions.filter(r => r !== region));
+    } else {
+      onRegionsChange([...selectedRegions, region]);
+    }
+  };
+
+  const getMonthsLabel = () => {
+    if (selectedMonths.length === 0) return "Selecione";
+    if (selectedMonths.length === 1) {
+      return months.find(m => m.value === selectedMonths[0])?.short || "";
+    }
+    if (selectedMonths.length === 12) return "Todos os meses";
+    return `${selectedMonths.length} meses`;
+  };
+
+  const getYearsLabel = () => {
+    if (selectedYears.length === 0) return "Selecione";
+    if (selectedYears.length === 1) return selectedYears[0].toString();
+    return `${selectedYears.length} anos`;
+  };
+
+  const getRegionsLabel = () => {
+    if (selectedRegions.length === 0) return "Todas as Regionais";
+    if (selectedRegions.length === 1) return selectedRegions[0];
+    return `${selectedRegions.length} regionais`;
   };
 
   return (
@@ -120,61 +173,111 @@ export const DashboardHeader = ({
 
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-4 px-6 py-3 border-t border-dashboard-border">
-        {/* Month buttons */}
-        <div className="flex flex-wrap gap-1">
-          {months.map((month) => (
-            <Button
-              key={month.value}
-              variant="ghost"
-              size="sm"
-              onClick={() => onMonthChange(month.value)}
-              className={`px-3 py-1 text-xs font-medium transition-all duration-200 ${
-                selectedMonth === month.value
-                  ? "bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent"
-                  : "text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
-              }`}
+        {/* Month multi-select */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-40 justify-between border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border"
             >
-              {month.short}
+              {getMonthsLabel()}
+              <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
-          ))}
-        </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2 bg-dashboard-card border-dashboard-border z-50">
+            <div className="grid grid-cols-3 gap-2">
+              {months.map((month) => (
+                <Button
+                  key={month.value}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleMonth(month.value)}
+                  className={`px-2 py-1 text-xs font-medium transition-all duration-200 ${
+                    selectedMonths.includes(month.value)
+                      ? "bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent"
+                      : "text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
+                  }`}
+                >
+                  {month.short}
+                </Button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
-        {/* Year selector */}
-        <Select
-          value={selectedYear.toString()}
-          onValueChange={(value) => onYearChange(parseInt(value))}
-        >
-          <SelectTrigger className="w-24 border-dashboard-border bg-dashboard-card text-foreground">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-dashboard-card border-dashboard-border z-50">
-            {years.map((year) => (
-              <SelectItem key={year} value={year.toString()} className="text-foreground hover:bg-dashboard-border">
-                {year}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Year multi-select */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-32 justify-between border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border"
+            >
+              {getYearsLabel()}
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-40 p-2 bg-dashboard-card border-dashboard-border z-50">
+            <div className="flex flex-col gap-2">
+              {years.map((year) => (
+                <div key={year} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`year-${year}`}
+                    checked={selectedYears.includes(year)}
+                    onCheckedChange={() => toggleYear(year)}
+                    className="border-dashboard-border data-[state=checked]:bg-dashboard-accent data-[state=checked]:border-dashboard-accent"
+                  />
+                  <label 
+                    htmlFor={`year-${year}`}
+                    className="text-sm text-foreground cursor-pointer"
+                  >
+                    {year}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
-        {/* Regional selector */}
-        <Select
-          value={selectedRegion}
-          onValueChange={onRegionChange}
-        >
-          <SelectTrigger className="w-48 border-dashboard-border bg-dashboard-card text-foreground">
-            <SelectValue placeholder="Todas as Regionais" />
-          </SelectTrigger>
-          <SelectContent className="bg-dashboard-card border-dashboard-border z-50">
-            <SelectItem value="all" className="text-foreground hover:bg-dashboard-border">
-              Todas as Regionais
-            </SelectItem>
-            {regions.map((region) => (
-              <SelectItem key={region} value={region} className="text-foreground hover:bg-dashboard-border">
-                {region}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Regional multi-select */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-48 justify-between border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border"
+            >
+              {getRegionsLabel()}
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2 bg-dashboard-card border-dashboard-border z-50 max-h-64 overflow-y-auto">
+            <div className="flex flex-col gap-1">
+              <div 
+                className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-dashboard-border ${
+                  selectedRegions.length === 0 ? "bg-dashboard-accent/20" : ""
+                }`}
+                onClick={() => toggleRegion("all")}
+              >
+                <span className="text-sm text-foreground">Todas as Regionais</span>
+              </div>
+              {regions.map((region) => (
+                <div key={region} className="flex items-center space-x-2 p-1">
+                  <Checkbox
+                    id={`region-${region}`}
+                    checked={selectedRegions.includes(region)}
+                    onCheckedChange={() => toggleRegion(region)}
+                    className="border-dashboard-border data-[state=checked]:bg-dashboard-accent data-[state=checked]:border-dashboard-accent"
+                  />
+                  <label 
+                    htmlFor={`region-${region}`}
+                    className="text-sm text-foreground cursor-pointer"
+                  >
+                    {region}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Clear all filters button */}
         {hasActiveFilters && onClearAllFilters && (

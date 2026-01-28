@@ -8,78 +8,101 @@ import {
   generateRegionalData,
   generateAllRegionalDailyData,
   calculateTotals,
+  months as allMonths,
 } from "@/data/mockData";
 
 const Index = () => {
   // Use current month and year automatically
   const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-  const [selectedRegion, setSelectedRegion] = useState("all");
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentDate.getMonth() + 1]);
+  const [selectedYears, setSelectedYears] = useState<number[]>([currentDate.getFullYear()]);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [lastUpdate] = useState(new Date());
   
   // Interactive filter states
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<"expedidas" | "baixadas" | null>(null);
 
-  // Generate mock data - in production this would come from an API
-  const regionalData = useMemo(() => generateRegionalData(), [selectedMonth, selectedYear]);
-  const dailyData = useMemo(() => generateAllRegionalDailyData(), [selectedMonth, selectedYear]);
+  // Generate mock data based on selected months and years
+  const dailyData = useMemo(() => {
+    return generateAllRegionalDailyData(selectedMonths, selectedYears);
+  }, [selectedMonths, selectedYears]);
 
-  // Filter daily data based on selected region
+  // Filter daily data based on selected regions
   const filteredDailyData = useMemo(() => {
-    if (selectedRegion === "all") return dailyData;
-    return dailyData.filter((item) => item.region === selectedRegion);
-  }, [dailyData, selectedRegion]);
+    if (selectedRegions.length === 0) return dailyData;
+    return dailyData.filter((item) => selectedRegions.includes(item.region));
+  }, [dailyData, selectedRegions]);
 
-  // Calculate bar chart data - shows day-specific data when a day is selected
-  const barChartData = useMemo(() => {
-    let baseData = regionalData;
+  // Aggregate daily data by region for display (combining multiple months/years)
+  const aggregatedDailyData = useMemo(() => {
+    const regionMap = new Map<string, { day: number; expedidas: number; baixadas: number }[]>();
     
-    // If a specific day is selected, recalculate from daily data for that day
-    if (selectedDay !== null) {
-      baseData = dailyData.map((regional) => {
-        const dayData = regional.data.find(d => d.day === selectedDay);
-        return {
-          name: regional.region,
-          expedidas: dayData?.expedidas || 0,
-          baixadas: dayData?.baixadas || 0,
-        };
+    filteredDailyData.forEach(item => {
+      if (!regionMap.has(item.region)) {
+        regionMap.set(item.region, []);
+      }
+      const existingData = regionMap.get(item.region)!;
+      
+      item.data.forEach(dayData => {
+        const existing = existingData.find(d => d.day === dayData.day);
+        if (existing) {
+          existing.expedidas += dayData.expedidas;
+          existing.baixadas += dayData.baixadas;
+        } else {
+          existingData.push({
+            day: dayData.day,
+            expedidas: dayData.expedidas,
+            baixadas: dayData.baixadas
+          });
+        }
       });
-    }
+    });
     
-    // Filter by region if one is selected
-    if (selectedRegion !== "all") {
-      return baseData.filter((item) => item.name === selectedRegion);
-    }
+    return Array.from(regionMap.entries()).map(([region, data]) => ({
+      region,
+      data: data.sort((a, b) => a.day - b.day)
+    }));
+  }, [filteredDailyData]);
+
+  // Calculate bar chart data from daily data
+  const barChartData = useMemo(() => {
+    // Calculate totals for each region
+    const regionTotals = new Map<string, { expedidas: number; baixadas: number }>();
     
-    return baseData;
-  }, [regionalData, dailyData, selectedDay, selectedRegion]);
+    filteredDailyData.forEach(item => {
+      if (!regionTotals.has(item.region)) {
+        regionTotals.set(item.region, { expedidas: 0, baixadas: 0 });
+      }
+      const totals = regionTotals.get(item.region)!;
+      
+      item.data.forEach(dayData => {
+        if (selectedDay === null || dayData.day === selectedDay) {
+          totals.expedidas += dayData.expedidas;
+          totals.baixadas += dayData.baixadas;
+        }
+      });
+    });
+    
+    return Array.from(regionTotals.entries()).map(([name, totals]) => ({
+      name,
+      ...totals
+    }));
+  }, [filteredDailyData, selectedDay]);
 
   // Calculate totals based on filters
   const totals = useMemo(() => {
-    // If a specific day is selected, recalculate from daily data
-    if (selectedDay !== null) {
-      const dayTotals = filteredDailyData.reduce(
-        (acc, regional) => {
-          const dayData = regional.data.find(d => d.day === selectedDay);
-          if (dayData) {
-            acc.expedidas += dayData.expedidas;
-            acc.baixadas += dayData.baixadas;
-          }
-          return acc;
-        },
-        { expedidas: 0, baixadas: 0 }
-      );
-      return { totalExpedidas: dayTotals.expedidas, totalBaixadas: dayTotals.baixadas };
-    }
-    
     return calculateTotals(barChartData);
-  }, [barChartData, filteredDailyData, selectedDay]);
+  }, [barChartData]);
 
   // Handler for clicking on a region
   const handleRegionClick = useCallback((region: string) => {
-    setSelectedRegion(prev => prev === region ? "all" : region);
+    setSelectedRegions(prev => {
+      if (prev.includes(region)) {
+        return prev.filter(r => r !== region);
+      }
+      return [...prev, region];
+    });
   }, []);
 
   // Handler for clicking on a day
@@ -94,13 +117,23 @@ const Index = () => {
 
   // Handler for clicking on a specific bar (region + metric)
   const handleBarClick = useCallback((region: string, metric: "expedidas" | "baixadas") => {
-    setSelectedRegion(prev => prev === region ? "all" : region);
+    setSelectedRegions(prev => {
+      if (prev.includes(region)) {
+        return prev.filter(r => r !== region);
+      }
+      return [...prev, region];
+    });
     setSelectedMetric(prev => prev === metric ? null : metric);
   }, []);
 
   // Handler for clicking on a specific point in line chart (region + day + metric)
   const handleLinePointClick = useCallback((region: string, day: number, metric: "expedidas" | "baixadas") => {
-    setSelectedRegion(prev => prev === region ? "all" : region);
+    setSelectedRegions(prev => {
+      if (prev.includes(region)) {
+        return prev.filter(r => r !== region);
+      }
+      return [...prev, region];
+    });
     setSelectedDay(prev => prev === day ? null : day);
     setSelectedMetric(prev => prev === metric ? null : metric);
   }, []);
@@ -111,22 +144,22 @@ const Index = () => {
   const clearAllFilters = useCallback(() => {
     setSelectedDay(null);
     setSelectedMetric(null);
-    setSelectedRegion("all");
+    setSelectedRegions([]);
   }, []);
 
   // Check if any filters are active
-  const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegion !== "all";
+  const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegions.length > 0;
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header with logo, navigation, and filters */}
       <DashboardHeader
-        selectedMonth={selectedMonth}
-        selectedYear={selectedYear}
-        selectedRegion={selectedRegion}
-        onMonthChange={setSelectedMonth}
-        onYearChange={setSelectedYear}
-        onRegionChange={setSelectedRegion}
+        selectedMonths={selectedMonths}
+        selectedYears={selectedYears}
+        selectedRegions={selectedRegions}
+        onMonthsChange={setSelectedMonths}
+        onYearsChange={setSelectedYears}
+        onRegionsChange={setSelectedRegions}
         onClearAllFilters={clearAllFilters}
         lastUpdate={lastUpdate}
         hasActiveFilters={hasActiveFilters}
@@ -156,7 +189,7 @@ const Index = () => {
           <RegionalBarChart 
             data={barChartData}
             selectedMetric={selectedMetric}
-            selectedRegion={selectedRegion}
+            selectedRegion={selectedRegions.length === 1 ? selectedRegions[0] : "all"}
             onRegionClick={handleRegionClick}
             onMetricClick={handleMetricClick}
             onBarClick={handleBarClick}
@@ -166,10 +199,10 @@ const Index = () => {
         {/* Right column - Scrollable line charts (70%) */}
         <div className="w-[70%]">
           <RegionalLineCharts 
-            data={filteredDailyData}
+            data={aggregatedDailyData}
             selectedDay={selectedDay}
             selectedMetric={selectedMetric}
-            selectedRegion={selectedRegion}
+            selectedRegion={selectedRegions.length === 1 ? selectedRegions[0] : "all"}
             onDayClick={handleDayClick}
             onRegionClick={handleRegionClick}
             onLinePointClick={handleLinePointClick}
