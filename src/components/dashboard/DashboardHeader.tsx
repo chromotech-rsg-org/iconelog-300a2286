@@ -1,4 +1,4 @@
-import { Clock, Construction, Menu, RotateCcw } from "lucide-react";
+import { Clock, Construction, Menu, RotateCcw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -44,6 +44,7 @@ interface DashboardHeaderProps {
   onYearsChange: (years: number[]) => void;
   onRegionsChange: (regions: string[]) => void;
   onClearAllFilters?: () => void;
+  onExportExcel?: () => void;
   lastUpdate: Date;
   hasActiveFilters?: boolean;
 }
@@ -56,6 +57,7 @@ export const DashboardHeader = ({
   onYearsChange,
   onRegionsChange,
   onClearAllFilters,
+  onExportExcel,
   lastUpdate,
   hasActiveFilters = false,
 }: DashboardHeaderProps) => {
@@ -184,15 +186,15 @@ export const DashboardHeader = ({
               <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-56 p-2 bg-dashboard-card border-dashboard-border z-50">
-            <div className="grid grid-cols-3 gap-2">
+          <PopoverContent className="w-80 p-3 bg-dashboard-card border-dashboard-border z-50">
+            <div className="flex flex-wrap gap-2">
               {months.map((month) => (
                 <Button
                   key={month.value}
                   variant="ghost"
                   size="sm"
                   onClick={() => toggleMonth(month.value)}
-                  className={`px-2 py-1 text-xs font-medium transition-all duration-200 ${
+                  className={`px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                     selectedMonths.includes(month.value)
                       ? "bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent"
                       : "text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
@@ -278,6 +280,19 @@ export const DashboardHeader = ({
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Export Excel button */}
+        {onExportExcel && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onExportExcel}
+            className="border-dashboard-border text-foreground hover:bg-dashboard-accent hover:text-dashboard-dark"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Exportar Excel
+          </Button>
+        )}
 
         {/* Clear all filters button */}
         {hasActiveFilters && onClearAllFilters && (

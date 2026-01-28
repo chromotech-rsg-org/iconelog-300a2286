@@ -5,17 +5,21 @@ import { RegionalBarChart } from "@/components/dashboard/RegionalBarChart";
 import { RegionalLineCharts } from "@/components/dashboard/RegionalLineCharts";
 import { ActiveFilters } from "@/components/dashboard/ActiveFilters";
 import {
-  generateRegionalData,
   generateAllRegionalDailyData,
   calculateTotals,
   months as allMonths,
 } from "@/data/mockData";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const Index = () => {
   // Use current month and year automatically
   const currentDate = new Date();
-  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentDate.getMonth() + 1]);
-  const [selectedYears, setSelectedYears] = useState<number[]>([currentDate.getFullYear()]);
+  const currentMonth = currentDate.getMonth() + 1;
+  const currentYear = currentDate.getFullYear();
+  
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [lastUpdate] = useState(new Date());
   
@@ -145,10 +149,50 @@ const Index = () => {
     setSelectedDay(null);
     setSelectedMetric(null);
     setSelectedRegions([]);
-  }, []);
+    setSelectedMonths([currentMonth]);
+    setSelectedYears([currentYear]);
+  }, [currentMonth, currentYear]);
 
-  // Check if any filters are active
-  const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegions.length > 0;
+  // Check if any filters are active (including non-default month/year)
+  const isDefaultMonthYear = selectedMonths.length === 1 && selectedMonths[0] === currentMonth && 
+                              selectedYears.length === 1 && selectedYears[0] === currentYear;
+  const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegions.length > 0 || !isDefaultMonthYear;
+
+  // Export data to Excel
+  const exportToExcel = useCallback(() => {
+    const exportData: { Regional: string; Expedidas: number; Baixadas: number; Diferença: number; "% Baixadas": string }[] = [];
+    
+    barChartData.forEach(region => {
+      exportData.push({
+        Regional: region.name,
+        Expedidas: region.expedidas,
+        Baixadas: region.baixadas,
+        Diferença: region.expedidas - region.baixadas,
+        "% Baixadas": ((region.baixadas / region.expedidas) * 100).toFixed(2) + "%"
+      });
+    });
+
+    // Add totals row
+    exportData.push({
+      Regional: "TOTAL",
+      Expedidas: totals.totalExpedidas,
+      Baixadas: totals.totalBaixadas,
+      Diferença: totals.totalExpedidas - totals.totalBaixadas,
+      "% Baixadas": ((totals.totalBaixadas / totals.totalExpedidas) * 100).toFixed(2) + "%"
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Dados");
+    
+    const monthNames = selectedMonths.map(m => allMonths.find(month => month.value === m)?.short).join("-");
+    const yearNames = selectedYears.join("-");
+    const fileName = `minutas_${monthNames}_${yearNames}.xlsx`;
+    
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, fileName);
+  }, [barChartData, totals, selectedMonths, selectedYears]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -161,6 +205,7 @@ const Index = () => {
         onYearsChange={setSelectedYears}
         onRegionsChange={setSelectedRegions}
         onClearAllFilters={clearAllFilters}
+        onExportExcel={exportToExcel}
         lastUpdate={lastUpdate}
         hasActiveFilters={hasActiveFilters}
       />
