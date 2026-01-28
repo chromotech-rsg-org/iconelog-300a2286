@@ -1,4 +1,4 @@
-import { Clock, Construction, Menu, RotateCcw, Download } from "lucide-react";
+import { Clock, Construction, Menu, RotateCcw, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -45,6 +45,7 @@ interface DashboardHeaderProps {
   onRegionsChange: (regions: string[]) => void;
   onClearAllFilters?: () => void;
   onExportExcel?: () => void;
+  onRefreshData?: () => void;
   lastUpdate: Date;
   hasActiveFilters?: boolean;
 }
@@ -58,6 +59,7 @@ export const DashboardHeader = ({
   onRegionsChange,
   onClearAllFilters,
   onExportExcel,
+  onRefreshData,
   lastUpdate,
   hasActiveFilters = false,
 }: DashboardHeaderProps) => {
@@ -140,7 +142,19 @@ export const DashboardHeader = ({
         {/* Last update */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Clock className="h-4 w-4" />
-          <span>Última atualização: {formatLastUpdate(lastUpdate)}</span>
+          <span className="hidden sm:inline">Última atualização: {formatLastUpdate(lastUpdate)}</span>
+          <span className="sm:hidden">{formatLastUpdate(lastUpdate)}</span>
+          {onRefreshData && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onRefreshData}
+              className="h-8 w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
+              title="Atualizar dados"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         {/* Navigation dropdown - icon only */}
