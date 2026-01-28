@@ -21,7 +21,7 @@ const Index = () => {
   const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-  const [lastUpdate] = useState(new Date());
+  const [lastUpdate, setLastUpdate] = useState(new Date());
   
   // Interactive filter states
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
@@ -153,6 +153,11 @@ const Index = () => {
     setSelectedYears([currentYear]);
   }, [currentMonth, currentYear]);
 
+  // Refresh data handler
+  const handleRefreshData = useCallback(() => {
+    setLastUpdate(new Date());
+  }, []);
+
   // Check if any filters are active (including non-default month/year)
   const isDefaultMonthYear = selectedMonths.length === 1 && selectedMonths[0] === currentMonth && 
                               selectedYears.length === 1 && selectedYears[0] === currentYear;
@@ -206,6 +211,7 @@ const Index = () => {
         onRegionsChange={setSelectedRegions}
         onClearAllFilters={clearAllFilters}
         onExportExcel={exportToExcel}
+        onRefreshData={handleRefreshData}
         lastUpdate={lastUpdate}
         hasActiveFilters={hasActiveFilters}
       />
@@ -219,26 +225,29 @@ const Index = () => {
         onClearAll={clearAllFilters}
       />
 
-      {/* KPI Cards */}
-      <KPICards
-        totalExpedidas={totals.totalExpedidas}
-        totalBaixadas={totals.totalBaixadas}
-        selectedMetric={selectedMetric}
-        onMetricClick={handleMetricClick}
-      />
-
       {/* Main content - Split screen layout on desktop, stacked on mobile */}
-      <div className="flex flex-col md:flex-row gap-4 px-6 pb-6 md:h-[calc(100vh-320px)]">
-        {/* Left column - Regional bar chart (30% on desktop, full width on mobile) */}
-        <div className="w-full md:w-[30%] h-[400px] md:h-full">
-          <RegionalBarChart 
-            data={barChartData}
+      <div className="flex flex-col md:flex-row gap-4 px-6 pb-6 md:h-[calc(100vh-280px)]">
+        {/* Left column - KPI Cards + Regional bar chart (30% on desktop, full width on mobile) */}
+        <div className="w-full md:w-[30%] flex flex-col gap-4">
+          {/* KPI Cards - side by side within left column */}
+          <KPICards
+            totalExpedidas={totals.totalExpedidas}
+            totalBaixadas={totals.totalBaixadas}
             selectedMetric={selectedMetric}
-            selectedRegion={selectedRegions.length === 1 ? selectedRegions[0] : "all"}
-            onRegionClick={handleRegionClick}
             onMetricClick={handleMetricClick}
-            onBarClick={handleBarClick}
           />
+          
+          {/* Bar chart fills remaining height */}
+          <div className="h-[400px] md:flex-1">
+            <RegionalBarChart 
+              data={barChartData}
+              selectedMetric={selectedMetric}
+              selectedRegion={selectedRegions.length === 1 ? selectedRegions[0] : "all"}
+              onRegionClick={handleRegionClick}
+              onMetricClick={handleMetricClick}
+              onBarClick={handleBarClick}
+            />
+          </div>
         </div>
 
         {/* Right column - Scrollable line charts (70% on desktop, full width on mobile) */}

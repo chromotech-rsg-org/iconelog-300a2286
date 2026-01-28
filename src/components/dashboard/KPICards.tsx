@@ -15,7 +15,7 @@ export const KPICards = ({
   onMetricClick 
 }: KPICardsProps) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-6 py-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {/* Total Expedidas Card */}
       <div 
         className={`relative overflow-hidden rounded-lg border bg-dashboard-card p-6 transition-all duration-300 cursor-pointer ${
