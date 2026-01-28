@@ -175,37 +175,24 @@ export const DashboardHeader = ({
 
       {/* Filters bar */}
       <div className="flex flex-wrap items-center gap-4 px-6 py-3 border-t border-dashboard-border">
-        {/* Month multi-select */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="w-40 justify-between border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border"
+        {/* Month selection - inline */}
+        <div className="flex flex-wrap gap-1">
+          {months.map((month) => (
+            <Button
+              key={month.value}
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleMonth(month.value)}
+              className={`px-2 py-1 text-xs font-medium transition-all duration-200 ${
+                selectedMonths.includes(month.value)
+                  ? "bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent"
+                  : "text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
+              }`}
             >
-              {getMonthsLabel()}
-              <ChevronDown className="ml-2 h-4 w-4" />
+              {month.short}
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-3 bg-dashboard-card border-dashboard-border z-50">
-            <div className="flex flex-wrap gap-2">
-              {months.map((month) => (
-                <Button
-                  key={month.value}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => toggleMonth(month.value)}
-                  className={`px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
-                    selectedMonths.includes(month.value)
-                      ? "bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent"
-                      : "text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
-                  }`}
-                >
-                  {month.short}
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+          ))}
+        </div>
 
         {/* Year multi-select */}
         <Popover>
