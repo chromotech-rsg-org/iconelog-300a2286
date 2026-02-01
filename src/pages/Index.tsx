@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { SharedHeader } from "@/components/shared/SharedHeader";
 import { KPICards } from "@/components/dashboard/KPICards";
 import { RegionalBarChart } from "@/components/dashboard/RegionalBarChart";
 import { RegionalLineCharts } from "@/components/dashboard/RegionalLineCharts";
@@ -202,7 +202,11 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header with logo, navigation, and filters */}
-      <DashboardHeader
+      <SharedHeader
+        pageTitle="Minutas Expedidas x Baixadas"
+        pageId="minutas"
+        lastUpdate={lastUpdate}
+        showFilters={true}
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
         selectedRegions={selectedRegions}
@@ -212,7 +216,6 @@ const Index = () => {
         onClearAllFilters={clearAllFilters}
         onExportExcel={exportToExcel}
         onRefreshData={handleRefreshData}
-        lastUpdate={lastUpdate}
         hasActiveFilters={hasActiveFilters}
       />
 
