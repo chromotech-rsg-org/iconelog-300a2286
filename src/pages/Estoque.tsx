@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
-import { StockHeader } from "@/components/stock/StockHeader";
+import { SharedHeader } from "@/components/shared/SharedHeader";
 import { StockKPICards } from "@/components/stock/StockKPICards";
 import { StockCategoryChart } from "@/components/stock/StockCategoryChart";
 import { StockTable } from "@/components/stock/StockTable";
-import { ProductDetailPanel } from "@/components/stock/ProductDetailPanel";
+import { ProductSimplePreview } from "@/components/stock/ProductSimplePreview";
+import { ProductDetailModal } from "@/components/stock/ProductDetailModal";
 import { 
   generateStockData, 
   calculateStockTotals, 
@@ -18,6 +19,7 @@ const Estoque = () => {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [stockData, setStockData] = useState<SKUItem[]>(() => generateStockData());
   const [selectedProduct, setSelectedProduct] = useState<SKUItem | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const totals = useMemo(() => calculateStockTotals(stockData), [stockData]);
   const categoryData = useMemo(() => getStockByCategory(stockData), [stockData]);
@@ -62,9 +64,17 @@ const Estoque = () => {
     setSelectedProduct(product);
   };
 
+  const handleOpenDetails = () => {
+    if (selectedProduct) {
+      setIsDetailModalOpen(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-dashboard-dark">
-      <StockHeader 
+      <SharedHeader 
+        pageTitle="B-Side Estoque"
+        pageId="estoque"
         lastUpdate={lastUpdate}
         onRefreshData={handleRefreshData}
         onExportExcel={handleExportExcel}
@@ -82,30 +92,37 @@ const Estoque = () => {
 
         {/* Main Content */}
         <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-280px)]">
-          {/* Left side - Table and Chart */}
-          <div className="flex-1 flex flex-col gap-4 min-w-0">
-            {/* Stock Table */}
-            <div className="flex-1 min-h-0">
-              <StockTable 
-                items={stockData}
-                onSelectProduct={handleSelectProduct}
-                selectedProduct={selectedProduct}
-              />
-            </div>
+          {/* Left side - Table (reduced width) */}
+          <div className="flex-1 lg:w-[70%] min-w-0">
+            <StockTable 
+              items={stockData}
+              onSelectProduct={handleSelectProduct}
+              selectedProduct={selectedProduct}
+            />
           </div>
 
-          {/* Right side - Category Chart and Product Detail */}
-          <div className="w-full lg:w-80 flex flex-col gap-4">
+          {/* Right side - Category Chart and Product Preview */}
+          <div className="w-full lg:w-[30%] flex flex-col gap-4">
             {/* Category Chart */}
             <StockCategoryChart data={categoryData} />
             
-            {/* Product Detail Panel */}
-            <div className="flex-1 min-h-0">
-              <ProductDetailPanel product={selectedProduct} />
+            {/* Product Simple Preview */}
+            <div className="flex-1 min-h-[200px]">
+              <ProductSimplePreview 
+                product={selectedProduct} 
+                onOpenDetails={handleOpenDetails}
+              />
             </div>
           </div>
         </div>
       </div>
+
+      {/* Product Detail Modal */}
+      <ProductDetailModal 
+        product={selectedProduct}
+        open={isDetailModalOpen}
+        onOpenChange={setIsDetailModalOpen}
+      />
     </div>
   );
 };
