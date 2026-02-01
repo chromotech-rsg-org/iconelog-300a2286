@@ -16,25 +16,18 @@ import { months, years, regions } from "@/data/mockData";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg";
 import { ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const navigationItems = [
-  { label: "B-Side Entregas", active: false },
-  { label: "B-Side Estoque", active: false },
-  { label: "Tracking Consolidado", active: false },
-  { label: "Estoque Consolidado", active: false },
-  { label: "Faturamento", active: false },
-  { label: "Analítico", active: false },
-  { label: "Minutas Expedidas x Baixadas", active: true },
-  { label: "Painel de Controle", active: false },
+  { label: "B-Side Entregas", active: false, path: "/" },
+  { label: "B-Side Estoque", active: false, path: "/estoque" },
+  { label: "Tracking Consolidado", active: false, path: "/" },
+  { label: "Estoque Consolidado", active: false, path: "/" },
+  { label: "Faturamento", active: false, path: "/" },
+  { label: "Analítico", active: false, path: "/" },
+  { label: "Minutas Expedidas x Baixadas", active: true, path: "/" },
+  { label: "Painel de Controle", active: false, path: "/" },
 ];
-
-const handleNavClick = (item: typeof navigationItems[0]) => {
-  if (!item.active) {
-    toast.info(`${item.label} - Em desenvolvimento`, {
-      icon: <Construction className="h-4 w-4" />,
-    });
-  }
-};
 
 interface DashboardHeaderProps {
   selectedMonths: number[];
@@ -63,6 +56,17 @@ export const DashboardHeader = ({
   lastUpdate,
   hasActiveFilters = false,
 }: DashboardHeaderProps) => {
+  const navigate = useNavigate();
+
+  const handleNavClick = (item: typeof navigationItems[0]) => {
+    if (item.label === "B-Side Estoque") {
+      navigate("/estoque");
+    } else if (!item.active) {
+      toast.info(`${item.label} - Em desenvolvimento`, {
+        icon: <Construction className="h-4 w-4" />,
+      });
+    }
+  };
   const formatLastUpdate = (date: Date) => {
     return date.toLocaleString('pt-BR', {
       day: '2-digit',
@@ -180,7 +184,9 @@ export const DashboardHeader = ({
                 }`}
               >
                 {item.label}
-                {!item.active && <Construction className="ml-2 h-3 w-3 text-muted-foreground" />}
+                {!item.active && item.label !== "B-Side Estoque" && (
+                  <Construction className="ml-2 h-3 w-3 text-muted-foreground" />
+                )}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
