@@ -21,6 +21,7 @@ interface AuthContextType {
   canExport: (pageId: string) => boolean;
   canRefresh: (pageId: string) => boolean;
   isDevOnly: (pageId: string) => boolean;
+  isPublicAccess: (pageId: string) => boolean;
   // Gerenciamento de usuários e perfis (para admin)
   users: User[];
   profiles: Profile[];
@@ -112,6 +113,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return perm?.apenasDev ?? false;
   }, [user, profiles]);
 
+  // Verificar se uma página tem acesso público (qualquer perfil que tenha acessoPublico)
+  const isPublicAccess = useCallback((pageId: string): boolean => {
+    // Verifica se algum perfil tem acessoPublico para essa página
+    return profiles.some(p => p.permissoes[pageId]?.acessoPublico === true);
+  }, [profiles]);
+
   // Gerenciamento de usuários
   const addUser = useCallback((userData: Omit<User, "id">) => {
     const newUser: User = {
@@ -164,6 +171,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         canExport,
         canRefresh,
         isDevOnly,
+        isPublicAccess,
         users: visibleUsers,
         profiles: visibleProfiles,
         addUser,
