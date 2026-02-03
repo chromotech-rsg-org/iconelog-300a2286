@@ -212,7 +212,7 @@ const Admin = () => {
 
             {/* Profile Dialog */}
             <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
-              <DialogContent className="bg-dashboard-card border-dashboard-border max-w-2xl max-h-[90vh]">
+              <DialogContent className="bg-dashboard-card border-dashboard-border max-w-4xl max-h-[90vh]">
                 <DialogHeader>
                   <DialogTitle className="text-foreground">{editingProfile ? "Editar" : "Novo"} Perfil</DialogTitle>
                 </DialogHeader>
@@ -229,14 +229,15 @@ const Admin = () => {
                   
                   <div>
                     <Label className="text-foreground mb-2 block">Permissões</Label>
-                    <ScrollArea className="h-[300px] border border-dashboard-border rounded-md">
+                    <ScrollArea className="h-[400px] border border-dashboard-border rounded-md">
                       <Table>
                         <TableHeader>
                           <TableRow className="border-dashboard-border">
-                            <TableHead className="text-muted-foreground">Página</TableHead>
+                            <TableHead className="text-muted-foreground min-w-[200px]">Página</TableHead>
                             <TableHead className="text-muted-foreground text-center">Ver</TableHead>
                             <TableHead className="text-muted-foreground text-center">Exportar</TableHead>
                             <TableHead className="text-muted-foreground text-center">Atualizar</TableHead>
+                            <TableHead className="text-muted-foreground text-center whitespace-nowrap">Acesso Público</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -261,6 +262,12 @@ const Admin = () => {
                                   <Switch 
                                     checked={perm?.atualizar ?? false} 
                                     onCheckedChange={() => handleToggleProfileFormPermission(page.id, "atualizar")} 
+                                  />
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Switch 
+                                    checked={perm?.acessoPublico ?? false} 
+                                    onCheckedChange={() => handleToggleProfileFormPermission(page.id, "acessoPublico")} 
                                   />
                                 </TableCell>
                               </TableRow>
@@ -317,6 +324,7 @@ const Admin = () => {
                         <TableHead className="text-muted-foreground text-center">Ver</TableHead>
                         <TableHead className="text-muted-foreground text-center">Exportar</TableHead>
                         <TableHead className="text-muted-foreground text-center">Atualizar</TableHead>
+                        <TableHead className="text-muted-foreground text-center whitespace-nowrap">Acesso Público</TableHead>
                         {isDeveloper && <TableHead className="text-muted-foreground text-center">Dev Only</TableHead>}
                       </TableRow>
                     </TableHeader>
@@ -334,6 +342,9 @@ const Admin = () => {
                             </TableCell>
                             <TableCell className="text-center">
                               <Switch checked={perm?.atualizar} onCheckedChange={() => handleTogglePermission(profile.id, page.id, "atualizar")} />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Switch checked={perm?.acessoPublico} onCheckedChange={() => handleTogglePermission(profile.id, page.id, "acessoPublico")} />
                             </TableCell>
                             {isDeveloper && (
                               <TableCell className="text-center">

@@ -24,7 +24,7 @@ const navigationItems = [
 export const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, canView, user, logout } = useAuth();
+  const { isAuthenticated, canView, isPublicAccess, user, logout } = useAuth();
 
   const handleNavClick = (item: typeof navigationItems[0]) => {
     // Verifica se o usuário pode acessar a página
@@ -68,31 +68,37 @@ export const NavigationMenu = () => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="bg-dashboard-card border-dashboard-border z-50 w-56" align="end">
-        {navigationItems.map((item) => {
-          const isActive = isActivePath(item.path);
-          const hasAccess = !isAuthenticated || canView(item.id);
-          
-          return (
-            <DropdownMenuItem
-              key={item.id}
-              onClick={() => handleNavClick(item)}
-              className={`cursor-pointer ${
-                isActive 
-                  ? "bg-dashboard-accent text-dashboard-dark font-medium" 
-                  : hasAccess
-                    ? "text-foreground hover:bg-dashboard-border hover:text-dashboard-accent"
-                    : "text-muted-foreground opacity-50"
-              }`}
-            >
-              {item.label}
-            </DropdownMenuItem>
-          );
-        })}
+        {navigationItems
+          .filter((item) => {
+            // Se não está logado, mostra apenas se tem acesso público
+            if (!isAuthenticated) {
+              return isPublicAccess(item.id);
+            }
+            // Se está logado, mostra apenas se tem permissão de visualizar
+            return canView(item.id);
+          })
+          .map((item) => {
+            const isActive = isActivePath(item.path);
+            
+            return (
+              <DropdownMenuItem
+                key={item.id}
+                onClick={() => handleNavClick(item)}
+                className={`cursor-pointer ${
+                  isActive 
+                    ? "bg-dashboard-accent text-dashboard-dark font-medium" 
+                    : "text-foreground hover:bg-dashboard-border hover:text-dashboard-accent"
+                }`}
+              >
+                {item.label}
+              </DropdownMenuItem>
+            );
+          })}
         
         <DropdownMenuSeparator className="bg-dashboard-border" />
         
-        {/* Admin link */}
-        {(!isAuthenticated || canView("admin")) && (
+        {/* Admin link - só mostra para quem tem permissão */}
+        {isAuthenticated && canView("admin") && (
           <DropdownMenuItem
             onClick={handleAdminClick}
             className={`cursor-pointer ${
