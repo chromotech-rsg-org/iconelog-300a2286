@@ -13,12 +13,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useAuth } from "@/contexts/AuthContext";
 import { systemPages, PagePermission, createEmptyPermissions } from "@/data/authData";
 import { toast } from "sonner";
-import { Users, Shield, Plus, Pencil, Trash2 } from "lucide-react";
+import { Users, Shield, Plus, Pencil, Trash2, Globe } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Admin = () => {
   const [lastUpdate] = useState(new Date());
-  const { users, profiles, addUser, updateUser, deleteUser, addProfile, updateProfile, deleteProfile, isDeveloper } = useAuth();
+  const { 
+    users, 
+    profiles, 
+    addUser, 
+    updateUser, 
+    deleteUser, 
+    addProfile, 
+    updateProfile, 
+    deleteProfile, 
+    isDeveloper,
+    publicAccess,
+    setPublicAccess
+  } = useAuth();
   const [activeTab, setActiveTab] = useState("usuarios");
   
   // User dialog state
@@ -99,12 +111,10 @@ const Admin = () => {
   };
 
   const handleDeleteProfile = (profileId: string) => {
-    // Proteção: não pode excluir dev-profile ou admin-profile
     if (profileId === "dev-profile" || profileId === "admin-profile") {
       toast.error("Este perfil não pode ser excluído");
       return;
     }
-    // Verificar se há usuários vinculados
     const usersWithProfile = users.filter(u => u.perfilId === profileId);
     if (usersWithProfile.length > 0) {
       toast.error(`Não é possível excluir: ${usersWithProfile.length} usuário(s) vinculado(s)`);
@@ -127,15 +137,20 @@ const Admin = () => {
     }));
   };
 
-  const handleTogglePermission = (profileId: string, pageId: string, key: keyof PagePermission) => {
-    const profile = profiles.find(p => p.id === profileId);
-    if (!profile) return;
-    const newPerms = { ...profile.permissoes };
-    newPerms[pageId] = { ...newPerms[pageId], [key]: !newPerms[pageId][key] };
-    updateProfile(profileId, { permissoes: newPerms });
+  const handleTogglePublicAccess = (pageId: string) => {
+    setPublicAccess(pageId, !publicAccess[pageId]);
   };
 
   const isProtectedProfile = (profileId: string) => profileId === "dev-profile" || profileId === "admin-profile";
+
+  // Count enabled permissions for a profile
+  const countEnabledPermissions = (profile: typeof profiles[0]) => {
+    let count = 0;
+    Object.values(profile.permissoes).forEach(perm => {
+      if (perm.visualizar) count++;
+    });
+    return count;
+  };
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
@@ -148,7 +163,10 @@ const Admin = () => {
               <Users className="h-4 w-4 mr-2" /> Usuários
             </TabsTrigger>
             <TabsTrigger value="perfis" className="data-[state=active]:bg-dashboard-accent data-[state=active]:text-dashboard-dark">
-              <Shield className="h-4 w-4 mr-2" /> Perfis e Permissões
+              <Shield className="h-4 w-4 mr-2" /> Perfis
+            </TabsTrigger>
+            <TabsTrigger value="publico" className="data-[state=active]:bg-dashboard-accent data-[state=active]:text-dashboard-dark">
+              <Globe className="h-4 w-4 mr-2" /> Acesso Público
             </TabsTrigger>
           </TabsList>
 
@@ -202,13 +220,48 @@ const Admin = () => {
           </TabsContent>
 
           {/* === PERFIS TAB === */}
-          <TabsContent value="perfis" className="mt-4 space-y-4">
-            {/* Botão Novo Perfil */}
-            <div className="flex justify-end">
-              <Button size="sm" className="bg-dashboard-accent text-dashboard-dark" onClick={handleOpenNewProfile}>
-                <Plus className="h-4 w-4 mr-1" /> Novo Perfil
-              </Button>
-            </div>
+          <TabsContent value="perfis" className="mt-4">
+            <Card className="bg-dashboard-card border-dashboard-border">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-base text-foreground">Gerenciar Perfis</CardTitle>
+                <Button size="sm" className="bg-dashboard-accent text-dashboard-dark" onClick={handleOpenNewProfile}>
+                  <Plus className="h-4 w-4 mr-1" /> Novo Perfil
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-dashboard-border">
+                      <TableHead className="text-muted-foreground">Nome do Perfil</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Páginas Liberadas</TableHead>
+                      <TableHead className="text-muted-foreground text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {profiles.map(profile => (
+                      <TableRow key={profile.id} className="border-dashboard-border">
+                        <TableCell className="text-foreground font-medium">{profile.nome}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary" className="bg-dashboard-accent/20 text-dashboard-accent">
+                            {countEnabledPermissions(profile)} páginas
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditProfile(profile)} title="Editar permissões">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          {!isProtectedProfile(profile.id) && (
+                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteProfile(profile.id)} title="Excluir perfil">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
 
             {/* Profile Dialog */}
             <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
@@ -228,16 +281,15 @@ const Admin = () => {
                   </div>
                   
                   <div>
-                    <Label className="text-foreground mb-2 block">Permissões</Label>
+                    <Label className="text-foreground mb-2 block">Permissões por Página</Label>
                     <ScrollArea className="h-[400px] border border-dashboard-border rounded-md">
                       <Table>
                         <TableHeader>
                           <TableRow className="border-dashboard-border">
                             <TableHead className="text-muted-foreground min-w-[200px]">Página</TableHead>
-                            <TableHead className="text-muted-foreground text-center">Ver</TableHead>
+                            <TableHead className="text-muted-foreground text-center">Visualizar</TableHead>
                             <TableHead className="text-muted-foreground text-center">Exportar</TableHead>
                             <TableHead className="text-muted-foreground text-center">Atualizar</TableHead>
-                            <TableHead className="text-muted-foreground text-center whitespace-nowrap">Acesso Público</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -264,12 +316,6 @@ const Admin = () => {
                                     onCheckedChange={() => handleToggleProfileFormPermission(page.id, "atualizar")} 
                                   />
                                 </TableCell>
-                                <TableCell className="text-center">
-                                  <Switch 
-                                    checked={perm?.acessoPublico ?? false} 
-                                    onCheckedChange={() => handleToggleProfileFormPermission(page.id, "acessoPublico")} 
-                                  />
-                                </TableCell>
                               </TableRow>
                             );
                           })}
@@ -288,77 +334,41 @@ const Admin = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          </TabsContent>
 
-            {/* Lista de Perfis */}
-            {profiles.map(profile => (
-              <Card key={profile.id} className="bg-dashboard-card border-dashboard-border">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-base text-foreground">{profile.nome}</CardTitle>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleEditProfile(profile)}
-                      title="Editar perfil"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    {!isProtectedProfile(profile.id) && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-destructive" 
-                        onClick={() => handleDeleteProfile(profile.id)}
-                        title="Excluir perfil"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="overflow-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-dashboard-border">
-                        <TableHead className="text-muted-foreground">Página</TableHead>
-                        <TableHead className="text-muted-foreground text-center">Ver</TableHead>
-                        <TableHead className="text-muted-foreground text-center">Exportar</TableHead>
-                        <TableHead className="text-muted-foreground text-center">Atualizar</TableHead>
-                        <TableHead className="text-muted-foreground text-center whitespace-nowrap">Acesso Público</TableHead>
-                        {isDeveloper && <TableHead className="text-muted-foreground text-center">Dev Only</TableHead>}
+          {/* === ACESSO PÚBLICO TAB === */}
+          <TabsContent value="publico" className="mt-4">
+            <Card className="bg-dashboard-card border-dashboard-border">
+              <CardHeader>
+                <CardTitle className="text-base text-foreground">Configurar Acesso Público</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Páginas com acesso público ficam visíveis no menu para visitantes não logados.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-dashboard-border">
+                      <TableHead className="text-muted-foreground">Página</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Acesso Público</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {systemPages.filter(page => page.id !== "admin").map(page => (
+                      <TableRow key={page.id} className="border-dashboard-border">
+                        <TableCell className="text-foreground">{page.nome}</TableCell>
+                        <TableCell className="text-center">
+                          <Switch 
+                            checked={publicAccess[page.id] ?? false} 
+                            onCheckedChange={() => handleTogglePublicAccess(page.id)} 
+                          />
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {systemPages.filter(p => p.id !== "admin" || profile.id !== "dev-profile").map(page => {
-                        const perm = profile.permissoes[page.id];
-                        return (
-                          <TableRow key={page.id} className="border-dashboard-border">
-                            <TableCell className="text-foreground">{page.nome}</TableCell>
-                            <TableCell className="text-center">
-                              <Switch checked={perm?.visualizar} onCheckedChange={() => handleTogglePermission(profile.id, page.id, "visualizar")} />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Switch checked={perm?.exportar} onCheckedChange={() => handleTogglePermission(profile.id, page.id, "exportar")} />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Switch checked={perm?.atualizar} onCheckedChange={() => handleTogglePermission(profile.id, page.id, "atualizar")} />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Switch checked={perm?.acessoPublico} onCheckedChange={() => handleTogglePermission(profile.id, page.id, "acessoPublico")} />
-                            </TableCell>
-                            {isDeveloper && (
-                              <TableCell className="text-center">
-                                <Switch checked={perm?.apenasDev} onCheckedChange={() => handleTogglePermission(profile.id, page.id, "apenasDev")} />
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            ))}
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

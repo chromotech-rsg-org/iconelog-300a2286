@@ -31,6 +31,9 @@ interface AuthContextType {
   addProfile: (profile: Omit<Profile, "id">) => void;
   updateProfile: (id: string, data: Partial<Profile>) => void;
   deleteProfile: (id: string) => void;
+  // Acesso público global (separado dos perfis)
+  publicAccess: Record<string, boolean>;
+  setPublicAccess: (pageId: string, enabled: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,6 +54,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [profiles, setProfiles] = useState<Profile[]>(mockProfiles);
+  
+  // Estado global de acesso público (separado dos perfis)
+  const [publicAccess, setPublicAccessState] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem("public_access");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  });
 
   // Calcular profile a partir do state interno (não do mock estático)
   const profile = user ? profiles.find(p => p.id === user.perfilId) : null;
@@ -113,11 +129,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return perm?.apenasDev ?? false;
   }, [user, profiles]);
 
-  // Verificar se uma página tem acesso público (qualquer perfil que tenha acessoPublico)
+  // Verificar se uma página tem acesso público (usando estado global)
   const isPublicAccess = useCallback((pageId: string): boolean => {
-    // Verifica se algum perfil tem acessoPublico para essa página
-    return profiles.some(p => p.permissoes[pageId]?.acessoPublico === true);
-  }, [profiles]);
+    return publicAccess[pageId] === true;
+  }, [publicAccess]);
+
+  // Atualizar acesso público de uma página
+  const setPublicAccess = useCallback((pageId: string, enabled: boolean) => {
+    setPublicAccessState(prev => {
+      const newState = { ...prev, [pageId]: enabled };
+      localStorage.setItem("public_access", JSON.stringify(newState));
+      return newState;
+    });
+  }, []);
 
   // Gerenciamento de usuários
   const addUser = useCallback((userData: Omit<User, "id">) => {
@@ -180,6 +204,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         addProfile,
         updateProfile,
         deleteProfile,
+        publicAccess,
+        setPublicAccess,
       }}
     >
       {children}
