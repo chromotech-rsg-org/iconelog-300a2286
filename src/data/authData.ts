@@ -4,14 +4,32 @@ export interface PagePermission {
   visualizar: boolean;
   exportar: boolean;
   atualizar: boolean;
-  acessoPublico: boolean;
   apenasDev: boolean;
+}
+
+// Permissões granulares para admin (usuários, perfis, acesso público)
+export interface AdminPermission {
+  ver: boolean;
+  editar: boolean;
+  criar: boolean;
+  excluir: boolean;
+}
+
+// Permissões para acesso público (apenas ver e editar)
+export interface PublicAccessPermission {
+  ver: boolean;
+  editar: boolean;
 }
 
 export interface Profile {
   id: string;
   nome: string;
   permissoes: Record<string, PagePermission>;
+  adminPermissoes: {
+    usuarios: AdminPermission;
+    perfis: AdminPermission;
+    acessoPublico: PublicAccessPermission;
+  };
 }
 
 export interface User {
@@ -24,7 +42,7 @@ export interface User {
   ativo: boolean;
 }
 
-// Páginas do sistema
+// Páginas do sistema (módulos de BI)
 export const systemPages = [
   { id: "minutas", nome: "Minutas Expedidas x Baixadas", path: "/" },
   { id: "estoque", nome: "B-Side Estoque", path: "/estoque" },
@@ -33,7 +51,6 @@ export const systemPages = [
   { id: "estoque-consolidado", nome: "Estoque Consolidado", path: "/estoque-consolidado" },
   { id: "faturamento", nome: "Faturamento", path: "/faturamento" },
   { id: "analitico", nome: "Analítico", path: "/analitico" },
-  { id: "admin", nome: "Painel de Administração", path: "/admin" },
 ];
 
 // Permissão padrão (sem acesso)
@@ -41,7 +58,6 @@ const noPermission: PagePermission = {
   visualizar: false,
   exportar: false,
   atualizar: false,
-  acessoPublico: false,
   apenasDev: false,
 };
 
@@ -50,17 +66,35 @@ const fullPermission: PagePermission = {
   visualizar: true,
   exportar: true,
   atualizar: true,
-  acessoPublico: false,
   apenasDev: false,
 };
 
-// Permissão apenas visualização
-const viewOnlyPermission: PagePermission = {
-  visualizar: true,
-  exportar: false,
-  atualizar: false,
-  acessoPublico: false,
-  apenasDev: false,
+// Admin permission completa
+const fullAdminPermission: AdminPermission = {
+  ver: true,
+  editar: true,
+  criar: true,
+  excluir: true,
+};
+
+// Admin permission sem acesso
+const noAdminPermission: AdminPermission = {
+  ver: false,
+  editar: false,
+  criar: false,
+  excluir: false,
+};
+
+// Public access permission completa
+const fullPublicAccessPermission: PublicAccessPermission = {
+  ver: true,
+  editar: true,
+};
+
+// Public access permission sem acesso
+const noPublicAccessPermission: PublicAccessPermission = {
+  ver: false,
+  editar: false,
 };
 
 // Criar permissões iniciais para todas as páginas
@@ -71,6 +105,13 @@ const createDefaultPermissions = (defaultPerm: PagePermission): Record<string, P
   });
   return perms;
 };
+
+// Criar permissões admin padrão
+const createDefaultAdminPermissions = (full: boolean) => ({
+  usuarios: full ? { ...fullAdminPermission } : { ...noAdminPermission },
+  perfis: full ? { ...fullAdminPermission } : { ...noAdminPermission },
+  acessoPublico: full ? { ...fullPublicAccessPermission } : { ...noPublicAccessPermission },
+});
 
 // Perfis mock - apenas Desenvolvedor e Administrador
 export const mockProfiles: Profile[] = [
@@ -85,11 +126,13 @@ export const mockProfiles: Profile[] = [
       });
       return perms;
     })(),
+    adminPermissoes: createDefaultAdminPermissions(true),
   },
   {
     id: "admin-profile",
     nome: "Administrador",
     permissoes: createDefaultPermissions(fullPermission),
+    adminPermissoes: createDefaultAdminPermissions(true),
   },
 ];
 
@@ -119,6 +162,13 @@ export const mockUsers: User[] = [
 export const createEmptyPermissions = (): Record<string, PagePermission> => {
   return createDefaultPermissions(noPermission);
 };
+
+// Helper para criar permissões admin vazias (para novos perfis)
+export const createEmptyAdminPermissions = () => ({
+  usuarios: { ...noAdminPermission },
+  perfis: { ...noAdminPermission },
+  acessoPublico: { ...noPublicAccessPermission },
+});
 
 // Funções auxiliares
 export const getUserById = (id: string): User | undefined => {
