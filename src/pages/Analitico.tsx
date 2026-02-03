@@ -1,7 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -32,15 +34,31 @@ import { formatNumber, formatCurrency } from "@/data/mockData";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, X } from "lucide-react";
 
 const Analitico = () => {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [activeTab, setActiveTab] = useState("visao-geral");
 
+  // Filter states for BI interactivity
+  const [selectedPeriodo, setSelectedPeriodo] = useState<string | null>(null);
+  const [selectedRegional, setSelectedRegional] = useState<string | null>(null);
+  const [selectedMetrica, setSelectedMetrica] = useState<string | null>(null);
+
   const metricas = useMemo(() => generateMetricas(), []);
   const comparativo = useMemo(() => generateComparativo(), []);
   const regionalData = useMemo(() => generateAnaliticoRegional(), []);
+
+  // Filtered data
+  const filteredRegionalData = useMemo(() => {
+    if (!selectedRegional) return regionalData;
+    return regionalData.filter(r => r.regional === selectedRegional);
+  }, [regionalData, selectedRegional]);
+
+  const filteredComparativo = useMemo(() => {
+    if (!selectedPeriodo) return comparativo;
+    return comparativo.filter(c => c.periodo === selectedPeriodo);
+  }, [comparativo, selectedPeriodo]);
 
   const handleRefreshData = () => {
     setLastUpdate(new Date());
@@ -55,7 +73,7 @@ const Analitico = () => {
       Tendência: m.tendencia === "up" ? "Subindo" : m.tendencia === "down" ? "Descendo" : "Estável",
     }));
 
-    const regionalExport = regionalData.map(r => ({
+    const regionalExport = filteredRegionalData.map(r => ({
       Regional: r.regional,
       Entregas: r.entregas,
       Devoluções: r.devolucoes,
@@ -74,6 +92,33 @@ const Analitico = () => {
     
     toast.success("Arquivo Excel exportado com sucesso!");
   };
+
+  // BI Click handlers
+  const handlePeriodoClick = useCallback((data: any) => {
+    if (data && data.activePayload && data.activePayload[0]) {
+      const periodo = data.activePayload[0].payload.periodo;
+      setSelectedPeriodo(prev => prev === periodo ? null : periodo);
+    }
+  }, []);
+
+  const handleRegionalChartClick = useCallback((data: any) => {
+    if (data && data.activePayload && data.activePayload[0]) {
+      const regional = data.activePayload[0].payload.regional;
+      setSelectedRegional(prev => prev === regional ? null : regional);
+    }
+  }, []);
+
+  const handleMetricaClick = useCallback((metrica: string) => {
+    setSelectedMetrica(prev => prev === metrica ? null : metrica);
+  }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setSelectedPeriodo(null);
+    setSelectedRegional(null);
+    setSelectedMetrica(null);
+  }, []);
+
+  const hasActiveFilters = selectedPeriodo || selectedRegional || selectedMetrica;
 
   const getTrendIcon = (tendencia: "up" | "down" | "stable") => {
     switch (tendencia) {
@@ -104,6 +149,31 @@ const Analitico = () => {
         onExportExcel={handleExportExcel}
       />
 
+      {/* Active Filters Bar */}
+      {hasActiveFilters && (
+        <div className="flex items-center gap-2 px-6 py-2 border-b border-dashboard-border bg-dashboard-card/50 animate-fade-in">
+          <span className="text-xs text-muted-foreground">Filtros:</span>
+          {selectedPeriodo && (
+            <Badge variant="outline" className="border-dashboard-accent bg-dashboard-accent/10 text-dashboard-accent cursor-pointer" onClick={() => setSelectedPeriodo(null)}>
+              Período: {selectedPeriodo} <X className="ml-1 h-3 w-3" />
+            </Badge>
+          )}
+          {selectedRegional && (
+            <Badge variant="outline" className="border-dashboard-blue bg-dashboard-blue/10 text-dashboard-blue cursor-pointer" onClick={() => setSelectedRegional(null)}>
+              Regional: {selectedRegional} <X className="ml-1 h-3 w-3" />
+            </Badge>
+          )}
+          {selectedMetrica && (
+            <Badge variant="outline" className="border-dashboard-orange bg-dashboard-orange/10 text-dashboard-orange cursor-pointer" onClick={() => setSelectedMetrica(null)}>
+              Métrica: {selectedMetrica} <X className="ml-1 h-3 w-3" />
+            </Badge>
+          )}
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
+            Limpar todos
+          </Button>
+        </div>
+      )}
+
       <div className="p-6 space-y-4">
         {/* Sub-Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -120,10 +190,14 @@ const Analitico = () => {
           </TabsList>
 
           <TabsContent value="visao-geral" className="space-y-4 mt-4">
-            {/* Métricas Cards */}
+            {/* Métricas Cards - clickable */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {metricas.map((metrica) => (
-                <Card key={metrica.nome} className="bg-dashboard-card border-dashboard-border">
+                <Card 
+                  key={metrica.nome} 
+                  className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all hover:border-dashboard-accent ${selectedMetrica === metrica.nome ? 'ring-2 ring-dashboard-accent' : ''}`}
+                  onClick={() => handleMetricaClick(metrica.nome)}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs text-muted-foreground truncate">{metrica.nome}</span>
@@ -140,22 +214,65 @@ const Analitico = () => {
               ))}
             </div>
 
-            {/* Comparativo Chart */}
-            <Card className="bg-dashboard-card border-dashboard-border">
+            {/* Comparativo Chart - clickable */}
+            <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedPeriodo ? 'ring-2 ring-dashboard-accent' : ''}`}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base font-medium text-foreground">Comparativo Mensal: Atual vs Anterior vs Meta</CardTitle>
+                <CardTitle className="text-base font-medium text-foreground">Comparativo Mensal: Atual vs Anterior vs Meta (clique para filtrar)</CardTitle>
               </CardHeader>
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={comparativo}>
+                  <LineChart data={comparativo} onClick={handlePeriodoClick}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
                     <XAxis dataKey="periodo" stroke="hsl(0, 0%, 60%)" fontSize={11} />
                     <YAxis stroke="hsl(0, 0%, 60%)" fontSize={10} />
                     <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} />
                     <Legend />
-                    <Line type="monotone" dataKey="atual" name="Atual" stroke="hsl(45, 100%, 50%)" strokeWidth={2} dot={{ fill: 'hsl(45, 100%, 50%)' }} />
-                    <Line type="monotone" dataKey="anterior" name="Anterior" stroke="hsl(217, 91%, 60%)" strokeWidth={2} dot={{ fill: 'hsl(217, 91%, 60%)' }} />
-                    <Line type="monotone" dataKey="meta" name="Meta" stroke="hsl(142, 76%, 36%)" strokeWidth={2} strokeDasharray="5 5" dot={{ fill: 'hsl(142, 76%, 36%)' }} />
+                    <Line 
+                      type="monotone" 
+                      dataKey="atual" 
+                      name="Atual" 
+                      stroke="hsl(45, 100%, 50%)" 
+                      strokeWidth={2} 
+                      dot={({ cx, cy, payload }) => (
+                        <circle 
+                          cx={cx} 
+                          cy={cy} 
+                          r={selectedPeriodo === payload.periodo ? 8 : 4} 
+                          fill={selectedPeriodo === payload.periodo ? 'hsl(45, 100%, 60%)' : 'hsl(45, 100%, 50%)'} 
+                        />
+                      )}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="anterior" 
+                      name="Anterior" 
+                      stroke="hsl(217, 91%, 60%)" 
+                      strokeWidth={2} 
+                      dot={({ cx, cy, payload }) => (
+                        <circle 
+                          cx={cx} 
+                          cy={cy} 
+                          r={selectedPeriodo === payload.periodo ? 8 : 4} 
+                          fill={selectedPeriodo === payload.periodo ? 'hsl(217, 91%, 70%)' : 'hsl(217, 91%, 60%)'} 
+                        />
+                      )}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="meta" 
+                      name="Meta" 
+                      stroke="hsl(142, 76%, 36%)" 
+                      strokeWidth={2} 
+                      strokeDasharray="5 5" 
+                      dot={({ cx, cy, payload }) => (
+                        <circle 
+                          cx={cx} 
+                          cy={cy} 
+                          r={selectedPeriodo === payload.periodo ? 8 : 4} 
+                          fill={selectedPeriodo === payload.periodo ? 'hsl(142, 76%, 46%)' : 'hsl(142, 76%, 36%)'} 
+                        />
+                      )}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -163,14 +280,14 @@ const Analitico = () => {
 
             {/* Regional Performance */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Chart */}
-              <Card className="bg-dashboard-card border-dashboard-border">
+              {/* Chart - clickable */}
+              <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedRegional ? 'ring-2 ring-dashboard-blue' : ''}`}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-foreground">Performance por Regional</CardTitle>
+                  <CardTitle className="text-sm font-medium text-foreground">Performance por Regional (clique para filtrar)</CardTitle>
                 </CardHeader>
                 <CardContent className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={regionalData.slice(0, 8)}>
+                    <BarChart data={regionalData.slice(0, 8)} onClick={handleRegionalChartClick}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
                       <XAxis dataKey="regional" stroke="hsl(0, 0%, 60%)" fontSize={9} angle={-45} textAnchor="end" height={60} />
                       <YAxis stroke="hsl(0, 0%, 60%)" fontSize={10} />
@@ -183,10 +300,12 @@ const Analitico = () => {
                 </CardContent>
               </Card>
 
-              {/* Table */}
+              {/* Table - clickable rows */}
               <Card className="bg-dashboard-card border-dashboard-border">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-foreground">Detalhes por Regional</CardTitle>
+                  <CardTitle className="text-sm font-medium text-foreground">
+                    Detalhes por Regional {hasActiveFilters && <span className="text-xs font-normal text-muted-foreground">({filteredRegionalData.length} resultados)</span>}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="overflow-auto max-h-[300px] custom-scrollbar">
                   <Table>
@@ -199,8 +318,12 @@ const Analitico = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {regionalData.map((item) => (
-                        <TableRow key={item.regional} className="border-dashboard-border hover:bg-dashboard-border/50">
+                      {filteredRegionalData.map((item) => (
+                        <TableRow 
+                          key={item.regional} 
+                          className={`border-dashboard-border hover:bg-dashboard-border/50 cursor-pointer ${selectedRegional === item.regional ? 'bg-dashboard-accent/10' : ''}`}
+                          onClick={() => setSelectedRegional(prev => prev === item.regional ? null : item.regional)}
+                        >
                           <TableCell className="text-foreground font-medium">{item.regional}</TableCell>
                           <TableCell className="text-foreground text-right">{formatNumber(item.entregas)}</TableCell>
                           <TableCell className={`text-right ${item.noPrazo >= 90 ? 'text-green-500' : item.noPrazo >= 80 ? 'text-yellow-500' : 'text-red-500'}`}>

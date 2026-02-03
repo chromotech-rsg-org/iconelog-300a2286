@@ -16,12 +16,10 @@ export const ProtectedRoute = ({
   pageId, 
   requireAuth = true 
 }: ProtectedRouteProps) => {
-  const { isAuthenticated, canView, getPermission } = useAuth();
-  
-  const permission = getPermission(pageId);
+  const { isAuthenticated, canView, isPublicAccess } = useAuth();
   
   // Se a página tem acesso público, não precisa de auth
-  if (permission?.acessoPublico) {
+  if (isPublicAccess(pageId)) {
     return <>{children}</>;
   }
   

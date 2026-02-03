@@ -3,10 +3,13 @@ import {
   User, 
   Profile, 
   PagePermission,
+  AdminPermission,
+  PublicAccessPermission,
   mockUsers,
   mockProfiles,
   getVisibleUsers,
-  getVisibleProfiles
+  getVisibleProfiles,
+  createEmptyAdminPermissions
 } from "@/data/authData";
 
 interface AuthContextType {
@@ -22,6 +25,13 @@ interface AuthContextType {
   canRefresh: (pageId: string) => boolean;
   isDevOnly: (pageId: string) => boolean;
   isPublicAccess: (pageId: string) => boolean;
+  // Permissões admin granulares
+  getAdminPermission: (section: "usuarios" | "perfis") => AdminPermission | null;
+  getPublicAccessPermission: () => PublicAccessPermission | null;
+  canViewAdmin: (section: "usuarios" | "perfis" | "acessoPublico") => boolean;
+  canEditAdmin: (section: "usuarios" | "perfis" | "acessoPublico") => boolean;
+  canCreateAdmin: (section: "usuarios" | "perfis") => boolean;
+  canDeleteAdmin: (section: "usuarios" | "perfis") => boolean;
   // Gerenciamento de usuários e perfis (para admin)
   users: User[];
   profiles: Profile[];
@@ -134,6 +144,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return publicAccess[pageId] === true;
   }, [publicAccess]);
 
+  // === PERMISSÕES ADMIN GRANULARES ===
+  const getAdminPermission = useCallback((section: "usuarios" | "perfis"): AdminPermission | null => {
+    if (!user) return null;
+    const userProfile = profiles.find(p => p.id === user.perfilId);
+    if (!userProfile) return null;
+    return userProfile.adminPermissoes?.[section] || null;
+  }, [user, profiles]);
+
+  const getPublicAccessPermission = useCallback((): PublicAccessPermission | null => {
+    if (!user) return null;
+    const userProfile = profiles.find(p => p.id === user.perfilId);
+    if (!userProfile) return null;
+    return userProfile.adminPermissoes?.acessoPublico || null;
+  }, [user, profiles]);
+
+  const canViewAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico"): boolean => {
+    if (!user) return false;
+    const userProfile = profiles.find(p => p.id === user.perfilId);
+    if (!userProfile || !userProfile.adminPermissoes) return false;
+    return userProfile.adminPermissoes[section]?.ver ?? false;
+  }, [user, profiles]);
+
+  const canEditAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico"): boolean => {
+    if (!user) return false;
+    const userProfile = profiles.find(p => p.id === user.perfilId);
+    if (!userProfile || !userProfile.adminPermissoes) return false;
+    return userProfile.adminPermissoes[section]?.editar ?? false;
+  }, [user, profiles]);
+
+  const canCreateAdmin = useCallback((section: "usuarios" | "perfis"): boolean => {
+    if (!user) return false;
+    const userProfile = profiles.find(p => p.id === user.perfilId);
+    if (!userProfile || !userProfile.adminPermissoes) return false;
+    const perm = userProfile.adminPermissoes[section] as AdminPermission;
+    return perm?.criar ?? false;
+  }, [user, profiles]);
+
+  const canDeleteAdmin = useCallback((section: "usuarios" | "perfis"): boolean => {
+    if (!user) return false;
+    const userProfile = profiles.find(p => p.id === user.perfilId);
+    if (!userProfile || !userProfile.adminPermissoes) return false;
+    const perm = userProfile.adminPermissoes[section] as AdminPermission;
+    return perm?.excluir ?? false;
+  }, [user, profiles]);
+
   // Atualizar acesso público de uma página
   const setPublicAccess = useCallback((pageId: string, enabled: boolean) => {
     setPublicAccessState(prev => {
@@ -178,8 +233,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   // Filtrar usuários e perfis visíveis (ocultar desenvolvedor)
-  const visibleUsers = isDeveloper ? users : getVisibleUsers();
-  const visibleProfiles = isDeveloper ? profiles : getVisibleProfiles();
+  const visibleUsers = isDeveloper ? users : users.filter(u => !u.isDeveloper);
+  const visibleProfiles = isDeveloper ? profiles : profiles.filter(p => p.id !== "dev-profile");
 
   return (
     <AuthContext.Provider
@@ -196,6 +251,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         canRefresh,
         isDevOnly,
         isPublicAccess,
+        getAdminPermission,
+        getPublicAccessPermission,
+        canViewAdmin,
+        canEditAdmin,
+        canCreateAdmin,
+        canDeleteAdmin,
         users: visibleUsers,
         profiles: visibleProfiles,
         addUser,

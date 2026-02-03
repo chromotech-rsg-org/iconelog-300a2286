@@ -7,6 +7,9 @@ interface EntregasKPICardsProps {
   entregaEmTransito: number;
   reposicaoFinalizado: number;
   reposicaoEmTransito: number;
+  onEntregaClick?: () => void;
+  onReposicaoClick?: () => void;
+  selectedTipo?: "Entrega" | "Reposição" | null;
 }
 
 export const EntregasKPICards = ({
@@ -14,6 +17,9 @@ export const EntregasKPICards = ({
   entregaEmTransito,
   reposicaoFinalizado,
   reposicaoEmTransito,
+  onEntregaClick,
+  onReposicaoClick,
+  selectedTipo,
 }: EntregasKPICardsProps) => {
   const cards = [
     {
@@ -22,6 +28,8 @@ export const EntregasKPICards = ({
       icon: Package,
       color: "text-green-500",
       bgColor: "bg-green-500/10",
+      tipo: "Entrega" as const,
+      onClick: onEntregaClick,
     },
     {
       title: "Entrega em Trânsito",
@@ -29,6 +37,8 @@ export const EntregasKPICards = ({
       icon: Truck,
       color: "text-dashboard-blue",
       bgColor: "bg-dashboard-blue/10",
+      tipo: "Entrega" as const,
+      onClick: onEntregaClick,
     },
     {
       title: "Reposição Finalizado",
@@ -36,6 +46,8 @@ export const EntregasKPICards = ({
       icon: RotateCcw,
       color: "text-dashboard-accent",
       bgColor: "bg-dashboard-accent/10",
+      tipo: "Reposição" as const,
+      onClick: onReposicaoClick,
     },
     {
       title: "Reposição em Trânsito",
@@ -43,13 +55,19 @@ export const EntregasKPICards = ({
       icon: Clock,
       color: "text-dashboard-orange",
       bgColor: "bg-dashboard-orange/10",
+      tipo: "Reposição" as const,
+      onClick: onReposicaoClick,
     },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {cards.map((card) => (
-        <Card key={card.title} className="bg-dashboard-card border-dashboard-border">
+        <Card 
+          key={card.title} 
+          className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all hover:border-dashboard-accent ${selectedTipo === card.tipo ? 'ring-2 ring-dashboard-accent' : ''}`}
+          onClick={card.onClick}
+        >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${card.bgColor}`}>
