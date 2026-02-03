@@ -72,7 +72,7 @@ const createDefaultPermissions = (defaultPerm: PagePermission): Record<string, P
   return perms;
 };
 
-// Perfis mock
+// Perfis mock - apenas Desenvolvedor e Administrador
 export const mockProfiles: Profile[] = [
   {
     id: "dev-profile",
@@ -91,39 +91,9 @@ export const mockProfiles: Profile[] = [
     nome: "Administrador",
     permissoes: createDefaultPermissions(fullPermission),
   },
-  {
-    id: "gerente-profile",
-    nome: "Gerente",
-    permissoes: (() => {
-      const perms = createDefaultPermissions(fullPermission);
-      perms["admin"] = { ...noPermission }; // Sem acesso ao admin
-      return perms;
-    })(),
-  },
-  {
-    id: "operador-profile",
-    nome: "Operador",
-    permissoes: (() => {
-      const perms = createDefaultPermissions(viewOnlyPermission);
-      perms["admin"] = { ...noPermission };
-      perms["faturamento"] = { ...noPermission };
-      return perms;
-    })(),
-  },
-  {
-    id: "visualizador-profile",
-    nome: "Visualizador",
-    permissoes: (() => {
-      const perms = createDefaultPermissions(viewOnlyPermission);
-      perms["admin"] = { ...noPermission };
-      perms["faturamento"] = { ...noPermission };
-      perms["analitico"] = { ...noPermission };
-      return perms;
-    })(),
-  },
 ];
 
-// Usuários mock
+// Usuários mock - apenas Desenvolvedor e Administrador
 export const mockUsers: User[] = [
   {
     id: "dev-user",
@@ -143,25 +113,12 @@ export const mockUsers: User[] = [
     isDeveloper: false,
     ativo: true,
   },
-  {
-    id: "gerente-user",
-    nome: "João Silva",
-    email: "joao.silva@iconelog.com",
-    senha: "gerente123",
-    perfilId: "gerente-profile",
-    isDeveloper: false,
-    ativo: true,
-  },
-  {
-    id: "operador-user",
-    nome: "Maria Santos",
-    email: "maria.santos@iconelog.com",
-    senha: "operador123",
-    perfilId: "operador-profile",
-    isDeveloper: false,
-    ativo: true,
-  },
 ];
+
+// Helper para criar permissões padrão vazias (para novos perfis)
+export const createEmptyPermissions = (): Record<string, PagePermission> => {
+  return createDefaultPermissions(noPermission);
+};
 
 // Funções auxiliares
 export const getUserById = (id: string): User | undefined => {

@@ -2,9 +2,6 @@ import React, { createContext, useContext, useState, useCallback, ReactNode } fr
 import { 
   User, 
   Profile, 
-  validateLogin, 
-  getProfileById, 
-  getUserPermissions,
   PagePermission,
   mockUsers,
   mockProfiles,
@@ -54,54 +51,66 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [profiles, setProfiles] = useState<Profile[]>(mockProfiles);
 
-  const profile = user ? getProfileById(user.perfilId) : null;
+  // Calcular profile a partir do state interno (não do mock estático)
+  const profile = user ? profiles.find(p => p.id === user.perfilId) : null;
   const isAuthenticated = !!user;
   const isDeveloper = user?.isDeveloper ?? false;
 
   const login = useCallback((email: string, senha: string) => {
-    const validUser = validateLogin(email, senha);
-    if (validUser) {
-      setUser(validUser);
-      localStorage.setItem("auth_user", JSON.stringify(validUser));
+    // Buscar usuário do state interno
+    const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (foundUser && foundUser.senha === senha && foundUser.ativo) {
+      setUser(foundUser);
+      localStorage.setItem("auth_user", JSON.stringify(foundUser));
       return { success: true, message: "Login realizado com sucesso!" };
     }
     return { success: false, message: "Email ou senha inválidos." };
-  }, []);
+  }, [users]);
 
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem("auth_user");
   }, []);
 
+  // Buscar permissões do state interno de profiles
   const getPermission = useCallback((pageId: string): PagePermission | null => {
     if (!user) return null;
-    const permissions = getUserPermissions(user.id);
-    if (!permissions) return null;
-    return permissions[pageId] || null;
-  }, [user]);
+    const userProfile = profiles.find(p => p.id === user.perfilId);
+    if (!userProfile) return null;
+    return userProfile.permissoes[pageId] || null;
+  }, [user, profiles]);
 
   const canView = useCallback((pageId: string): boolean => {
     if (!user) return false;
-    const perm = getPermission(pageId);
+    const userProfile = profiles.find(p => p.id === user.perfilId);
+    if (!userProfile) return false;
+    const perm = userProfile.permissoes[pageId];
     return perm?.visualizar ?? false;
-  }, [user, getPermission]);
+  }, [user, profiles]);
 
   const canExport = useCallback((pageId: string): boolean => {
     if (!user) return false;
-    const perm = getPermission(pageId);
+    const userProfile = profiles.find(p => p.id === user.perfilId);
+    if (!userProfile) return false;
+    const perm = userProfile.permissoes[pageId];
     return perm?.exportar ?? false;
-  }, [user, getPermission]);
+  }, [user, profiles]);
 
   const canRefresh = useCallback((pageId: string): boolean => {
     if (!user) return false;
-    const perm = getPermission(pageId);
+    const userProfile = profiles.find(p => p.id === user.perfilId);
+    if (!userProfile) return false;
+    const perm = userProfile.permissoes[pageId];
     return perm?.atualizar ?? false;
-  }, [user, getPermission]);
+  }, [user, profiles]);
 
   const isDevOnly = useCallback((pageId: string): boolean => {
-    const perm = getPermission(pageId);
+    if (!user) return false;
+    const userProfile = profiles.find(p => p.id === user.perfilId);
+    if (!userProfile) return false;
+    const perm = userProfile.permissoes[pageId];
     return perm?.apenasDev ?? false;
-  }, [getPermission]);
+  }, [user, profiles]);
 
   // Gerenciamento de usuários
   const addUser = useCallback((userData: Omit<User, "id">) => {
