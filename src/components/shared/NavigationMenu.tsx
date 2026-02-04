@@ -12,13 +12,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 const navigationItems = [
+  { id: "minutas", label: "Minutas Expedidas x Baixadas", path: "/minutas" },
   { id: "entregas", label: "B-Side Entregas", path: "/entregas" },
   { id: "estoque", label: "B-Side Estoque", path: "/estoque" },
   { id: "tracking", label: "Tracking Consolidado", path: "/tracking" },
   { id: "estoque-consolidado", label: "Estoque Consolidado", path: "/estoque-consolidado" },
   { id: "faturamento", label: "Faturamento", path: "/faturamento" },
   { id: "analitico", label: "Analítico", path: "/analitico" },
-  { id: "minutas", label: "Minutas Expedidas x Baixadas", path: "/" },
 ];
 
 export const NavigationMenu = () => {
@@ -48,12 +48,11 @@ export const NavigationMenu = () => {
   const handleLogout = async () => {
     await logout();
     toast.success("Logout realizado com sucesso!");
-    navigate("/");
+    navigate("/auth");
   };
 
   const isActivePath = (path: string) => {
-    if (path === "/") return location.pathname === "/";
-    return location.pathname.startsWith(path);
+    return location.pathname === path || location.pathname.startsWith(path + "/");
   };
 
   // Check if user can access admin panel
