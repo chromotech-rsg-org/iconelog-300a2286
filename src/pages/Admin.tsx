@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,199 +9,251 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { systemPages, PagePermission, createEmptyPermissions, createEmptyAdminPermissions, AdminPermission, PublicAccessPermission, Profile } from "@/data/authData";
+import { useRolesManagement, RoleWithPermissions, PagePermission as RolePagePermission, AdminPermission as RoleAdminPermission } from "@/hooks/useRolesManagement";
+import { useUsersManagement, UserWithRole } from "@/hooks/useUsersManagement";
+import { systemPages } from "@/data/authData";
 import { toast } from "sonner";
-import { Users, Shield, Plus, Pencil, Trash2, Globe } from "lucide-react";
+import { Users, Shield, Plus, Pencil, Trash2, Globe, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface PagePermissionForm {
+  page_id: string;
+  visualizar: boolean;
+  exportar: boolean;
+  atualizar: boolean;
+  apenas_dev: boolean;
+}
+
+interface AdminPermissionForm {
+  ver: boolean;
+  editar: boolean;
+  criar: boolean;
+  excluir: boolean;
+}
 
 const Admin = () => {
   const [lastUpdate] = useState(new Date());
   const { 
-    users, 
-    profiles, 
-    addUser, 
-    updateUser, 
-    deleteUser, 
-    addProfile, 
-    updateProfile, 
-    deleteProfile, 
-    isDeveloper,
     publicAccess,
     setPublicAccess,
     canViewAdmin,
     canEditAdmin,
     canCreateAdmin,
-    canDeleteAdmin
+    canDeleteAdmin,
+    loading: authLoading
   } = useAuth();
+
+  const { roles, loading: rolesLoading, createRole, updateRole, deleteRole, fetchRoles } = useRolesManagement();
+  const { users, loading: usersLoading, updateUser, fetchUsers } = useUsersManagement();
+
   const [activeTab, setActiveTab] = useState("usuarios");
   
   // User dialog state
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [userForm, setUserForm] = useState({ nome: "", email: "", senha: "", perfilId: "" });
+  const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
+  const [userForm, setUserForm] = useState({ nome: "", role_id: "" });
   
   // Profile dialog state
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
-  const [editingProfile, setEditingProfile] = useState<string | null>(null);
+  const [editingRole, setEditingRole] = useState<RoleWithPermissions | null>(null);
   const [profileForm, setProfileForm] = useState<{ 
-    nome: string; 
-    permissoes: Record<string, PagePermission>;
-    adminPermissoes: {
-      usuarios: AdminPermission;
-      perfis: AdminPermission;
-      acessoPublico: PublicAccessPermission;
+    nome: string;
+    descricao: string;
+    pagePermissions: Record<string, PagePermissionForm>;
+    adminPermissions: {
+      usuarios: AdminPermissionForm;
+      perfis: AdminPermissionForm;
+      acesso_publico: AdminPermissionForm;
     };
   }>({
     nome: "",
-    permissoes: createEmptyPermissions(),
-    adminPermissoes: createEmptyAdminPermissions()
+    descricao: "",
+    pagePermissions: {},
+    adminPermissions: {
+      usuarios: { ver: false, editar: false, criar: false, excluir: false },
+      perfis: { ver: false, editar: false, criar: false, excluir: false },
+      acesso_publico: { ver: false, editar: false, criar: false, excluir: false },
+    }
   });
 
-  // === USER HANDLERS ===
-  const handleSaveUser = () => {
-    if (!userForm.nome || !userForm.email || !userForm.perfilId) {
-      toast.error("Preencha todos os campos obrigatórios");
-      return;
-    }
-    if (editingUser) {
-      const updateData: any = { nome: userForm.nome, email: userForm.email, perfilId: userForm.perfilId };
-      if (userForm.senha) updateData.senha = userForm.senha;
-      updateUser(editingUser, updateData);
-      toast.success("Usuário atualizado!");
-    } else {
-      if (!userForm.senha) {
-        toast.error("Senha é obrigatória para novo usuário");
-        return;
-      }
-      addUser({ ...userForm, isDeveloper: false, ativo: true });
-      toast.success("Usuário criado!");
-    }
-    setUserForm({ nome: "", email: "", senha: "", perfilId: "" });
-    setEditingUser(null);
-    setIsUserDialogOpen(false);
+  // Initialize page permissions for form
+  const initializePagePermissions = (): Record<string, PagePermissionForm> => {
+    const perms: Record<string, PagePermissionForm> = {};
+    systemPages.forEach(page => {
+      perms[page.id] = {
+        page_id: page.id,
+        visualizar: false,
+        exportar: false,
+        atualizar: false,
+        apenas_dev: false,
+      };
+    });
+    return perms;
   };
 
-  const handleEditUser = (user: typeof users[0]) => {
-    setUserForm({ nome: user.nome, email: user.email, senha: "", perfilId: user.perfilId });
-    setEditingUser(user.id);
+  // === USER HANDLERS ===
+  const handleEditUser = (user: UserWithRole) => {
+    setEditingUser(user);
+    setUserForm({ nome: user.nome, role_id: user.role_id || "" });
     setIsUserDialogOpen(true);
   };
 
-  const handleDeleteUser = (id: string) => {
-    deleteUser(id);
-    toast.success("Usuário removido!");
+  const handleSaveUser = async () => {
+    if (!editingUser) return;
+    
+    await updateUser(editingUser.id, {
+      nome: userForm.nome,
+      role_id: userForm.role_id || undefined,
+    });
+    
+    setIsUserDialogOpen(false);
+    setEditingUser(null);
+  };
+
+  const handleDeleteUser = async (user: UserWithRole) => {
+    await updateUser(user.id, { ativo: false });
   };
 
   // === PROFILE HANDLERS ===
   const handleOpenNewProfile = () => {
-    setEditingProfile(null);
+    setEditingRole(null);
     setProfileForm({ 
       nome: "", 
-      permissoes: createEmptyPermissions(),
-      adminPermissoes: createEmptyAdminPermissions()
+      descricao: "",
+      pagePermissions: initializePagePermissions(),
+      adminPermissions: {
+        usuarios: { ver: false, editar: false, criar: false, excluir: false },
+        perfis: { ver: false, editar: false, criar: false, excluir: false },
+        acesso_publico: { ver: false, editar: false, criar: false, excluir: false },
+      }
     });
     setIsProfileDialogOpen(true);
   };
 
-  const handleEditProfile = (profile: Profile) => {
-    setEditingProfile(profile.id);
+  const handleEditProfile = (role: RoleWithPermissions) => {
+    setEditingRole(role);
+    
+    // Map existing permissions
+    const pagePerms = initializePagePermissions();
+    Object.entries(role.pagePermissions).forEach(([pageId, perm]) => {
+      if (pagePerms[pageId]) {
+        pagePerms[pageId] = {
+          page_id: pageId,
+          visualizar: perm.visualizar,
+          exportar: perm.exportar,
+          atualizar: perm.atualizar,
+          apenas_dev: perm.apenas_dev,
+        };
+      }
+    });
+
     setProfileForm({ 
-      nome: profile.nome, 
-      permissoes: { ...profile.permissoes },
-      adminPermissoes: profile.adminPermissoes ? { ...profile.adminPermissoes } : createEmptyAdminPermissions()
+      nome: role.nome, 
+      descricao: role.descricao || "",
+      pagePermissions: pagePerms,
+      adminPermissions: {
+        usuarios: {
+          ver: role.adminPermissions.usuarios.ver,
+          editar: role.adminPermissions.usuarios.editar,
+          criar: role.adminPermissions.usuarios.criar,
+          excluir: role.adminPermissions.usuarios.excluir,
+        },
+        perfis: {
+          ver: role.adminPermissions.perfis.ver,
+          editar: role.adminPermissions.perfis.editar,
+          criar: role.adminPermissions.perfis.criar,
+          excluir: role.adminPermissions.perfis.excluir,
+        },
+        acesso_publico: {
+          ver: role.adminPermissions.acesso_publico.ver,
+          editar: role.adminPermissions.acesso_publico.editar,
+          criar: false,
+          excluir: false,
+        },
+      }
     });
     setIsProfileDialogOpen(true);
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!profileForm.nome.trim()) {
       toast.error("Nome do perfil é obrigatório");
       return;
     }
-    if (editingProfile) {
-      updateProfile(editingProfile, { 
-        nome: profileForm.nome, 
-        permissoes: profileForm.permissoes,
-        adminPermissoes: profileForm.adminPermissoes
-      });
-      toast.success("Perfil atualizado!");
+
+    const pagePerms: Record<string, Omit<RolePagePermission, "id" | "role_id">> = {};
+    Object.entries(profileForm.pagePermissions).forEach(([pageId, perm]) => {
+      pagePerms[pageId] = {
+        page_id: pageId,
+        visualizar: perm.visualizar,
+        exportar: perm.exportar,
+        atualizar: perm.atualizar,
+        apenas_dev: perm.apenas_dev,
+      };
+    });
+
+    if (editingRole) {
+      await updateRole(
+        editingRole.id,
+        profileForm.nome,
+        profileForm.descricao || null,
+        pagePerms,
+        profileForm.adminPermissions
+      );
     } else {
-      addProfile({ 
-        nome: profileForm.nome, 
-        permissoes: profileForm.permissoes,
-        adminPermissoes: profileForm.adminPermissoes
-      });
-      toast.success("Perfil criado!");
+      await createRole(
+        profileForm.nome,
+        profileForm.descricao || null,
+        pagePerms,
+        profileForm.adminPermissions
+      );
     }
+    
     setIsProfileDialogOpen(false);
-    setEditingProfile(null);
+    setEditingRole(null);
   };
 
-  const handleDeleteProfile = (profileId: string) => {
-    if (profileId === "dev-profile" || profileId === "admin-profile") {
-      toast.error("Este perfil não pode ser excluído");
-      return;
-    }
-    const usersWithProfile = users.filter(u => u.perfilId === profileId);
-    if (usersWithProfile.length > 0) {
-      toast.error(`Não é possível excluir: ${usersWithProfile.length} usuário(s) vinculado(s)`);
-      return;
-    }
-    deleteProfile(profileId);
-    toast.success("Perfil removido!");
+  const handleDeleteProfile = async (roleId: string) => {
+    await deleteRole(roleId);
   };
 
-  const handleToggleProfileFormPermission = (pageId: string, key: keyof PagePermission) => {
+  const handleTogglePagePermission = (pageId: string, key: keyof PagePermissionForm) => {
+    if (key === "page_id") return;
     setProfileForm(prev => ({
       ...prev,
-      permissoes: {
-        ...prev.permissoes,
+      pagePermissions: {
+        ...prev.pagePermissions,
         [pageId]: {
-          ...prev.permissoes[pageId],
-          [key]: !prev.permissoes[pageId]?.[key]
+          ...prev.pagePermissions[pageId],
+          [key]: !prev.pagePermissions[pageId]?.[key]
         }
       }
     }));
   };
 
-  const handleToggleAdminPermission = (section: "usuarios" | "perfis", key: keyof AdminPermission) => {
+  const handleToggleAdminPermission = (section: "usuarios" | "perfis" | "acesso_publico", key: keyof AdminPermissionForm) => {
     setProfileForm(prev => ({
       ...prev,
-      adminPermissoes: {
-        ...prev.adminPermissoes,
+      adminPermissions: {
+        ...prev.adminPermissions,
         [section]: {
-          ...prev.adminPermissoes[section],
-          [key]: !prev.adminPermissoes[section][key]
+          ...prev.adminPermissions[section],
+          [key]: !prev.adminPermissions[section][key]
         }
       }
     }));
   };
 
-  const handleTogglePublicAccessAdminPermission = (key: keyof PublicAccessPermission) => {
-    setProfileForm(prev => ({
-      ...prev,
-      adminPermissoes: {
-        ...prev.adminPermissoes,
-        acessoPublico: {
-          ...prev.adminPermissoes.acessoPublico,
-          [key]: !prev.adminPermissoes.acessoPublico[key]
-        }
-      }
-    }));
+  const handleTogglePublicAccess = async (pageId: string) => {
+    await setPublicAccess(pageId, !publicAccess[pageId]);
   };
 
-  const handleTogglePublicAccess = (pageId: string) => {
-    setPublicAccess(pageId, !publicAccess[pageId]);
-  };
-
-  const isProtectedProfile = (profileId: string) => profileId === "dev-profile" || profileId === "admin-profile";
-
-  // Count enabled permissions for a profile
-  const countEnabledPermissions = (profile: Profile) => {
+  // Count enabled permissions for a role
+  const countEnabledPermissions = (role: RoleWithPermissions) => {
     let count = 0;
-    Object.values(profile.permissoes).forEach(perm => {
+    Object.values(role.pagePermissions).forEach(perm => {
       if (perm.visualizar) count++;
     });
     return count;
@@ -215,14 +267,31 @@ const Admin = () => {
   ].filter(tab => tab.visible);
 
   // Set default tab to first available
-  const defaultTab = availableTabs.length > 0 ? availableTabs[0].id : "usuarios";
+  useEffect(() => {
+    if (availableTabs.length > 0 && !availableTabs.find(t => t.id === activeTab)) {
+      setActiveTab(availableTabs[0].id);
+    }
+  }, [availableTabs, activeTab]);
+
+  const isLoading = authLoading || rolesLoading || usersLoading;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-dashboard-dark">
+        <SharedHeader pageTitle="Painel de Administração" pageId="admin" lastUpdate={lastUpdate} />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-dashboard-accent" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
       <SharedHeader pageTitle="Painel de Administração" pageId="admin" lastUpdate={lastUpdate} />
 
       <div className="p-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue={defaultTab}>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-dashboard-card border border-dashboard-border">
             {availableTabs.map(tab => (
               <TabsTrigger 
@@ -241,54 +310,104 @@ const Admin = () => {
               <Card className="bg-dashboard-card border-dashboard-border">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-base text-foreground">Gerenciar Usuários</CardTitle>
-                  {canCreateAdmin("usuarios") && (
-                    <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" className="bg-dashboard-accent text-dashboard-dark" onClick={() => { setEditingUser(null); setUserForm({ nome: "", email: "", senha: "", perfilId: "" }); }}>
-                          <Plus className="h-4 w-4 mr-1" /> Novo Usuário
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="bg-dashboard-card border-dashboard-border">
-                        <DialogHeader><DialogTitle className="text-foreground">{editingUser ? "Editar" : "Novo"} Usuário</DialogTitle></DialogHeader>
-                        <div className="space-y-4">
-                          <div><Label className="text-foreground">Nome</Label><Input value={userForm.nome} onChange={e => setUserForm({...userForm, nome: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" /></div>
-                          <div><Label className="text-foreground">Email</Label><Input type="email" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" /></div>
-                          <div><Label className="text-foreground">Senha {editingUser && "(deixe vazio para manter)"}</Label><Input type="password" value={userForm.senha} onChange={e => setUserForm({...userForm, senha: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" /></div>
-                          <div><Label className="text-foreground">Perfil</Label>
-                            <Select value={userForm.perfilId} onValueChange={v => setUserForm({...userForm, perfilId: v})}>
-                              <SelectTrigger className="bg-dashboard-dark border-dashboard-border text-foreground"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                              <SelectContent className="bg-dashboard-card border-dashboard-border">{profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
-                            </Select>
-                          </div>
-                          <Button onClick={handleSaveUser} className="w-full bg-dashboard-accent text-dashboard-dark">Salvar</Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  )}
                 </CardHeader>
                 <CardContent>
                   <Table>
-                    <TableHeader><TableRow className="border-dashboard-border"><TableHead className="text-muted-foreground">Nome</TableHead><TableHead className="text-muted-foreground">Email</TableHead><TableHead className="text-muted-foreground">Perfil</TableHead><TableHead className="text-muted-foreground text-right">Ações</TableHead></TableRow></TableHeader>
+                    <TableHeader>
+                      <TableRow className="border-dashboard-border">
+                        <TableHead className="text-muted-foreground">Nome</TableHead>
+                        <TableHead className="text-muted-foreground">Email</TableHead>
+                        <TableHead className="text-muted-foreground">Perfil</TableHead>
+                        <TableHead className="text-muted-foreground text-center">Status</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
                     <TableBody>
                       {users.map(user => (
                         <TableRow key={user.id} className="border-dashboard-border">
                           <TableCell className="text-foreground">{user.nome}</TableCell>
                           <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                          <TableCell><Badge className="bg-dashboard-accent/20 text-dashboard-accent border-dashboard-accent/30">{profiles.find(p => p.id === user.perfilId)?.nome}</Badge></TableCell>
+                          <TableCell>
+                            {user.role_nome ? (
+                              <Badge className="bg-dashboard-accent/20 text-dashboard-accent border-dashboard-accent/30">
+                                {user.role_nome}
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-muted-foreground">
+                                Sem perfil
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant={user.ativo ? "default" : "secondary"} className={user.ativo ? "bg-green-500/20 text-green-400" : ""}>
+                              {user.ativo ? "Ativo" : "Inativo"}
+                            </Badge>
+                          </TableCell>
                           <TableCell className="text-right">
                             {canEditAdmin("usuarios") && (
-                              <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
                             )}
-                            {canDeleteAdmin("usuarios") && (
-                              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteUser(user.id)}><Trash2 className="h-4 w-4" /></Button>
+                            {canDeleteAdmin("usuarios") && user.ativo && (
+                              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteUser(user)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             )}
                           </TableCell>
                         </TableRow>
                       ))}
+                      {users.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            Nenhum usuário cadastrado
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>
               </Card>
+
+              {/* User Edit Dialog */}
+              <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+                <DialogContent className="bg-dashboard-card border-dashboard-border">
+                  <DialogHeader>
+                    <DialogTitle className="text-foreground">Editar Usuário</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-foreground">Nome</Label>
+                      <Input 
+                        value={userForm.nome} 
+                        onChange={e => setUserForm({...userForm, nome: e.target.value})} 
+                        className="bg-dashboard-dark border-dashboard-border text-foreground" 
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-foreground">Perfil</Label>
+                      <Select value={userForm.role_id} onValueChange={v => setUserForm({...userForm, role_id: v})}>
+                        <SelectTrigger className="bg-dashboard-dark border-dashboard-border text-foreground">
+                          <SelectValue placeholder="Selecione um perfil" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-dashboard-card border-dashboard-border">
+                          {roles.map(role => (
+                            <SelectItem key={role.id} value={role.id}>{role.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter className="gap-2">
+                    <Button variant="outline" onClick={() => setIsUserDialogOpen(false)} className="border-dashboard-border">
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleSaveUser} className="bg-dashboard-accent text-dashboard-dark">
+                      Salvar
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </TabsContent>
           )}
 
@@ -314,28 +433,35 @@ const Admin = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {profiles.map(profile => (
-                        <TableRow key={profile.id} className="border-dashboard-border">
-                          <TableCell className="text-foreground font-medium">{profile.nome}</TableCell>
+                      {roles.map(role => (
+                        <TableRow key={role.id} className="border-dashboard-border">
+                          <TableCell className="text-foreground font-medium">{role.nome}</TableCell>
                           <TableCell className="text-center">
                             <Badge variant="secondary" className="bg-dashboard-accent/20 text-dashboard-accent">
-                              {countEnabledPermissions(profile)} páginas
+                              {countEnabledPermissions(role)} páginas
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
                             {canEditAdmin("perfis") && (
-                              <Button variant="ghost" size="icon" onClick={() => handleEditProfile(profile)} title="Editar permissões">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditProfile(role)} title="Editar permissões">
                                 <Pencil className="h-4 w-4" />
                               </Button>
                             )}
-                            {canDeleteAdmin("perfis") && !isProtectedProfile(profile.id) && (
-                              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteProfile(profile.id)} title="Excluir perfil">
+                            {canDeleteAdmin("perfis") && (
+                              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteProfile(role.id)} title="Excluir perfil">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             )}
                           </TableCell>
                         </TableRow>
                       ))}
+                      {roles.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                            Nenhum perfil cadastrado
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -345,17 +471,28 @@ const Admin = () => {
               <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
                 <DialogContent className="bg-dashboard-card border-dashboard-border max-w-5xl max-h-[90vh]">
                   <DialogHeader>
-                    <DialogTitle className="text-foreground">{editingProfile ? "Editar" : "Novo"} Perfil</DialogTitle>
+                    <DialogTitle className="text-foreground">{editingRole ? "Editar" : "Novo"} Perfil</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div>
-                      <Label className="text-foreground">Nome do Perfil</Label>
-                      <Input 
-                        value={profileForm.nome} 
-                        onChange={e => setProfileForm({...profileForm, nome: e.target.value})} 
-                        className="bg-dashboard-dark border-dashboard-border text-foreground"
-                        placeholder="Ex: Gerente, Operador..."
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-foreground">Nome do Perfil</Label>
+                        <Input 
+                          value={profileForm.nome} 
+                          onChange={e => setProfileForm({...profileForm, nome: e.target.value})} 
+                          className="bg-dashboard-dark border-dashboard-border text-foreground"
+                          placeholder="Ex: Gerente, Operador..."
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-foreground">Descrição</Label>
+                        <Input 
+                          value={profileForm.descricao} 
+                          onChange={e => setProfileForm({...profileForm, descricao: e.target.value})} 
+                          className="bg-dashboard-dark border-dashboard-border text-foreground"
+                          placeholder="Descrição do perfil..."
+                        />
+                      </div>
                     </div>
                     
                     {/* Permissões de Módulos BI */}
@@ -373,26 +510,26 @@ const Admin = () => {
                           </TableHeader>
                           <TableBody>
                             {systemPages.map(page => {
-                              const perm = profileForm.permissoes[page.id];
+                              const perm = profileForm.pagePermissions[page.id];
                               return (
                                 <TableRow key={page.id} className="border-dashboard-border">
                                   <TableCell className="text-foreground text-sm">{page.nome}</TableCell>
                                   <TableCell className="text-center">
                                     <Switch 
                                       checked={perm?.visualizar ?? false} 
-                                      onCheckedChange={() => handleToggleProfileFormPermission(page.id, "visualizar")} 
+                                      onCheckedChange={() => handleTogglePagePermission(page.id, "visualizar")} 
                                     />
                                   </TableCell>
                                   <TableCell className="text-center">
                                     <Switch 
                                       checked={perm?.exportar ?? false} 
-                                      onCheckedChange={() => handleToggleProfileFormPermission(page.id, "exportar")} 
+                                      onCheckedChange={() => handleTogglePagePermission(page.id, "exportar")} 
                                     />
                                   </TableCell>
                                   <TableCell className="text-center">
                                     <Switch 
                                       checked={perm?.atualizar ?? false} 
-                                      onCheckedChange={() => handleToggleProfileFormPermission(page.id, "atualizar")} 
+                                      onCheckedChange={() => handleTogglePagePermission(page.id, "atualizar")} 
                                     />
                                   </TableCell>
                                 </TableRow>
@@ -422,25 +559,25 @@ const Admin = () => {
                               <TableCell className="text-foreground text-sm">Usuários</TableCell>
                               <TableCell className="text-center">
                                 <Switch 
-                                  checked={profileForm.adminPermissoes.usuarios.ver} 
+                                  checked={profileForm.adminPermissions.usuarios.ver} 
                                   onCheckedChange={() => handleToggleAdminPermission("usuarios", "ver")} 
                                 />
                               </TableCell>
                               <TableCell className="text-center">
                                 <Switch 
-                                  checked={profileForm.adminPermissoes.usuarios.editar} 
+                                  checked={profileForm.adminPermissions.usuarios.editar} 
                                   onCheckedChange={() => handleToggleAdminPermission("usuarios", "editar")} 
                                 />
                               </TableCell>
                               <TableCell className="text-center">
                                 <Switch 
-                                  checked={profileForm.adminPermissoes.usuarios.criar} 
+                                  checked={profileForm.adminPermissions.usuarios.criar} 
                                   onCheckedChange={() => handleToggleAdminPermission("usuarios", "criar")} 
                                 />
                               </TableCell>
                               <TableCell className="text-center">
                                 <Switch 
-                                  checked={profileForm.adminPermissoes.usuarios.excluir} 
+                                  checked={profileForm.adminPermissions.usuarios.excluir} 
                                   onCheckedChange={() => handleToggleAdminPermission("usuarios", "excluir")} 
                                 />
                               </TableCell>
@@ -449,25 +586,25 @@ const Admin = () => {
                               <TableCell className="text-foreground text-sm">Perfis</TableCell>
                               <TableCell className="text-center">
                                 <Switch 
-                                  checked={profileForm.adminPermissoes.perfis.ver} 
+                                  checked={profileForm.adminPermissions.perfis.ver} 
                                   onCheckedChange={() => handleToggleAdminPermission("perfis", "ver")} 
                                 />
                               </TableCell>
                               <TableCell className="text-center">
                                 <Switch 
-                                  checked={profileForm.adminPermissoes.perfis.editar} 
+                                  checked={profileForm.adminPermissions.perfis.editar} 
                                   onCheckedChange={() => handleToggleAdminPermission("perfis", "editar")} 
                                 />
                               </TableCell>
                               <TableCell className="text-center">
                                 <Switch 
-                                  checked={profileForm.adminPermissoes.perfis.criar} 
+                                  checked={profileForm.adminPermissions.perfis.criar} 
                                   onCheckedChange={() => handleToggleAdminPermission("perfis", "criar")} 
                                 />
                               </TableCell>
                               <TableCell className="text-center">
                                 <Switch 
-                                  checked={profileForm.adminPermissoes.perfis.excluir} 
+                                  checked={profileForm.adminPermissions.perfis.excluir} 
                                   onCheckedChange={() => handleToggleAdminPermission("perfis", "excluir")} 
                                 />
                               </TableCell>
@@ -476,14 +613,14 @@ const Admin = () => {
                               <TableCell className="text-foreground text-sm">Acesso Público</TableCell>
                               <TableCell className="text-center">
                                 <Switch 
-                                  checked={profileForm.adminPermissoes.acessoPublico.ver} 
-                                  onCheckedChange={() => handleTogglePublicAccessAdminPermission("ver")} 
+                                  checked={profileForm.adminPermissions.acesso_publico.ver} 
+                                  onCheckedChange={() => handleToggleAdminPermission("acesso_publico", "ver")} 
                                 />
                               </TableCell>
                               <TableCell className="text-center">
                                 <Switch 
-                                  checked={profileForm.adminPermissoes.acessoPublico.editar} 
-                                  onCheckedChange={() => handleTogglePublicAccessAdminPermission("editar")} 
+                                  checked={profileForm.adminPermissions.acesso_publico.editar} 
+                                  onCheckedChange={() => handleToggleAdminPermission("acesso_publico", "editar")} 
                                 />
                               </TableCell>
                               <TableCell className="text-center">

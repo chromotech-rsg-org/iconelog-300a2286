@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Construction, Menu, Settings, LogOut, User } from "lucide-react";
+import { Menu, Settings, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -24,11 +24,11 @@ const navigationItems = [
 export const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, canView, isPublicAccess, user, logout } = useAuth();
+  const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin } = useAuth();
 
   const handleNavClick = (item: typeof navigationItems[0]) => {
     // Verifica se o usuário pode acessar a página
-    if (isAuthenticated && !canView(item.id)) {
+    if (isAuthenticated && !canView(item.id) && !isPublicAccess(item.id)) {
       toast.error("Você não tem permissão para acessar esta página.");
       return;
     }
@@ -36,7 +36,7 @@ export const NavigationMenu = () => {
   };
 
   const handleAdminClick = () => {
-    if (isAuthenticated && canView("admin")) {
+    if (isAuthenticated && (canViewAdmin("usuarios") || canViewAdmin("perfis") || canViewAdmin("acessoPublico"))) {
       navigate("/admin");
     } else if (!isAuthenticated) {
       navigate("/auth");
@@ -45,8 +45,8 @@ export const NavigationMenu = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast.success("Logout realizado com sucesso!");
     navigate("/");
   };
@@ -55,6 +55,9 @@ export const NavigationMenu = () => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
+
+  // Check if user can access admin panel
+  const canAccessAdmin = isAuthenticated && (canViewAdmin("usuarios") || canViewAdmin("perfis") || canViewAdmin("acessoPublico"));
 
   return (
     <DropdownMenu>
@@ -74,8 +77,8 @@ export const NavigationMenu = () => {
             if (!isAuthenticated) {
               return isPublicAccess(item.id);
             }
-            // Se está logado, mostra apenas se tem permissão de visualizar
-            return canView(item.id);
+            // Se está logado, mostra se tem permissão de visualizar OU se é público
+            return canView(item.id) || isPublicAccess(item.id);
           })
           .map((item) => {
             const isActive = isActivePath(item.path);
@@ -98,7 +101,7 @@ export const NavigationMenu = () => {
         <DropdownMenuSeparator className="bg-dashboard-border" />
         
         {/* Admin link - só mostra para quem tem permissão */}
-        {isAuthenticated && canView("admin") && (
+        {canAccessAdmin && (
           <DropdownMenuItem
             onClick={handleAdminClick}
             className={`cursor-pointer ${
@@ -119,7 +122,7 @@ export const NavigationMenu = () => {
           <>
             <DropdownMenuItem className="text-muted-foreground cursor-default hover:bg-transparent">
               <User className="mr-2 h-4 w-4" />
-              {user?.nome}
+              {profile?.nome || "Usuário"}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleLogout}
