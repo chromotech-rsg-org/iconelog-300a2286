@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg";
 import { LogIn, Eye, EyeOff } from "lucide-react";
+import { NavigationMenu } from "@/components/shared/NavigationMenu";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -53,7 +54,17 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header with navigation menu for public pages */}
+      <header className="bg-card border-b border-border p-4 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Logo" className="h-10 w-10 rounded-lg border border-primary" />
+          <span className="text-foreground font-semibold">Relatórios Icone Log</span>
+        </div>
+        <NavigationMenu />
+      </header>
+      
+      <div className="flex-1 flex items-center justify-center p-6">
       <Card className="bg-card border-border w-full max-w-md">
         <CardHeader className="text-center">
           <img src={logo} alt="Logo" className="h-16 w-16 mx-auto rounded-xl border-2 border-primary mb-4" />
@@ -107,7 +118,8 @@ const Auth = () => {
             </Button>
           </form>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 };
