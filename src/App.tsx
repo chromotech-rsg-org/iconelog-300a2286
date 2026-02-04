@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SmartRedirect } from "@/components/auth/SmartRedirect";
 import Index from "./pages/Index";
 import Estoque from "./pages/Estoque";
 import Entregas from "./pages/Entregas";
@@ -13,6 +14,7 @@ import Faturamento from "./pages/Faturamento";
 import Analitico from "./pages/Analitico";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
+import NoAccess from "./pages/NoAccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,7 +27,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<SmartRedirect />} />
+            <Route path="/minutas" element={<Index />} />
             <Route path="/estoque" element={<Estoque />} />
             <Route path="/entregas" element={<Entregas />} />
             <Route path="/tracking" element={<Tracking />} />
@@ -34,6 +37,7 @@ const App = () => (
             <Route path="/analitico" element={<Analitico />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/no-access" element={<NoAccess />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
