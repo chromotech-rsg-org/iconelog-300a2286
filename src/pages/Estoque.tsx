@@ -1,4 +1,6 @@
-import { useState, useMemo, useCallback } from "react";
+ import { useState, useMemo, useCallback } from "react";
+ import { Expand } from "lucide-react";
+ import { Button } from "@/components/ui/button";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { StockDualKPICards } from "@/components/stock/StockDualKPICards";
 import { StockGroupPieChart } from "@/components/stock/StockGroupPieChart";
@@ -6,9 +8,9 @@ import { StockValueBarChart } from "@/components/stock/StockValueBarChart";
 import { StockTimePieChart } from "@/components/stock/StockTimePieChart";
 import { StockTimeBarChart } from "@/components/stock/StockTimeBarChart";
 import { StockLocationTables } from "@/components/stock/StockLocationTables";
-import { StockTable } from "@/components/stock/StockTable";
+ import { ProductDetailPanel } from "@/components/stock/ProductDetailPanel";
+ import { ProductDetailModal } from "@/components/stock/ProductDetailModal";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { 
   generateStockData, 
@@ -44,6 +46,10 @@ const Estoque = () => {
   const [selectedGrupo, setSelectedGrupo] = useState<string | null>(null);
   const [selectedTempo, setSelectedTempo] = useState<string | null>(null);
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
+ 
+   // Product detail state
+   const [selectedProduct, setSelectedProduct] = useState<SKUItem | null>(null);
+   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Filtered data based on selections
   const filteredStockData = useMemo(() => {
@@ -65,6 +71,15 @@ const Estoque = () => {
   const matrizItems = useMemo(() => getMatrizItems(filteredStockData), [filteredStockData]);
   const baseItems = useMemo(() => getBaseItems(filteredStockData), [filteredStockData]);
 
+   // Find selected product from SKU
+   const currentProduct = useMemo(() => {
+     if (selectedProduct) return selectedProduct;
+     if (selectedSKU) {
+       return filteredStockData.find(item => item.sku === selectedSKU) || null;
+     }
+     return null;
+   }, [selectedSKU, selectedProduct, filteredStockData]);
+ 
   const handleRefreshData = () => {
     setStockData(generateStockData());
     setLastUpdate(new Date());
@@ -72,6 +87,7 @@ const Estoque = () => {
     setSelectedGrupo(null);
     setSelectedTempo(null);
     setSelectedSKU(null);
+     setSelectedProduct(null);
     toast.success("Dados atualizados com sucesso!");
   };
 
@@ -119,14 +135,22 @@ const Estoque = () => {
   }, []);
 
   const handleSKUClick = useCallback((sku: string) => {
-    setSelectedSKU(prev => prev === sku ? null : sku);
-  }, []);
+     const product = stockData.find(item => item.sku === sku);
+     if (selectedSKU === sku) {
+       setSelectedSKU(null);
+       setSelectedProduct(null);
+     } else {
+       setSelectedSKU(sku);
+       setSelectedProduct(product || null);
+     }
+   }, [stockData, selectedSKU]);
 
   const clearAllFilters = useCallback(() => {
     setSelectedCategory(null);
     setSelectedGrupo(null);
     setSelectedTempo(null);
     setSelectedSKU(null);
+     setSelectedProduct(null);
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
@@ -237,15 +261,43 @@ const Estoque = () => {
           />
         </div>
 
-        {/* Location Tables */}
-        <StockLocationTables 
-          matrizItems={matrizItems}
-          baseItems={baseItems}
-          selectedSKU={selectedSKU}
-          selectedGrupo={selectedGrupo}
-          onSKUClick={handleSKUClick}
-          onGrupoClick={handleGrupoClick}
-        />
+       {/* Tables with Detail Panel */}
+       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+         {/* Tables Column */}
+         <div className="lg:col-span-3">
+           <StockLocationTables 
+             matrizItems={matrizItems}
+             baseItems={baseItems}
+             selectedSKU={selectedSKU}
+             selectedGrupo={selectedGrupo}
+             onSKUClick={handleSKUClick}
+             onGrupoClick={handleGrupoClick}
+           />
+         </div>
+ 
+         {/* Product Detail Panel */}
+         <div className="lg:col-span-1 relative">
+           <ProductDetailPanel product={currentProduct} />
+           {currentProduct && (
+             <Button
+               variant="outline"
+               size="sm"
+               className="absolute top-4 right-4 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
+               onClick={() => setIsModalOpen(true)}
+             >
+               <Expand className="h-4 w-4 mr-1" />
+               Expandir
+             </Button>
+           )}
+         </div>
+       </div>
+       
+       {/* Product Detail Modal */}
+       <ProductDetailModal 
+         product={currentProduct}
+         open={isModalOpen}
+         onOpenChange={setIsModalOpen}
+       />
       </div>
     </div>
   );
