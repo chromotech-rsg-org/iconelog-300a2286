@@ -1,160 +1,286 @@
 
-# Plano de Ajuste do Sistema de Perfis e Permissoes
+# Plano de Implementacao
 
-## Problemas Identificados
-
-### Problema 1: Perfis nao tem CRUD completo
-A tela de Admin mostra os perfis como lista fixa sem opcoes de criar, editar ou deletar. Os perfis estao embutidos no codigo com varios defaults (Gerente, Operador, Visualizador).
-
-### Problema 2: Permissoes nao refletem ao logar
-O `AuthContext` usa funcoes que buscam dos dados estaticos (`mockProfiles`, `mockUsers`) em vez dos estados atualizados (`profiles`, `users`). Quando o admin altera permissoes, elas ficam no state React mas as funcoes `getPermission`, `canView`, etc. continuam consultando os dados originais importados.
-
-**Raiz do problema no AuthContext.tsx:**
-```text
-Linha 57: const profile = user ? getProfileById(user.perfilId) : null;
-Linha 78: const permissions = getUserPermissions(user.id);
-```
-Essas funcoes vem de `authData.ts` e sempre olham `mockProfiles`/`mockUsers`, ignorando as edicoes feitas.
+Este plano aborda tres areas principais: (1) melhorias na tela de Configuracoes, (2) adicao de graficos e tabelas faltantes no B-Side Estoque, e (3) padronizacao dos filtros em todos os BIs.
 
 ---
 
-## Solucao Proposta
+## Resumo das Alteracoes
 
-### 1. Refatorar AuthContext para usar estados internos
+1. **Configuracoes - Sistema Administrativo**
+   - Adicionar secao para upload de logo unico para telas administrativas (Login, Admin, Settings)
+   - Adicionar campo de ordenacao (numero) para os BIs no menu
 
-Modificar o `AuthContext` para que todas as funcoes de permissao consultem os estados `users` e `profiles` em vez dos dados mock importados:
+2. **B-Side Estoque - Graficos e Tabelas Faltantes**
+   - Adicionar layout com duas colunas de KPIs (Estoque Matriz e Estoque Base)
+   - Adicionar grafico de pizza "Representacao do Estoque | Grupo"
+   - Adicionar grafico de barras "Valor Estoque | Grupo"
+   - Adicionar grafico de pizza "Tempo Parado | SKU" (por periodos de tempo)
+   - Adicionar grafico de barras "Tempo Parado Medio | Grupo"
+   - Adicionar tabelas "Estoque Matriz" e "Estoque Base"
 
-**Alteracoes:**
-- Calcular `profile` do usuario atual a partir do state `profiles`
-- Criar funcao interna `getProfileByIdFromState` que busca do state
-- Criar funcao interna `getUserPermissionsFromState` que busca do state
-- Atualizar `getPermission`, `canView`, `canExport`, `canRefresh`, `isDevOnly` para usar os states
+3. **Filtros Padronizados em Todos os BIs**
+   - Adicionar filtros de meses, anos e regionais em todas as paginas de BI
+   - Manter comportamento interativo existente (clique para filtrar)
 
-### 2. Adicionar CRUD completo de Perfis no Admin
+---
 
-Modificar `Admin.tsx` para incluir:
+## Alteracoes no Banco de Dados
 
-**Na aba Perfis:**
-- Botao "Novo Perfil" que abre dialog para criar perfil
-- Cada card de perfil tera botoes Editar (nome) e Excluir
-- Dialog de criacao/edicao de perfil com campo nome e matriz de permissoes
-- Proteger perfis "Desenvolvedor" e "Administrador" contra exclusao
-- Permitir edicao de permissoes inline (ja existe) e edicao do nome do perfil
+### Nova Coluna e Tabela
 
-**Fluxo de CRUD:**
 ```text
-[+Novo Perfil] -> Dialog com:
-  - Campo "Nome do Perfil"
-  - Matriz de permissoes (todas as paginas com switches)
-  - Botao Salvar
+Tabela: bi_settings
+  Nova coluna: display_order (integer, default 0)
+  - Controla a ordem de exibicao dos BIs no menu de navegacao
 
-[Editar] -> Dialog similar com dados preenchidos
-[Excluir] -> Confirmacao + remocao (apenas se nao houver usuarios vinculados)
+Nova linha especial na tabela bi_settings:
+  - page_id: "system" (para logo e nome do sistema administrativo)
+  - display_name: "Relatorios Icone Log"
+  - logo_url: null (pode ser atualizado)
 ```
 
-### 3. Simplificar dados mock iniciais
+---
 
-Modificar `authData.ts` para manter apenas:
-- Perfil "Desenvolvedor" (oculto)
-- Perfil "Administrador"
-- Usuario "Desenvolvedor" (oculto)
-- Usuario "Administrador"
+## Arquivos a Criar/Modificar
 
-Remover: Gerente, Operador, Visualizador (usuario cria conforme necessidade)
+### 1. Pagina de Configuracoes (src/pages/Settings.tsx)
+
+**Alteracoes:**
+- Adicionar secao separada no topo para "Logo do Sistema"
+  - Este logo sera usado na tela de Login, Admin e Settings
+  - Upload de imagem e campo de nome
+- Adicionar campo numerico de "Ordem" para cada BI
+- Reorganizar layout em duas areas: Sistema e BIs
+
+**Nova estrutura visual:**
+
+```text
++------------------------------------------+
+|  CONFIGURACOES DO SISTEMA               |
++------------------------------------------+
+| [Logo Sistema]  Nome: Relatorios ...    |
+|                 [Upload] [Salvar]        |
++------------------------------------------+
+
++------------------------------------------+
+|  CONFIGURACOES DOS BIs                   |
++------------------------------------------+
+| Card BI 1:           | Card BI 2:        |
+| [Logo] Nome: ...     | [Logo] Nome: ...  |
+| Ordem: [1]           | Ordem: [2]        |
++------------------------------------------+
+```
+
+### 2. B-Side Estoque (src/pages/Estoque.tsx)
+
+**Alteracoes Estruturais:**
+
+O layout atual mostra apenas KPIs simples, uma tabela e um grafico de categoria. Baseado na imagem de referencia, precisa incluir:
+
+```text
++------------------------+------------------------+
+|   ESTOQUE MATRIZ       |   ESTOQUE BASE         |
+| Valor | M3 | Qtde SKUs | Valor | M3 | Qtde SKUs |
++------------------------+------------------------+
+
++-------------+-------------+-------------------+
+| Repr. Grupo | Valor Grupo | Estoque Matriz    |
+| (Pie Chart) | (Bar Chart) | (Tabela detalhes) |
++-------------+-------------+-------------------+
+| Tempo SKU   | Tempo Grupo | Estoque Base      |
+| (Pie Chart) | (Bar Chart) | (Tabela detalhes) |
++-------------+-------------+-------------------+
+```
+
+**Novos Componentes:**
+- `StockDualKPICards.tsx` - Cards duplos Matriz/Base
+- `StockGroupPieChart.tsx` - Pizza de representacao por grupo
+- `StockValueBarChart.tsx` - Barras de valor por grupo
+- `StockTimePieChart.tsx` - Pizza de tempo parado por periodo
+- `StockTimeBarChart.tsx` - Barras de tempo medio por grupo
+- `StockMatrizTable.tsx` - Tabela detalhada Matriz
+- `StockBaseTable.tsx` - Tabela detalhada Base
+
+**Novos Dados (src/data/stockData.ts):**
+- Adicionar campo `grupo` aos itens (FOOD D-SIDE, FOOD B-SIDE)
+- Adicionar campo `tempoParado` (dias parado)
+- Adicionar funcoes para calcular Matriz vs Base
+- Adicionar funcoes para agrupar por tempo parado
+
+### 3. Filtros Globais - SharedHeader e Paginas
+
+**SharedHeader (src/components/shared/SharedHeader.tsx):**
+- Ja possui suporte a filtros (showFilters=true)
+- Verificar se precisa ajustes para todos os BIs
+
+**Paginas que precisam adicionar filtros:**
+- `src/pages/Estoque.tsx` - adicionar showFilters=true
+- `src/pages/Entregas.tsx` - adicionar showFilters=true
+- `src/pages/Tracking.tsx` - adicionar showFilters=true
+- `src/pages/Faturamento.tsx` - adicionar showFilters=true
+- `src/pages/EstoqueConsolidado.tsx` - adicionar showFilters=true
+- `src/pages/Analitico.tsx` - adicionar showFilters=true
+
+**Para cada pagina, adicionar:**
+```typescript
+const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
+const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+```
+
+E passar para o SharedHeader:
+```typescript
+<SharedHeader
+  showFilters={true}
+  selectedMonths={selectedMonths}
+  selectedYears={selectedYears}
+  selectedRegions={selectedRegions}
+  onMonthsChange={setSelectedMonths}
+  onYearsChange={setSelectedYears}
+  onRegionsChange={setSelectedRegions}
+  // ... outros props
+/>
+```
+
+### 4. Menu de Navegacao Ordenado
+
+**NavigationMenu (src/components/shared/NavigationMenu.tsx):**
+- Modificar para buscar BIs ordenados pelo campo `display_order`
+- Atualizar contexto BiSettingsContext para fornecer ordem
+
+**BiSettingsContext (src/contexts/BiSettingsContext.tsx):**
+- Adicionar funcao `getOrderedPages()` que retorna BIs ordenados
+- Usar essa funcao no NavigationMenu
+
+### 5. Logo do Sistema nas Telas Administrativas
+
+**Arquivos afetados:**
+- `src/pages/Auth.tsx` - usar logo do sistema
+- `src/pages/Admin.tsx` - usar logo do sistema (via SharedHeader)
+- `src/pages/Settings.tsx` - usar logo do sistema (via SharedHeader)
+
+**BiSettingsContext:**
+- Adicionar funcao `getSystemLogo()` que retorna logo para page_id="system"
+- Adicionar funcao `getSystemName()` que retorna nome do sistema
 
 ---
 
 ## Secao Tecnica
 
-### Arquivos a Modificar
+### Migracao SQL
 
-**src/contexts/AuthContext.tsx**
-- Adicionar funcao `getProfileFromState(perfilId)` que busca do state `profiles`
-- Atualizar calculo de `profile` para usar state
-- Refatorar `getPermission` para:
+```sql
+-- Adicionar coluna de ordenacao
+ALTER TABLE bi_settings 
+ADD COLUMN display_order integer NOT NULL DEFAULT 0;
+
+-- Inserir registro do sistema
+INSERT INTO bi_settings (page_id, display_name, logo_url, display_order)
+VALUES ('system', 'Relatorios Icone Log', NULL, -1);
+
+-- Definir ordem inicial dos BIs existentes
+UPDATE bi_settings SET display_order = 1 WHERE page_id = 'minutas';
+UPDATE bi_settings SET display_order = 2 WHERE page_id = 'entregas';
+UPDATE bi_settings SET display_order = 3 WHERE page_id = 'estoque';
+UPDATE bi_settings SET display_order = 4 WHERE page_id = 'tracking';
+UPDATE bi_settings SET display_order = 5 WHERE page_id = 'estoque-consolidado';
+UPDATE bi_settings SET display_order = 6 WHERE page_id = 'faturamento';
+UPDATE bi_settings SET display_order = 7 WHERE page_id = 'analitico';
+```
+
+### Hook useBiSettings - Novas Funcoes
+
 ```typescript
-const getPermission = useCallback((pageId: string): PagePermission | null => {
-  if (!user) return null;
-  const userProfile = profiles.find(p => p.id === user.perfilId);
-  if (!userProfile) return null;
-  return userProfile.permissoes[pageId] || null;
-}, [user, profiles]);
-```
-- Refatorar `canView`, `canExport`, `canRefresh` para depender de `profiles` e `user`
-- Manter sincronizacao: quando usuario logado tem perfil editado, as permissoes atualizam
+// Retorna configuracao do sistema (login/admin/settings)
+const getSystemSetting = (): BiSetting | undefined => {
+  return settings.find(s => s.page_id === 'system');
+};
 
-**src/data/authData.ts**
-- Remover perfis: Gerente, Operador, Visualizador
-- Remover usuarios: joao.silva, maria.santos
-- Manter apenas Desenvolvedor e Administrador
+// Retorna BIs ordenados (exclui 'system')
+const getOrderedBiSettings = (): BiSetting[] => {
+  return settings
+    .filter(s => s.page_id !== 'system')
+    .sort((a, b) => a.display_order - b.display_order);
+};
 
-**src/pages/Admin.tsx**
-- Adicionar state `isProfileDialogOpen` e `editingProfile`
-- Criar dialog para criar/editar perfil com:
-  - Input para nome do perfil
-  - Matriz de permissoes (switches para cada pagina/acao)
-- Adicionar botoes Editar/Excluir em cada card de perfil
-- Impedir exclusao de perfis "dev-profile" e "admin-profile"
-- Impedir exclusao de perfil que tenha usuarios vinculados
-- Mostrar toast de erro se tentar excluir perfil em uso
-
-### Estrutura do Dialog de Perfil
-
-```text
-+----------------------------------+
-| Novo Perfil / Editar Perfil      |
-+----------------------------------+
-| Nome: [___________________]      |
-|                                  |
-| Permissoes:                      |
-| +------------------------------+ |
-| | Pagina     | Ver | Exp | Atu | |
-| +------------------------------+ |
-| | Minutas    | [x] | [x] | [x] | |
-| | Estoque    | [x] | [ ] | [ ] | |
-| | Entregas   | [x] | [ ] | [ ] | |
-| | ...        | ... | ... | ... | |
-| +------------------------------+ |
-|                                  |
-|        [Cancelar] [Salvar]       |
-+----------------------------------+
+// Atualiza ordem de um BI
+const updateDisplayOrder = async (pageId: string, order: number) => {
+  // ... update no banco
+};
 ```
 
-### Validacoes
+### Estrutura de Dados do Estoque Expandida
 
-1. Nome do perfil obrigatorio
-2. Nao pode excluir perfil Desenvolvedor ou Administrador
-3. Nao pode excluir perfil com usuarios vinculados
-4. Desenvolvedor e perfil Desenvolvedor sempre ocultos de nao-devs
+```typescript
+export interface SKUItem {
+  id: string;
+  sku: string;
+  name: string;
+  description: string;
+  category: string;
+  grupo: 'FOOD D-SIDE' | 'FOOD B-SIDE';  // NOVO
+  stockQuantity: number;
+  kitsQuantity: number;
+  minStock: number;
+  maxStock: number;
+  unitPrice: number;
+  m3: number;  // NOVO - volume em metros cubicos
+  tempoParado: number;  // NOVO - dias parado
+  imageUrl: string;
+  lastUpdate: Date;
+  location: string;
+  locationType: 'matriz' | 'base';  // NOVO
+  base?: string;  // NOVO - nome da base (se locationType='base')
+  supplier: string;
+}
 
-### Fluxo de Verificacao de Permissoes
-
-Apos as mudancas, o fluxo sera:
-
-```text
-1. Admin edita permissoes do perfil X
-2. State `profiles` e atualizado no AuthContext
-3. Usuario logado com perfil X automaticamente ve mudancas
-4. Funcoes canView/canExport/canRefresh usam state atualizado
-5. Menu de navegacao e header respeitam novas permissoes
+// Funcao para categorizar tempo parado
+export const getTempoParadoCategory = (dias: number): string => {
+  if (dias <= 30) return 'Antes que 30 dias';
+  if (dias <= 60) return 'Entre 31 e 60 dias';
+  if (dias <= 90) return 'Entre 61 e 90 dias';
+  return 'Mais que 91 dias';
+};
 ```
+
+### Fluxo de Filtros nas Paginas
+
+Cada pagina de BI tera:
+
+1. **Estados de filtro globais** (mes, ano, regional)
+2. **Estados de filtro interativos** (especificos de cada BI)
+3. **Dados filtrados via useMemo** combinando ambos
+4. **Barra de filtros ativos** mostrando todos os filtros aplicados
 
 ---
 
-## Resumo de Entregas
+## Ordem de Implementacao
 
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/contexts/AuthContext.tsx` | Refatorar para usar states internos |
-| `src/data/authData.ts` | Simplificar para apenas Dev + Admin |
-| `src/pages/Admin.tsx` | Adicionar CRUD completo de perfis |
+1. **Fase 1 - Banco de Dados**
+   - Criar migracao para adicionar coluna display_order
+   - Inserir registro 'system' na tabela bi_settings
 
----
+2. **Fase 2 - Hook e Contexto**
+   - Atualizar useBiSettings com novas funcoes
+   - Atualizar BiSettingsContext para expor funcoes de sistema e ordenacao
 
-## Resultado Esperado
+3. **Fase 3 - Pagina Settings**
+   - Adicionar secao de logo/nome do sistema
+   - Adicionar campo de ordem para cada BI
+   - Atualizar layout visual
 
-1. **Perfis editaveis**: Criar, editar nome e permissoes, deletar perfis
-2. **Permissoes refletem**: Ao alterar permissao de um perfil, usuarios com esse perfil imediatamente veem a mudanca
-3. **Dados limpos**: Sistema inicia apenas com Dev (oculto) e Admin, usuario cria demais perfis
-4. **Protecao**: Perfis essenciais nao podem ser deletados
+4. **Fase 4 - B-Side Estoque**
+   - Expandir dados mockados com novos campos
+   - Criar novos componentes visuais
+   - Atualizar layout da pagina
+
+5. **Fase 5 - Filtros em Todas as Paginas**
+   - Adicionar estados de filtro em cada BI
+   - Habilitar showFilters=true no SharedHeader
+   - Integrar filtros com dados existentes
+
+6. **Fase 6 - Menu Ordenado**
+   - Atualizar NavigationMenu para usar ordem do banco
+   - Usar logo do sistema nas telas administrativas
 
