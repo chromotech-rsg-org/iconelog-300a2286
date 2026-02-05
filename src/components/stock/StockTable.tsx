@@ -29,18 +29,43 @@ interface StockTableProps {
   onSelectProduct: (product: SKUItem) => void;
   selectedProduct: SKUItem | null;
   onFullscreen?: () => void;
+  selectedCategory?: string | null;
+  selectedStatus?: string | null;
+  onCategoryClick?: (category: string) => void;
+  onStatusClick?: (status: string) => void;
 }
 
-export const StockTable = ({ items, onSelectProduct, selectedProduct, onFullscreen }: StockTableProps) => {
+export const StockTable = ({ 
+  items, 
+  onSelectProduct, 
+  selectedProduct, 
+  onFullscreen,
+  selectedCategory,
+  selectedStatus,
+  onCategoryClick,
+  onStatusClick,
+}: StockTableProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const filteredItems = items.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getItemStatus = (item: SKUItem) => {
+    const ratio = item.stockQuantity / item.minStock;
+    if (ratio <= 1) return "Crítico";
+    if (ratio <= 1.5) return "Baixo";
+    return "Normal";
+  };
+
+  const filteredItems = items.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = !selectedCategory || item.category === selectedCategory;
+    const matchesStatus = !selectedStatus || getItemStatus(item) === selectedStatus;
+    
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
 
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -57,12 +82,43 @@ export const StockTable = ({ items, onSelectProduct, selectedProduct, onFullscre
   const getStockBadge = (item: SKUItem) => {
     const ratio = item.stockQuantity / item.minStock;
     if (ratio <= 1) {
-      return <Badge variant="destructive" className="text-xs">Crítico</Badge>;
+      return (
+        <Badge 
+          variant="destructive" 
+          className={cn("text-xs cursor-pointer hover:opacity-80", selectedStatus === "Crítico" && "ring-2 ring-white")}
+          onClick={(e) => {
+            e.stopPropagation();
+            onStatusClick?.("Crítico");
+          }}
+        >
+          Crítico
+        </Badge>
+      );
     }
     if (ratio <= 1.5) {
-      return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs">Baixo</Badge>;
+      return (
+        <Badge 
+          className={cn("bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs cursor-pointer hover:opacity-80", selectedStatus === "Baixo" && "ring-2 ring-yellow-400")}
+          onClick={(e) => {
+            e.stopPropagation();
+            onStatusClick?.("Baixo");
+          }}
+        >
+          Baixo
+        </Badge>
+      );
     }
-    return <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Normal</Badge>;
+    return (
+      <Badge 
+        className={cn("bg-green-500/20 text-green-400 border-green-500/30 text-xs cursor-pointer hover:opacity-80", selectedStatus === "Normal" && "ring-2 ring-green-400")}
+        onClick={(e) => {
+          e.stopPropagation();
+          onStatusClick?.("Normal");
+        }}
+      >
+        Normal
+      </Badge>
+    );
   };
 
   const handlePageChange = (page: number) => {
@@ -184,7 +240,18 @@ export const StockTable = ({ items, onSelectProduct, selectedProduct, onFullscre
                       {item.name}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {item.category}
+                      <span 
+                        className={cn(
+                          "cursor-pointer hover:text-dashboard-accent transition-colors",
+                          selectedCategory === item.category && "text-dashboard-accent font-medium"
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCategoryClick?.(item.category);
+                        }}
+                      >
+                        {item.category}
+                      </span>
                     </TableCell>
                     <TableCell className="text-foreground text-sm text-right font-medium">
                       {formatNumber(item.stockQuantity)}

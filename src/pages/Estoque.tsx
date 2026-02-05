@@ -1,10 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { StockKPICards } from "@/components/stock/StockKPICards";
 import { StockCategoryChart } from "@/components/stock/StockCategoryChart";
 import { StockTable } from "@/components/stock/StockTable";
 import { ProductSimplePreview } from "@/components/stock/ProductSimplePreview";
 import { ProductDetailModal } from "@/components/stock/ProductDetailModal";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 import { 
   generateStockData, 
   calculateStockTotals, 
@@ -20,19 +23,42 @@ const Estoque = () => {
   const [stockData, setStockData] = useState<SKUItem[]>(() => generateStockData());
   const [selectedProduct, setSelectedProduct] = useState<SKUItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  
+  // Filter states for BI interactivity
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
-  const totals = useMemo(() => calculateStockTotals(stockData), [stockData]);
-  const categoryData = useMemo(() => getStockByCategory(stockData), [stockData]);
+  // Get item status
+  const getItemStatus = (item: SKUItem) => {
+    const ratio = item.stockQuantity / item.minStock;
+    if (ratio <= 1) return "Crítico";
+    if (ratio <= 1.5) return "Baixo";
+    return "Normal";
+  };
+
+  // Filtered data based on selections
+  const filteredStockData = useMemo(() => {
+    return stockData.filter(item => {
+      const matchesCategory = !selectedCategory || item.category === selectedCategory;
+      const matchesStatus = !selectedStatus || getItemStatus(item) === selectedStatus;
+      return matchesCategory && matchesStatus;
+    });
+  }, [stockData, selectedCategory, selectedStatus]);
+
+  const totals = useMemo(() => calculateStockTotals(filteredStockData), [filteredStockData]);
+  const categoryData = useMemo(() => getStockByCategory(stockData), [stockData]); // Keep original for chart
 
   const handleRefreshData = () => {
     setStockData(generateStockData());
     setLastUpdate(new Date());
     setSelectedProduct(null);
+    setSelectedCategory(null);
+    setSelectedStatus(null);
     toast.success("Dados atualizados com sucesso!");
   };
 
   const handleExportExcel = () => {
-    const exportData = stockData.map(item => ({
+    const exportData = filteredStockData.map(item => ({
       SKU: item.sku,
       Nome: item.name,
       Descrição: item.description,
@@ -70,6 +96,22 @@ const Estoque = () => {
     }
   };
 
+  // Filter handlers
+  const handleCategoryClick = useCallback((category: string) => {
+    setSelectedCategory(prev => prev === category ? null : category);
+  }, []);
+
+  const handleStatusClick = useCallback((status: string) => {
+    setSelectedStatus(prev => prev === status ? null : status);
+  }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setSelectedCategory(null);
+    setSelectedStatus(null);
+  }, []);
+
+  const hasActiveFilters = selectedCategory !== null || selectedStatus !== null;
+
   return (
     <div className="min-h-screen bg-dashboard-dark">
       <SharedHeader 
@@ -79,6 +121,47 @@ const Estoque = () => {
         onRefreshData={handleRefreshData}
         onExportExcel={handleExportExcel}
       />
+
+      {/* Active Filters Bar */}
+      {hasActiveFilters && (
+        <div className="flex items-center gap-2 px-6 py-2 border-b border-dashboard-border bg-dashboard-card/50 animate-fade-in">
+          <span className="text-xs text-muted-foreground">Filtros:</span>
+          {selectedCategory && (
+            <Badge 
+              variant="outline" 
+              className="border-dashboard-accent bg-dashboard-accent/10 text-dashboard-accent cursor-pointer hover:bg-dashboard-accent/20"
+              onClick={() => setSelectedCategory(null)}
+            >
+              Categoria: {selectedCategory}
+              <X className="ml-1 h-3 w-3" />
+            </Badge>
+          )}
+          {selectedStatus && (
+            <Badge 
+              variant="outline" 
+              className={`cursor-pointer hover:opacity-80 ${
+                selectedStatus === "Crítico" 
+                  ? "border-destructive bg-destructive/10 text-destructive" 
+                  : selectedStatus === "Baixo"
+                    ? "border-yellow-500 bg-yellow-500/10 text-yellow-500"
+                    : "border-green-500 bg-green-500/10 text-green-500"
+              }`}
+              onClick={() => setSelectedStatus(null)}
+            >
+              Status: {selectedStatus}
+              <X className="ml-1 h-3 w-3" />
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearAllFilters}
+            className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground"
+          >
+            Limpar todos
+          </Button>
+        </div>
+      )}
 
       <div className="p-6 space-y-4">
         {/* KPI Cards */}
@@ -95,16 +178,24 @@ const Estoque = () => {
           {/* Left side - Table (reduced width) */}
           <div className="flex-1 lg:w-[70%] min-w-0">
             <StockTable 
-              items={stockData}
+              items={filteredStockData}
               onSelectProduct={handleSelectProduct}
               selectedProduct={selectedProduct}
+              selectedCategory={selectedCategory}
+              selectedStatus={selectedStatus}
+              onCategoryClick={handleCategoryClick}
+              onStatusClick={handleStatusClick}
             />
           </div>
 
           {/* Right side - Category Chart and Product Preview */}
           <div className="w-full lg:w-[30%] flex flex-col gap-4">
             {/* Category Chart */}
-            <StockCategoryChart data={categoryData} />
+            <StockCategoryChart 
+              data={categoryData} 
+              selectedCategory={selectedCategory}
+              onCategoryClick={handleCategoryClick}
+            />
             
             {/* Product Simple Preview */}
             <div className="flex-1 min-h-[200px]">
