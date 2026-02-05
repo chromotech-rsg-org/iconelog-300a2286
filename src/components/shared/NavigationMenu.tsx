@@ -64,7 +64,7 @@ export const NavigationMenu = () => {
   };
 
   // Check if user can access admin panel
-  const canAccessAdmin = isAuthenticated && (canViewAdmin("usuarios") || canViewAdmin("perfis") || canViewAdmin("acessoPublico"));
+  const canAccessAdmin = isAuthenticated && canViewAdmin("painelControle");
 
   return (
     <DropdownMenu>

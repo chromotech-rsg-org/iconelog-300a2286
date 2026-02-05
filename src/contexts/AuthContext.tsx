@@ -26,8 +26,8 @@ interface AuthContextType {
   canRefresh: (pageId: string) => boolean;
   isDevOnly: (pageId: string) => boolean;
   isPublicAccess: (pageId: string) => boolean;
-  canViewAdmin: (section: "usuarios" | "perfis" | "acessoPublico") => boolean;
-  canEditAdmin: (section: "usuarios" | "perfis" | "acessoPublico") => boolean;
+  canViewAdmin: (section: "usuarios" | "perfis" | "acessoPublico" | "painelControle") => boolean;
+  canEditAdmin: (section: "usuarios" | "perfis" | "acessoPublico" | "painelControle") => boolean;
   canCreateAdmin: (section: "usuarios" | "perfis") => boolean;
   canDeleteAdmin: (section: "usuarios" | "perfis") => boolean;
   publicAccess: Record<string, boolean>;

@@ -67,6 +67,7 @@ const Admin = () => {
       usuarios: AdminPermissionForm;
       perfis: AdminPermissionForm;
       acesso_publico: AdminPermissionForm;
+      painel_controle: AdminPermissionForm;
     };
   }>({
     nome: "",
@@ -76,6 +77,7 @@ const Admin = () => {
       usuarios: { ver: false, editar: false, criar: false, excluir: false },
       perfis: { ver: false, editar: false, criar: false, excluir: false },
       acesso_publico: { ver: false, editar: false, criar: false, excluir: false },
+      painel_controle: { ver: false, editar: false, criar: false, excluir: false },
     }
   });
 
@@ -141,6 +143,7 @@ const Admin = () => {
         usuarios: { ver: false, editar: false, criar: false, excluir: false },
         perfis: { ver: false, editar: false, criar: false, excluir: false },
         acesso_publico: { ver: false, editar: false, criar: false, excluir: false },
+        painel_controle: { ver: false, editar: false, criar: false, excluir: false },
       }
     });
     setIsProfileDialogOpen(true);
@@ -186,6 +189,12 @@ const Admin = () => {
           criar: false,
           excluir: false,
         },
+      painel_controle: {
+        ver: role.adminPermissions.painel_controle?.ver ?? false,
+        editar: false,
+        criar: false,
+        excluir: false,
+      },
       }
     });
     setIsProfileDialogOpen(true);
@@ -247,7 +256,7 @@ const Admin = () => {
     }));
   };
 
-  const handleToggleAdminPermission = (section: "usuarios" | "perfis" | "acesso_publico", key: keyof AdminPermissionForm) => {
+  const handleToggleAdminPermission = (section: "usuarios" | "perfis" | "acesso_publico" | "painel_controle", key: keyof AdminPermissionForm) => {
     setProfileForm(prev => ({
       ...prev,
       adminPermissions: {
@@ -667,6 +676,24 @@ const Admin = () => {
                                   checked={profileForm.adminPermissions.acesso_publico.editar} 
                                   onCheckedChange={() => handleToggleAdminPermission("acesso_publico", "editar")} 
                                 />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className="text-muted-foreground text-xs">-</span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className="text-muted-foreground text-xs">-</span>
+                              </TableCell>
+                            </TableRow>
+                            <TableRow className="border-dashboard-border">
+                              <TableCell className="text-foreground text-sm">Painel de Controle</TableCell>
+                              <TableCell className="text-center">
+                                <Switch 
+                                  checked={profileForm.adminPermissions.painel_controle.ver} 
+                                  onCheckedChange={() => handleToggleAdminPermission("painel_controle", "ver")} 
+                                />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className="text-muted-foreground text-xs">-</span>
                               </TableCell>
                               <TableCell className="text-center">
                                 <span className="text-muted-foreground text-xs">-</span>
