@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface UserWithRole {
   id: string;
@@ -16,6 +17,7 @@ export const useUsersManagement = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const { isDeveloper } = useAuth();
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -56,9 +58,13 @@ export const useUsersManagement = () => {
     });
 
     // Filter out developers if current user is not a developer
-    setUsers(usersWithRoles.filter(u => !u.is_developer));
+    if (isDeveloper) {
+      setUsers(usersWithRoles);
+    } else {
+      setUsers(usersWithRoles.filter(u => !u.is_developer));
+    }
     setLoading(false);
-  }, []);
+  }, [isDeveloper]);
 
   useEffect(() => {
     fetchUsers();
