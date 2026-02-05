@@ -26,10 +26,18 @@ import { saveAs } from "file-saver";
 import { X } from "lucide-react";
 
 const Entregas = () => {
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [deliveryData] = useState(() => generateDeliveryData());
   const [deliveryItems] = useState<DeliveryItem[]>(() => generateDeliveryItems(50));
   
+  // Global filters
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+
   // Filter states for BI interactivity
   const [selectedRegional, setSelectedRegional] = useState<string | null>(null);
   const [selectedTipo, setSelectedTipo] = useState<"Entrega" | "Reposição" | null>(null);
@@ -97,7 +105,15 @@ const Entregas = () => {
     setSelectedStatus(null);
   }, []);
 
-  const hasActiveFilters = selectedRegional || selectedTipo || selectedStatus;
+  const clearGlobalFilters = useCallback(() => {
+    setSelectedMonths([currentMonth]);
+    setSelectedYears([currentYear]);
+    setSelectedRegions([]);
+    clearAllFilters();
+  }, []);
+
+  const hasActiveFilters = !!(selectedRegional || selectedTipo || selectedStatus);
+  const hasGlobalFilters = selectedMonths.length !== 1 || selectedMonths[0] !== currentMonth || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedRegions.length > 0;
 
   const getStatusBadge = (status: DeliveryItem["status"]) => {
     switch (status) {
@@ -113,11 +129,19 @@ const Entregas = () => {
   return (
     <div className="min-h-screen bg-dashboard-dark">
       <SharedHeader
-        pageTitle="B-Side Entregas"
         pageId="entregas"
         lastUpdate={lastUpdate}
+        showFilters={true}
+        selectedMonths={selectedMonths}
+        selectedYears={selectedYears}
+        selectedRegions={selectedRegions}
+        onMonthsChange={setSelectedMonths}
+        onYearsChange={setSelectedYears}
+        onRegionsChange={setSelectedRegions}
         onRefreshData={handleRefreshData}
         onExportExcel={handleExportExcel}
+        onClearAllFilters={clearGlobalFilters}
+        hasActiveFilters={hasGlobalFilters || hasActiveFilters}
       />
 
       {/* Active Filters Bar */}

@@ -12,23 +12,29 @@ import {
  import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { toast } from "sonner";
 
- const navigationItems = [
-   { id: "minutas", path: "/minutas" },
-   { id: "entregas", path: "/entregas" },
-   { id: "estoque", path: "/estoque" },
-   { id: "tracking", path: "/tracking" },
-   { id: "estoque-consolidado", path: "/estoque-consolidado" },
-   { id: "faturamento", path: "/faturamento" },
-   { id: "analitico", path: "/analitico" },
- ];
+const pathMap: Record<string, string> = {
+  minutas: "/minutas",
+  entregas: "/entregas",
+  estoque: "/estoque",
+  tracking: "/tracking",
+  "estoque-consolidado": "/estoque-consolidado",
+  faturamento: "/faturamento",
+  analitico: "/analitico",
+};
 
 export const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
    const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin, isDeveloper } = useAuth();
-   const { getPageTitle } = useBiSettingsContext();
+  const { getPageTitle, getOrderedBiSettings } = useBiSettingsContext();
 
-  const handleNavClick = (item: typeof navigationItems[0]) => {
+  // Get ordered navigation items from settings
+  const navigationItems = getOrderedBiSettings().map(setting => ({
+    id: setting.page_id,
+    path: pathMap[setting.page_id] || `/${setting.page_id}`,
+  }));
+
+  const handleNavClick = (item: { id: string; path: string }) => {
     // Verifica se o usuário pode acessar a página
     if (isAuthenticated && !canView(item.id) && !isPublicAccess(item.id)) {
       toast.error("Você não tem permissão para acessar esta página.");

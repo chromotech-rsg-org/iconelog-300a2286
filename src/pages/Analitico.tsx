@@ -37,8 +37,16 @@ import { saveAs } from "file-saver";
 import { TrendingUp, TrendingDown, Minus, X } from "lucide-react";
 
 const Analitico = () => {
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [activeTab, setActiveTab] = useState("visao-geral");
+
+  // Global filters
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
+  const [selectedGlobalRegions, setSelectedGlobalRegions] = useState<string[]>([]);
 
   // Filter states for BI interactivity
   const [selectedPeriodo, setSelectedPeriodo] = useState<string | null>(null);
@@ -118,7 +126,15 @@ const Analitico = () => {
     setSelectedMetrica(null);
   }, []);
 
-  const hasActiveFilters = selectedPeriodo || selectedRegional || selectedMetrica;
+  const clearGlobalFilters = useCallback(() => {
+    setSelectedMonths([currentMonth]);
+    setSelectedYears([currentYear]);
+    setSelectedGlobalRegions([]);
+    clearAllFilters();
+  }, []);
+
+  const hasActiveFilters = !!(selectedPeriodo || selectedRegional || selectedMetrica);
+  const hasGlobalFilters = selectedMonths.length !== 1 || selectedMonths[0] !== currentMonth || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedGlobalRegions.length > 0;
 
   const getTrendIcon = (tendencia: "up" | "down" | "stable") => {
     switch (tendencia) {
@@ -142,11 +158,19 @@ const Analitico = () => {
   return (
     <div className="min-h-screen bg-dashboard-dark">
       <SharedHeader
-        pageTitle="Analítico"
         pageId="analitico"
         lastUpdate={lastUpdate}
+        showFilters={true}
+        selectedMonths={selectedMonths}
+        selectedYears={selectedYears}
+        selectedRegions={selectedGlobalRegions}
+        onMonthsChange={setSelectedMonths}
+        onYearsChange={setSelectedYears}
+        onRegionsChange={setSelectedGlobalRegions}
         onRefreshData={handleRefreshData}
         onExportExcel={handleExportExcel}
+        onClearAllFilters={clearGlobalFilters}
+        hasActiveFilters={hasGlobalFilters || hasActiveFilters}
       />
 
       {/* Active Filters Bar */}

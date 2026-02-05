@@ -6,6 +6,7 @@
    page_id: string;
    display_name: string;
    logo_url: string | null;
+  display_order: number;
    created_at: string;
    updated_at: string;
  }
@@ -106,6 +107,35 @@
      }
    };
  
+  // Get system setting (for Login, Admin, Settings pages)
+  const getSystemSetting = useCallback((): BiSetting | undefined => {
+    return settings.find((s) => s.page_id === "system");
+  }, [settings]);
+
+  // Get ordered BI settings (excludes system)
+  const getOrderedBiSettings = useCallback((): BiSetting[] => {
+    return settings
+      .filter((s) => s.page_id !== "system")
+      .sort((a, b) => a.display_order - b.display_order);
+  }, [settings]);
+
+  // Update display order
+  const updateDisplayOrder = async (pageId: string, order: number) => {
+    try {
+      const { error } = await supabase
+        .from("bi_settings")
+        .update({ display_order: order })
+        .eq("page_id", pageId);
+
+      if (error) throw error;
+      await fetchSettings();
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating display order:", error);
+      return { success: false, error };
+    }
+  };
+
    return {
      settings,
      loading,
@@ -113,6 +143,9 @@
      updateSetting,
      uploadLogo,
      removeLogo,
+    getSystemSetting,
+    getOrderedBiSettings,
+    updateDisplayOrder,
      refetch: fetchSettings,
    };
  };

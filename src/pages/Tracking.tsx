@@ -42,9 +42,17 @@ import { Package, Clock, CheckCircle, AlertTriangle, TrendingUp, Percent, X } fr
 const COLORS = ['hsl(45, 100%, 50%)', 'hsl(217, 91%, 60%)', 'hsl(25, 95%, 53%)', 'hsl(142, 76%, 36%)', 'hsl(280, 65%, 60%)'];
 
 const Tracking = () => {
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [activeTab, setActiveTab] = useState("bside");
   const [orders] = useState(() => generateTrackingOrders(200));
+
+  // Global filters
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
+  const [selectedGlobalRegions, setSelectedGlobalRegions] = useState<string[]>([]);
 
   // Filter states for BI interactivity
   const [selectedTipoServico, setSelectedTipoServico] = useState<string | null>(null);
@@ -140,7 +148,15 @@ const Tracking = () => {
     setSelectedPrazo(null);
   }, []);
 
-  const hasActiveFilters = selectedTipoServico || selectedModalidade || selectedCidade || selectedRegional || selectedPrazo !== null;
+  const clearGlobalFilters = useCallback(() => {
+    setSelectedMonths([currentMonth]);
+    setSelectedYears([currentYear]);
+    setSelectedGlobalRegions([]);
+    clearAllFilters();
+  }, []);
+
+  const hasActiveFilters = !!(selectedTipoServico || selectedModalidade || selectedCidade || selectedRegional || selectedPrazo !== null);
+  const hasGlobalFilters = selectedMonths.length !== 1 || selectedMonths[0] !== currentMonth || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedGlobalRegions.length > 0;
 
   const kpis = [
     { title: "Quantidade de Pedidos", value: formatNumber(totals.quantidadePedidos), icon: Package, color: "text-dashboard-accent" },
@@ -154,11 +170,19 @@ const Tracking = () => {
   return (
     <div className="min-h-screen bg-dashboard-dark">
       <SharedHeader
-        pageTitle="Tracking Consolidado"
         pageId="tracking"
         lastUpdate={lastUpdate}
+        showFilters={true}
+        selectedMonths={selectedMonths}
+        selectedYears={selectedYears}
+        selectedRegions={selectedGlobalRegions}
+        onMonthsChange={setSelectedMonths}
+        onYearsChange={setSelectedYears}
+        onRegionsChange={setSelectedGlobalRegions}
         onRefreshData={handleRefreshData}
         onExportExcel={handleExportExcel}
+        onClearAllFilters={clearGlobalFilters}
+        hasActiveFilters={hasGlobalFilters || hasActiveFilters}
       />
 
       {/* Active Filters Bar */}

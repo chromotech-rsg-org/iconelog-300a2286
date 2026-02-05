@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg";
 import { LogIn, Eye, EyeOff } from "lucide-react";
@@ -16,7 +17,11 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login, isAuthenticated, loading } = useAuth();
+  const { getSystemLogo, getSystemName } = useBiSettingsContext();
   const navigate = useNavigate();
+
+  const systemLogo = getSystemLogo();
+  const systemName = getSystemName();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -58,8 +63,8 @@ const Auth = () => {
       {/* Header with navigation menu for public pages */}
       <header className="bg-card border-b border-border p-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="Logo" className="h-10 w-10 rounded-lg border border-primary" />
-          <span className="text-foreground font-semibold">Relatórios Icone Log</span>
+          <img src={systemLogo} alt="Logo" className="h-10 w-10 rounded-lg object-cover border border-primary" />
+          <span className="text-foreground font-semibold">{systemName}</span>
         </div>
         <NavigationMenu />
       </header>
@@ -67,8 +72,8 @@ const Auth = () => {
       <div className="flex-1 flex items-center justify-center p-6">
       <Card className="bg-card border-border w-full max-w-md">
         <CardHeader className="text-center">
-          <img src={logo} alt="Logo" className="h-16 w-16 mx-auto rounded-xl border-2 border-primary mb-4" />
-          <CardTitle className="text-xl text-foreground">Relatórios Icone Log</CardTitle>
+          <img src={systemLogo} alt="Logo" className="h-16 w-16 mx-auto rounded-xl object-cover border-2 border-primary mb-4" />
+          <CardTitle className="text-xl text-foreground">{systemName}</CardTitle>
           <p className="text-sm text-muted-foreground">Entre com suas credenciais</p>
         </CardHeader>
         <CardContent>

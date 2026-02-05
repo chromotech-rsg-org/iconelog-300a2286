@@ -41,9 +41,17 @@ import { DollarSign, Box, Package, X } from "lucide-react";
 const COLORS = ['hsl(45, 100%, 50%)', 'hsl(217, 91%, 60%)', 'hsl(25, 95%, 53%)', 'hsl(142, 76%, 36%)', 'hsl(280, 65%, 60%)', 'hsl(340, 82%, 52%)'];
 
 const EstoqueConsolidado = () => {
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [estoqueMatriz] = useState(() => generateEstoqueMatriz(50));
   const [estoqueBase] = useState(() => generateEstoqueBase(80));
+
+  // Global filters
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
 
   // Filter states for BI interactivity
   const [selectedGrupo, setSelectedGrupo] = useState<string | null>(null);
@@ -136,16 +144,32 @@ const EstoqueConsolidado = () => {
     setSelectedBase(null);
   }, []);
 
-  const hasActiveFilters = selectedGrupo || selectedSKU || selectedBase;
+  const clearGlobalFilters = useCallback(() => {
+    setSelectedMonths([currentMonth]);
+    setSelectedYears([currentYear]);
+    setSelectedRegions([]);
+    clearAllFilters();
+  }, []);
+
+  const hasActiveFilters = !!(selectedGrupo || selectedSKU || selectedBase);
+  const hasGlobalFilters = selectedMonths.length !== 1 || selectedMonths[0] !== currentMonth || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedRegions.length > 0;
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
       <SharedHeader
-        pageTitle="Estoque Consolidado"
         pageId="estoque-consolidado"
         lastUpdate={lastUpdate}
+        showFilters={true}
+        selectedMonths={selectedMonths}
+        selectedYears={selectedYears}
+        selectedRegions={selectedRegions}
+        onMonthsChange={setSelectedMonths}
+        onYearsChange={setSelectedYears}
+        onRegionsChange={setSelectedRegions}
         onRefreshData={handleRefreshData}
         onExportExcel={handleExportExcel}
+        onClearAllFilters={clearGlobalFilters}
+        hasActiveFilters={hasGlobalFilters || hasActiveFilters}
       />
 
       {/* Active Filters Bar */}
