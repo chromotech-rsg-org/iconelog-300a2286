@@ -1,5 +1,5 @@
- import React, { createContext, useContext, ReactNode } from "react";
- import { useBiSettings, BiSetting } from "@/hooks/useBiSettings";
+import React, { createContext, useContext, ReactNode, useMemo } from "react";
+import { useBiSettings, BiSetting, type BiSetting as BiSettingType } from "@/hooks/useBiSettings";
  import defaultLogo from "@/assets/logo.jpg";
  
  interface BiSettingsContextType {
@@ -7,6 +7,9 @@
    loading: boolean;
    getPageTitle: (pageId: string) => string;
    getPageLogo: (pageId: string) => string;
+  getSystemLogo: () => string;
+  getSystemName: () => string;
+  getOrderedBiSettings: () => BiSetting[];
    refetch: () => void;
  }
  
@@ -21,10 +24,11 @@
    faturamento: "Faturamento",
    analitico: "Analítico",
    settings: "Configurações",
+  system: "Relatórios Ícone Log",
  };
  
  export const BiSettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-   const { settings, loading, getSettingByPageId, refetch } = useBiSettings();
+  const { settings, loading, getSettingByPageId, getSystemSetting, getOrderedBiSettings, refetch } = useBiSettings();
  
    const getPageTitle = (pageId: string): string => {
      const setting = getSettingByPageId(pageId);
@@ -36,6 +40,16 @@
      return setting?.logo_url || defaultLogo;
    };
  
+  const getSystemLogo = (): string => {
+    const systemSetting = getSystemSetting();
+    return systemSetting?.logo_url || defaultLogo;
+  };
+
+  const getSystemName = (): string => {
+    const systemSetting = getSystemSetting();
+    return systemSetting?.display_name || defaultTitles.system;
+  };
+
    return (
      <BiSettingsContext.Provider
        value={{
@@ -43,6 +57,9 @@
          loading,
          getPageTitle,
          getPageLogo,
+        getSystemLogo,
+        getSystemName,
+        getOrderedBiSettings,
          refetch,
        }}
      >

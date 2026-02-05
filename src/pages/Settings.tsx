@@ -1,4 +1,4 @@
- import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
  import { SharedHeader } from "@/components/shared/SharedHeader";
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
  import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@
  import { Badge } from "@/components/ui/badge";
  import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
  import { Skeleton } from "@/components/ui/skeleton";
- import { Upload, Save, X, Image as ImageIcon, Settings as SettingsIcon } from "lucide-react";
+import { Upload, Save, X, Image as ImageIcon, Settings as SettingsIcon, Building2, LayoutGrid } from "lucide-react";
  import { useBiSettings, BiSetting } from "@/hooks/useBiSettings";
  import { useAuth } from "@/contexts/AuthContext";
  import { Navigate } from "react-router-dom";
@@ -16,19 +16,29 @@
  
  const Settings = () => {
    const { isDeveloper, loading: authLoading } = useAuth();
-   const { settings, loading, uploadLogo, updateSetting, refetch } = useBiSettings();
+  const { settings, loading, uploadLogo, updateSetting, updateDisplayOrder, getSystemSetting, getOrderedBiSettings, refetch } = useBiSettings();
    const [editingNames, setEditingNames] = useState<Record<string, string>>({});
+  const [editingOrders, setEditingOrders] = useState<Record<string, number>>({});
    const [uploading, setUploading] = useState<string | null>(null);
    const [saving, setSaving] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState<string | null>(null);
    const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const systemFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Get system setting and ordered BIs
+  const systemSetting = useMemo(() => getSystemSetting(), [getSystemSetting]);
+  const orderedBiSettings = useMemo(() => getOrderedBiSettings(), [getOrderedBiSettings]);
  
    // Initialize editing names from settings
    useEffect(() => {
      const names: Record<string, string> = {};
+    const orders: Record<string, number> = {};
      settings.forEach((s) => {
        names[s.page_id] = s.display_name;
+      orders[s.page_id] = s.display_order;
      });
      setEditingNames(names);
+    setEditingOrders(orders);
    }, [settings]);
  
    // Redirect non-developers
@@ -79,6 +89,24 @@
      }
    };
  
+  const handleOrderSave = async (pageId: string) => {
+    const order = editingOrders[pageId];
+    if (order === undefined || order < 0) {
+      toast.error("A ordem deve ser um número positivo");
+      return;
+    }
+
+    setSavingOrder(pageId);
+    const result = await updateDisplayOrder(pageId, order);
+    setSavingOrder(null);
+
+    if (result.success) {
+      toast.success("Ordem atualizada com sucesso!");
+    } else {
+      toast.error("Erro ao atualizar ordem");
+    }
+  };
+
    const getPageLabel = (pageId: string) => {
      const labels: Record<string, string> = {
        minutas: "Minutas",
@@ -88,10 +116,15 @@
        "estoque-consolidado": "Est. Consolidado",
        faturamento: "Faturamento",
        analitico: "Analítico",
+      system: "Sistema",
      };
      return labels[pageId] || pageId;
    };
  
+  const getCurrentSetting = (pageId: string) => {
+    return settings.find(s => s.page_id === pageId);
+  };
+
    if (authLoading || loading) {
      return (
        <div className="min-h-screen bg-dashboard-dark">
@@ -126,25 +159,116 @@
        />
  
        <div className="p-6 space-y-6">
-         {/* Header */}
-         <div className="flex items-center gap-3">
-           <SettingsIcon className="h-6 w-6 text-dashboard-accent" />
+        {/* System Settings Section */}
+        <Card className="bg-dashboard-card border-dashboard-accent/30">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <Building2 className="h-5 w-5 text-dashboard-accent" />
+              <div>
+                <CardTitle className="text-lg text-foreground">Logo do Sistema</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Este logo será usado nas telas de Login, Administração e Configurações
+                </CardDescription>
+              </div>
+              <Badge className="ml-auto bg-dashboard-accent/20 text-dashboard-accent border-dashboard-accent/30">
+                Global
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col md:flex-row gap-6 items-start">
+              {/* System Logo */}
+              <div className="flex items-center gap-4">
+                <div className="relative group">
+                  <Avatar className="h-20 w-20 rounded-lg border-2 border-dashboard-accent/50">
+                    <AvatarImage
+                      src={systemSetting?.logo_url || defaultLogo}
+                      alt="Logo do Sistema"
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="rounded-lg bg-dashboard-border">
+                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    ref={systemFileInputRef}
+                    onChange={(e) => handleFileChange("system", e.target.files?.[0] || null)}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent/80"
+                    onClick={() => systemFileInputRef.current?.click()}
+                    disabled={uploading === "system"}
+                  >
+                    {uploading === "system" ? (
+                      <div className="h-4 w-4 border-2 border-dashboard-dark border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <div>
+                  <p className="text-sm text-foreground font-medium">Logo Principal</p>
+                  <p className="text-xs text-muted-foreground">PNG, JPG até 2MB</p>
+                </div>
+              </div>
+
+              {/* System Name */}
+              <div className="flex-1 space-y-2">
+                <Label className="text-sm text-muted-foreground">Nome do Sistema</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={editingNames["system"] || ""}
+                    onChange={(e) =>
+                      setEditingNames((prev) => ({
+                        ...prev,
+                        system: e.target.value,
+                      }))
+                    }
+                    className="bg-dashboard-dark border-dashboard-border text-foreground"
+                    placeholder="Nome do sistema"
+                  />
+                  <Button
+                    variant="outline"
+                    className="border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark hover:border-dashboard-accent"
+                    onClick={() => handleNameSave("system")}
+                    disabled={
+                      saving === "system" ||
+                      editingNames["system"] === systemSetting?.display_name
+                    }
+                  >
+                    {saving === "system" ? (
+                      <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* BI Settings Section */}
+        <div className="flex items-center gap-3 mt-8">
+          <LayoutGrid className="h-5 w-5 text-dashboard-accent" />
            <div>
-             <h2 className="text-xl font-semibold text-foreground">
+            <h2 className="text-lg font-semibold text-foreground">
                Configurações dos BIs
              </h2>
              <p className="text-sm text-muted-foreground">
-               Configure logos e nomes para cada módulo de BI
+              Configure logos, nomes e ordem de exibição para cada módulo
              </p>
            </div>
-           <Badge className="ml-auto bg-dashboard-accent/20 text-dashboard-accent border-dashboard-accent/30">
-             Desenvolvedor
-           </Badge>
          </div>
  
          {/* BI Settings Grid */}
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-           {settings.map((setting) => (
+          {orderedBiSettings.map((setting) => (
              <Card
                key={setting.id}
                className="bg-dashboard-card border-dashboard-border hover:border-dashboard-accent/50 transition-colors"
@@ -154,6 +278,9 @@
                    <Badge variant="outline" className="text-xs">
                      {getPageLabel(setting.page_id)}
                    </Badge>
+                  <Badge variant="secondary" className="text-xs bg-dashboard-border">
+                    Ordem: {setting.display_order}
+                  </Badge>
                  </div>
                </CardHeader>
                <CardContent className="space-y-4">
@@ -225,7 +352,7 @@
                        onClick={() => handleNameSave(setting.page_id)}
                        disabled={
                          saving === setting.page_id ||
-                         editingNames[setting.page_id] === setting.display_name
+                        editingNames[setting.page_id] === getCurrentSetting(setting.page_id)?.display_name
                        }
                      >
                        {saving === setting.page_id ? (
@@ -236,6 +363,43 @@
                      </Button>
                    </div>
                  </div>
+
+                {/* Order Section */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">
+                    Ordem no menu
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      value={editingOrders[setting.page_id] ?? 0}
+                      onChange={(e) =>
+                        setEditingOrders((prev) => ({
+                          ...prev,
+                          [setting.page_id]: parseInt(e.target.value) || 0,
+                        }))
+                      }
+                      className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9 w-20"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark hover:border-dashboard-accent"
+                      onClick={() => handleOrderSave(setting.page_id)}
+                      disabled={
+                        savingOrder === setting.page_id ||
+                        editingOrders[setting.page_id] === getCurrentSetting(setting.page_id)?.display_order
+                      }
+                    >
+                      {savingOrder === setting.page_id ? (
+                        <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
                </CardContent>
              </Card>
            ))}
