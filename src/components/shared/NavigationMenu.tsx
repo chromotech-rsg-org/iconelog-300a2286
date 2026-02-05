@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Menu, Settings, LogOut, User } from "lucide-react";
+ import { Menu, Settings, LogOut, User, Cog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,23 +8,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/contexts/AuthContext";
+ import { useAuth } from "@/contexts/AuthContext";
+ import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { toast } from "sonner";
 
-const navigationItems = [
-  { id: "minutas", label: "Minutas Expedidas x Baixadas", path: "/minutas" },
-  { id: "entregas", label: "B-Side Entregas", path: "/entregas" },
-  { id: "estoque", label: "B-Side Estoque", path: "/estoque" },
-  { id: "tracking", label: "Tracking Consolidado", path: "/tracking" },
-  { id: "estoque-consolidado", label: "Estoque Consolidado", path: "/estoque-consolidado" },
-  { id: "faturamento", label: "Faturamento", path: "/faturamento" },
-  { id: "analitico", label: "Analítico", path: "/analitico" },
-];
+ const navigationItems = [
+   { id: "minutas", path: "/minutas" },
+   { id: "entregas", path: "/entregas" },
+   { id: "estoque", path: "/estoque" },
+   { id: "tracking", path: "/tracking" },
+   { id: "estoque-consolidado", path: "/estoque-consolidado" },
+   { id: "faturamento", path: "/faturamento" },
+   { id: "analitico", path: "/analitico" },
+ ];
 
 export const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin } = useAuth();
+   const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin, isDeveloper } = useAuth();
+   const { getPageTitle } = useBiSettingsContext();
 
   const handleNavClick = (item: typeof navigationItems[0]) => {
     // Verifica se o usuário pode acessar a página
@@ -92,7 +94,7 @@ export const NavigationMenu = () => {
                     : "text-foreground hover:bg-dashboard-border hover:text-dashboard-accent"
                 }`}
               >
-                {item.label}
+                 {getPageTitle(item.id)}
               </DropdownMenuItem>
             );
           })}
@@ -113,6 +115,21 @@ export const NavigationMenu = () => {
             Painel de Administração
           </DropdownMenuItem>
         )}
+ 
+         {/* Settings link - só mostra para desenvolvedores */}
+         {isDeveloper && (
+           <DropdownMenuItem
+             onClick={() => navigate("/settings")}
+             className={`cursor-pointer ${
+               location.pathname === "/settings"
+                 ? "bg-dashboard-accent text-dashboard-dark font-medium"
+                 : "text-foreground hover:bg-dashboard-border hover:text-dashboard-accent"
+             }`}
+           >
+             <Cog className="mr-2 h-4 w-4" />
+             Configurações
+           </DropdownMenuItem>
+         )}
 
         <DropdownMenuSeparator className="bg-dashboard-border" />
 
