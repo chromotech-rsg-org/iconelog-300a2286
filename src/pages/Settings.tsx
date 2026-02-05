@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { DocumentHead } from "@/components/shared/DocumentHead";
-import { SharedHeader } from "@/components/shared/SharedHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import defaultLogo from "@/assets/logo.jpg";
+import { NavigationMenu } from "@/components/shared/NavigationMenu";
  
  const Settings = () => {
    const { isDeveloper, loading: authLoading } = useAuth();
@@ -130,11 +130,13 @@ import defaultLogo from "@/assets/logo.jpg";
      return (
        <div className="min-h-screen bg-dashboard-dark">
        <DocumentHead pageId="settings" />
-         <SharedHeader
-           pageTitle="Configurações"
-           pageId="settings"
-           lastUpdate={new Date()}
-         />
+          <header className="bg-dashboard-card border-b border-dashboard-border p-4 flex justify-between items-center sticky top-0 z-50">
+            <div className="flex items-center gap-3">
+              <img src={systemSetting?.logo_url || defaultLogo} alt="Logo" className="h-10 w-10 rounded-lg object-cover border border-dashboard-accent" />
+              <span className="text-foreground font-semibold">Configurações</span>
+            </div>
+            <NavigationMenu />
+          </header>
          <div className="p-6">
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
              {[1, 2, 3, 4, 5, 6, 7].map((i) => (
@@ -155,29 +157,21 @@ import defaultLogo from "@/assets/logo.jpg";
   return (
     <div className="min-h-screen bg-dashboard-dark">
       <DocumentHead pageId="settings" />
-      <SharedHeader
-        pageTitle="Configurações"
-        pageId="settings"
-        lastUpdate={new Date()}
-      />
- 
+      
+      {/* Header similar to Auth page */}
+      <header className="bg-dashboard-card border-b border-dashboard-border p-4 flex justify-between items-center sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <img src={systemSetting?.logo_url || defaultLogo} alt="Logo" className="h-10 w-10 rounded-lg object-cover border border-dashboard-accent" />
+          <span className="text-foreground font-semibold">Configurações</span>
+        </div>
+        <NavigationMenu />
+      </header>
+
       <div className="p-6 space-y-6">
-        {/* Logo display at top */}
-        <div className="flex items-center gap-4 mb-4">
-          <Avatar className="h-12 w-12 rounded-lg border-2 border-dashboard-accent/50">
-            <AvatarImage
-              src={systemSetting?.logo_url || defaultLogo}
-              alt="Logo do Sistema"
-              className="object-cover"
-            />
-            <AvatarFallback className="rounded-lg bg-dashboard-border">
-              <ImageIcon className="h-6 w-6 text-muted-foreground" />
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">{systemSetting?.display_name || "Configurações"}</h1>
-            <p className="text-sm text-muted-foreground">Gerencie as configurações do sistema</p>
-          </div>
+        {/* Title and subtitle */}
+        <div className="mb-4">
+          <h1 className="text-xl font-bold text-foreground">{systemSetting?.display_name || "Relatórios"}</h1>
+          <p className="text-sm text-muted-foreground">Gerencie as configurações do sistema</p>
         </div>
 
         {/* System Settings Section */}

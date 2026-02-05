@@ -1,26 +1,24 @@
 import { useState, useEffect } from "react";
-import { DocumentHead } from "@/components/shared/DocumentHead";
-import { SharedHeader } from "@/components/shared/SharedHeader";
+ import { DocumentHead } from "@/components/shared/DocumentHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBiSettings } from "@/hooks/useBiSettings";
+import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { useRolesManagement, RoleWithPermissions, PagePermission as RolePagePermission, AdminPermission as RoleAdminPermission } from "@/hooks/useRolesManagement";
 import { useUsersManagement, UserWithRole } from "@/hooks/useUsersManagement";
 import { systemPages } from "@/data/authData";
 import { toast } from "sonner";
-import { Users, Shield, Plus, Pencil, Trash2, Globe, Loader2, Image as ImageIcon } from "lucide-react";
+import { Users, Shield, Plus, Pencil, Trash2, Globe, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import defaultLogo from "@/assets/logo.jpg";
+import { NavigationMenu } from "@/components/shared/NavigationMenu";
 
 interface PagePermissionForm {
   page_id: string;
@@ -49,8 +47,9 @@ const Admin = () => {
     loading: authLoading
   } = useAuth();
 
-  const { getSystemSetting } = useBiSettings();
-  const systemSetting = getSystemSetting();
+  const { getSystemLogo, getSystemName } = useBiSettingsContext();
+  const systemLogo = getSystemLogo();
+  const systemName = getSystemName();
 
   const { roles, loading: rolesLoading, createRole, updateRole, deleteRole, fetchRoles } = useRolesManagement();
   const { users, loading: usersLoading, createUser, updateUser, fetchUsers } = useUsersManagement();
@@ -308,7 +307,13 @@ const Admin = () => {
     return (
       <div className="min-h-screen bg-dashboard-dark">
          <DocumentHead pageId="admin" />
-        <SharedHeader pageTitle="Painel de Administração" pageId="admin" lastUpdate={lastUpdate} />
+        <header className="bg-dashboard-card border-b border-dashboard-border p-4 flex justify-between items-center sticky top-0 z-50">
+          <div className="flex items-center gap-3">
+            <img src={systemLogo} alt="Logo" className="h-10 w-10 rounded-lg object-cover border border-dashboard-accent" />
+            <span className="text-foreground font-semibold">Painel de Administração</span>
+          </div>
+          <NavigationMenu />
+        </header>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-dashboard-accent" />
         </div>
@@ -319,25 +324,21 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-dashboard-dark">
       <DocumentHead pageId="admin" />
-      <SharedHeader pageTitle="Painel de Administração" pageId="admin" lastUpdate={lastUpdate} />
+      
+      {/* Header similar to Auth page */}
+      <header className="bg-dashboard-card border-b border-dashboard-border p-4 flex justify-between items-center sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <img src={systemLogo} alt="Logo" className="h-10 w-10 rounded-lg object-cover border border-dashboard-accent" />
+          <span className="text-foreground font-semibold">Painel de Administração</span>
+        </div>
+        <NavigationMenu />
+      </header>
 
       <div className="p-6">
-        {/* Logo display at top */}
-        <div className="flex items-center gap-4 mb-6">
-          <Avatar className="h-12 w-12 rounded-lg border-2 border-dashboard-accent/50">
-            <AvatarImage
-              src={systemSetting?.logo_url || defaultLogo}
-              alt="Logo do Sistema"
-              className="object-cover"
-            />
-            <AvatarFallback className="rounded-lg bg-dashboard-border">
-              <ImageIcon className="h-6 w-6 text-muted-foreground" />
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">{systemSetting?.display_name || "Painel de Administração"}</h1>
-            <p className="text-sm text-muted-foreground">Gerencie usuários, perfis e acessos</p>
-          </div>
+        {/* Title and subtitle */}
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-foreground">{systemName}</h1>
+          <p className="text-sm text-muted-foreground">Gerencie usuários, perfis e acessos</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
