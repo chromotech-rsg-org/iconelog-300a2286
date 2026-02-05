@@ -2,6 +2,7 @@
  import { Expand } from "lucide-react";
  import { Button } from "@/components/ui/button";
 import { SharedHeader } from "@/components/shared/SharedHeader";
+ import { DocumentHead } from "@/components/shared/DocumentHead";
 import { StockDualKPICards } from "@/components/stock/StockDualKPICards";
 import { StockGroupPieChart } from "@/components/stock/StockGroupPieChart";
 import { StockValueBarChart } from "@/components/stock/StockValueBarChart";
@@ -165,6 +166,7 @@ const Estoque = () => {
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
+       <DocumentHead pageId="estoque" />
       <SharedHeader 
         pageId="estoque"
         lastUpdate={lastUpdate}
@@ -232,9 +234,11 @@ const Estoque = () => {
           matrizValor={matrizTotals.valor}
           matrizM3={matrizTotals.m3}
           matrizQtdeSKUs={matrizTotals.qtdeSKUs}
+           matrizKits={matrizTotals.kits}
           baseValor={baseTotals.valor}
           baseM3={baseTotals.m3}
           baseQtdeSKUs={baseTotals.qtdeSKUs}
+           baseKits={baseTotals.kits}
         />
 
         {/* Charts Row */}

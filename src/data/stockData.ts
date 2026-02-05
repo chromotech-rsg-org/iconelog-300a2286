@@ -271,6 +271,7 @@ export const calculateMatrizTotals = (items: SKUItem[]) => {
     valor: matrizItems.reduce((sum, item) => sum + (item.stockQuantity * item.unitPrice), 0),
     m3: matrizItems.reduce((sum, item) => sum + (item.stockQuantity * item.m3), 0),
     qtdeSKUs: matrizItems.length,
+     kits: matrizItems.reduce((sum, item) => sum + item.kitsQuantity, 0),
   };
 };
 
@@ -280,6 +281,7 @@ export const calculateBaseTotals = (items: SKUItem[]) => {
     valor: baseItems.reduce((sum, item) => sum + (item.stockQuantity * item.unitPrice), 0),
     m3: baseItems.reduce((sum, item) => sum + (item.stockQuantity * item.m3), 0),
     qtdeSKUs: baseItems.length,
+     kits: baseItems.reduce((sum, item) => sum + item.kitsQuantity, 0),
   };
 };
 

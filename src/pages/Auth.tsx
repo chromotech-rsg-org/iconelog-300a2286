@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+ import { DocumentHead } from "@/components/shared/DocumentHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+       <DocumentHead pageId="auth" />
       {/* Header with navigation menu for public pages */}
       <header className="bg-card border-b border-border p-4 flex justify-between items-center">
         <div className="flex items-center gap-3">

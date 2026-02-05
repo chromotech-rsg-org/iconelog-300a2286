@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+ import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { KPICards } from "@/components/dashboard/KPICards";
 import { RegionalBarChart } from "@/components/dashboard/RegionalBarChart";
@@ -201,6 +202,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+       <DocumentHead pageId="minutas" />
       {/* Header with logo, navigation, and filters */}
       <SharedHeader
         pageTitle="Minutas Expedidas x Baixadas"

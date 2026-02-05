@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+ import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -291,6 +292,7 @@ const Admin = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-dashboard-dark">
+         <DocumentHead pageId="admin" />
         <SharedHeader pageTitle="Painel de Administração" pageId="admin" lastUpdate={lastUpdate} />
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-dashboard-accent" />
@@ -301,6 +303,7 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
+       <DocumentHead pageId="admin" />
       <SharedHeader pageTitle="Painel de Administração" pageId="admin" lastUpdate={lastUpdate} />
 
       <div className="p-6">

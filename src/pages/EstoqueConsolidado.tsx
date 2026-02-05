@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+ import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -156,6 +157,7 @@ const EstoqueConsolidado = () => {
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
+       <DocumentHead pageId="estoque-consolidado" />
       <SharedHeader
         pageId="estoque-consolidado"
         lastUpdate={lastUpdate}
