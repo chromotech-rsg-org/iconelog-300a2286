@@ -1,5 +1,5 @@
  import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
- import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
  import { formatCurrency } from "@/data/mockData";
  
  const COLORS = ['hsl(45, 100%, 50%)', 'hsl(217, 91%, 60%)', 'hsl(25, 95%, 53%)', 'hsl(142, 76%, 36%)'];
@@ -15,6 +15,9 @@
    selectedGrupo,
    onGrupoClick,
  }: StockGroupPieChartProps) => {
+   // Find the index of the selected item to preserve its color
+   const selectedIndex = selectedGrupo ? data.findIndex(d => d.name === selectedGrupo) : -1;
+ 
    return (
      <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-dashboard-accent' : ''}`}>
        <CardHeader className="pb-2">
@@ -35,8 +38,8 @@
                {data.map((entry, index) => (
                  <Cell 
                    key={`cell-${index}`} 
-                   fill={COLORS[index % COLORS.length]} 
-                   opacity={selectedGrupo && selectedGrupo !== entry.name ? 0.3 : 1}
+                   fill={selectedGrupo === entry.name ? COLORS[index % COLORS.length] : (selectedGrupo ? 'hsl(0, 0%, 30%)' : COLORS[index % COLORS.length])} 
+                   opacity={1}
                    stroke={selectedGrupo === entry.name ? '#fff' : 'none'}
                    strokeWidth={2}
                  />

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+ import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -157,6 +158,7 @@ const Analitico = () => {
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
+       <DocumentHead pageId="analitico" />
       <SharedHeader
         pageId="analitico"
         lastUpdate={lastUpdate}

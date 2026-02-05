@@ -34,8 +34,8 @@
                {data.map((entry, index) => (
                  <Cell 
                    key={`cell-${index}`} 
-                   fill={COLORS[index % COLORS.length]} 
-                   opacity={selectedTempo && selectedTempo !== entry.name ? 0.3 : 1}
+                   fill={selectedTempo === entry.name ? COLORS[index % COLORS.length] : (selectedTempo ? 'hsl(0, 0%, 30%)' : COLORS[index % COLORS.length])} 
+                   opacity={1}
                    stroke={selectedTempo === entry.name ? '#fff' : 'none'}
                    strokeWidth={2}
                  />

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+  import { DocumentHead } from "@/components/shared/DocumentHead";
  import { SharedHeader } from "@/components/shared/SharedHeader";
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
  import { Button } from "@/components/ui/button";
@@ -128,6 +129,7 @@ import { Upload, Save, X, Image as ImageIcon, Settings as SettingsIcon, Building
    if (authLoading || loading) {
      return (
        <div className="min-h-screen bg-dashboard-dark">
+       <DocumentHead pageId="settings" />
          <SharedHeader
            pageTitle="Configurações"
            pageId="settings"

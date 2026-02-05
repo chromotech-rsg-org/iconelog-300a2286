@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+ import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { EntregasKPICards } from "@/components/entregas/EntregasKPICards";
 import { ProgressBars } from "@/components/entregas/ProgressBars";
@@ -128,6 +129,7 @@ const Entregas = () => {
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
+       <DocumentHead pageId="entregas" />
       <SharedHeader
         pageId="entregas"
         lastUpdate={lastUpdate}
