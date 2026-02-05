@@ -36,6 +36,10 @@ export interface PublicAccessPermission {
   editar: boolean;
 }
 
+export interface PainelControlePermission {
+  ver: boolean;
+}
+
 export const useSupabaseAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -46,10 +50,12 @@ export const useSupabaseAuth = () => {
     usuarios: AdminPermission;
     perfis: AdminPermission;
     acesso_publico: PublicAccessPermission;
+    painel_controle: PainelControlePermission;
   }>({
     usuarios: { ver: false, editar: false, criar: false, excluir: false },
     perfis: { ver: false, editar: false, criar: false, excluir: false },
     acesso_publico: { ver: false, editar: false },
+   painel_controle: { ver: false },
   });
   const [publicAccess, setPublicAccessState] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -126,6 +132,7 @@ export const useSupabaseAuth = () => {
         usuarios: { ver: false, editar: false, criar: false, excluir: false },
         perfis: { ver: false, editar: false, criar: false, excluir: false },
         acesso_publico: { ver: false, editar: false },
+     painel_controle: { ver: false },
       };
     }
 
@@ -140,6 +147,7 @@ export const useSupabaseAuth = () => {
         usuarios: { ver: false, editar: false, criar: false, excluir: false },
         perfis: { ver: false, editar: false, criar: false, excluir: false },
         acesso_publico: { ver: false, editar: false },
+     painel_controle: { ver: false },
       };
     }
 
@@ -148,6 +156,7 @@ export const useSupabaseAuth = () => {
       usuarios: { ver: false, editar: false, criar: false, excluir: false },
       perfis: { ver: false, editar: false, criar: false, excluir: false },
       acesso_publico: { ver: false, editar: false } as PublicAccessPermission,
+     painel_controle: { ver: false },
     };
 
     data?.forEach((p) => {
@@ -160,6 +169,8 @@ export const useSupabaseAuth = () => {
       } else if (section === "acesso_publico") {
         result.acesso_publico.ver = result.acesso_publico.ver || p.ver;
         result.acesso_publico.editar = result.acesso_publico.editar || p.editar;
+     } else if (section === "painel_controle") {
+       result.painel_controle.ver = result.painel_controle.ver || p.ver;
       }
     });
 
@@ -227,6 +238,7 @@ export const useSupabaseAuth = () => {
             usuarios: { ver: false, editar: false, criar: false, excluir: false },
             perfis: { ver: false, editar: false, criar: false, excluir: false },
             acesso_publico: { ver: false, editar: false },
+            painel_controle: { ver: false },
           });
         }
       }
@@ -347,17 +359,23 @@ export const useSupabaseAuth = () => {
     return publicAccess[pageId] === true;
   }, [publicAccess]);
 
-  const canViewAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico") => {
+  const canViewAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico" | "painelControle") => {
     if (section === "acessoPublico") {
       return adminPermissions.acesso_publico.ver;
     }
+   if (section === "painelControle") {
+     return adminPermissions.painel_controle.ver;
+   }
     return adminPermissions[section]?.ver ?? false;
   }, [adminPermissions]);
 
-  const canEditAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico") => {
+  const canEditAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico" | "painelControle") => {
     if (section === "acessoPublico") {
       return adminPermissions.acesso_publico.editar;
     }
+   if (section === "painelControle") {
+     return false; // painel_controle não tem editar
+   }
     return adminPermissions[section]?.editar ?? false;
   }, [adminPermissions]);
 

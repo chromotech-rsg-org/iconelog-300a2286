@@ -34,6 +34,7 @@ export interface RoleWithPermissions extends Role {
     usuarios: AdminPermission;
     perfis: AdminPermission;
     acesso_publico: AdminPermission;
+    painel_controle: AdminPermission;
   };
 }
 
@@ -90,6 +91,7 @@ export const useRolesManagement = () => {
         usuarios: roleAdminPerms.find((p) => p.permission_type === "usuarios") || { ...defaultAdminPerm, permission_type: "usuarios" },
         perfis: roleAdminPerms.find((p) => p.permission_type === "perfis") || { ...defaultAdminPerm, permission_type: "perfis" },
         acesso_publico: roleAdminPerms.find((p) => p.permission_type === "acesso_publico") || { ...defaultAdminPerm, permission_type: "acesso_publico" },
+        painel_controle: roleAdminPerms.find((p) => p.permission_type === "painel_controle") || { ...defaultAdminPerm, permission_type: "painel_controle" },
       };
 
       return {
@@ -115,6 +117,7 @@ export const useRolesManagement = () => {
       usuarios: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
       perfis: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
       acesso_publico: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
+      painel_controle: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
     }
   ) => {
     // Create role
@@ -153,6 +156,7 @@ export const useRolesManagement = () => {
       { role_id: roleId, permission_type: "usuarios", ...adminPermissions.usuarios },
       { role_id: roleId, permission_type: "perfis", ...adminPermissions.perfis },
       { role_id: roleId, permission_type: "acesso_publico", ...adminPermissions.acesso_publico },
+      { role_id: roleId, permission_type: "painel_controle", ...adminPermissions.painel_controle },
     ];
 
     const { error: adminPermsError } = await supabase
@@ -177,6 +181,7 @@ export const useRolesManagement = () => {
       usuarios: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
       perfis: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
       acesso_publico: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
+      painel_controle: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
     }
   ) => {
     // Update role
@@ -210,6 +215,7 @@ export const useRolesManagement = () => {
       { role_id: roleId, permission_type: "usuarios", ...adminPermissions.usuarios },
       { role_id: roleId, permission_type: "perfis", ...adminPermissions.perfis },
       { role_id: roleId, permission_type: "acesso_publico", ...adminPermissions.acesso_publico },
+      { role_id: roleId, permission_type: "painel_controle", ...adminPermissions.painel_controle },
     ];
 
     await supabase.from("admin_permissions").insert(adminPermsToInsert);
