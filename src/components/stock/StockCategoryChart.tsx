@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { cn } from "@/lib/utils";
 
 interface CategoryData {
   name: string;
@@ -8,6 +9,8 @@ interface CategoryData {
 
 interface StockCategoryChartProps {
   data: CategoryData[];
+  selectedCategory?: string | null;
+  onCategoryClick?: (category: string) => void;
 }
 
 const COLORS = [
@@ -20,12 +23,21 @@ const COLORS = [
   'hsl(180, 70%, 45%)',   // teal
 ];
 
-export const StockCategoryChart = ({ data }: StockCategoryChartProps) => {
+export const StockCategoryChart = ({ data, selectedCategory, onCategoryClick }: StockCategoryChartProps) => {
+  const handleClick = (entry: any) => {
+    if (onCategoryClick && entry?.name) {
+      onCategoryClick(entry.name);
+    }
+  };
+
   return (
-    <Card className="bg-dashboard-card border-dashboard-border">
+    <Card className={cn(
+      "bg-dashboard-card border-dashboard-border transition-all",
+      selectedCategory && "ring-2 ring-dashboard-accent"
+    )}>
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold text-foreground">
-          Estoque por Categoria
+          Estoque por Categoria {selectedCategory ? `(${selectedCategory})` : "(clique para filtrar)"}
         </CardTitle>
       </CardHeader>
       <CardContent className="h-[220px] p-2">
@@ -39,12 +51,16 @@ export const StockCategoryChart = ({ data }: StockCategoryChartProps) => {
               outerRadius={70}
               paddingAngle={2}
               dataKey="value"
+              onClick={handleClick}
+              style={{ cursor: onCategoryClick ? 'pointer' : 'default' }}
             >
-              {data.map((_, index) => (
+              {data.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
                   fill={COLORS[index % COLORS.length]}
-                  stroke="transparent"
+                  stroke={selectedCategory === entry.name ? '#fff' : 'transparent'}
+                  strokeWidth={selectedCategory === entry.name ? 2 : 0}
+                  opacity={selectedCategory && selectedCategory !== entry.name ? 0.4 : 1}
                 />
               ))}
             </Pie>

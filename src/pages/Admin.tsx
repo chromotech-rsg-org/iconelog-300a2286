@@ -46,14 +46,14 @@ const Admin = () => {
   } = useAuth();
 
   const { roles, loading: rolesLoading, createRole, updateRole, deleteRole, fetchRoles } = useRolesManagement();
-  const { users, loading: usersLoading, updateUser, fetchUsers } = useUsersManagement();
+  const { users, loading: usersLoading, createUser, updateUser, fetchUsers } = useUsersManagement();
 
   const [activeTab, setActiveTab] = useState("usuarios");
   
   // User dialog state
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
-  const [userForm, setUserForm] = useState({ nome: "", role_id: "" });
+  const [userForm, setUserForm] = useState({ nome: "", email: "", password: "", role_id: "" });
   
   // Profile dialog state
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
@@ -94,19 +94,32 @@ const Admin = () => {
   };
 
   // === USER HANDLERS ===
+  const handleOpenNewUser = () => {
+    setEditingUser(null);
+    setUserForm({ nome: "", email: "", password: "", role_id: "" });
+    setIsUserDialogOpen(true);
+  };
+
   const handleEditUser = (user: UserWithRole) => {
     setEditingUser(user);
-    setUserForm({ nome: user.nome, role_id: user.role_id || "" });
+    setUserForm({ nome: user.nome, email: user.email, password: "", role_id: user.role_id || "" });
     setIsUserDialogOpen(true);
   };
 
   const handleSaveUser = async () => {
-    if (!editingUser) return;
-    
-    await updateUser(editingUser.id, {
-      nome: userForm.nome,
-      role_id: userForm.role_id || undefined,
-    });
+    if (editingUser) {
+      await updateUser(editingUser.id, {
+        nome: userForm.nome,
+        role_id: userForm.role_id || undefined,
+      });
+    } else {
+      // Create new user
+      if (!userForm.email || !userForm.password || !userForm.nome) {
+        toast.error("Nome, email e senha são obrigatórios");
+        return;
+      }
+      await createUser(userForm.email, userForm.password, userForm.nome, userForm.role_id || undefined);
+    }
     
     setIsUserDialogOpen(false);
     setEditingUser(null);
@@ -310,6 +323,11 @@ const Admin = () => {
               <Card className="bg-dashboard-card border-dashboard-border">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-base text-foreground">Gerenciar Usuários</CardTitle>
+                  {canCreateAdmin("usuarios") && (
+                    <Button size="sm" className="bg-dashboard-accent text-dashboard-dark" onClick={handleOpenNewUser}>
+                      <Plus className="h-4 w-4 mr-1" /> Novo Usuário
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -373,7 +391,7 @@ const Admin = () => {
               <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
                 <DialogContent className="bg-dashboard-card border-dashboard-border">
                   <DialogHeader>
-                    <DialogTitle className="text-foreground">Editar Usuário</DialogTitle>
+                    <DialogTitle className="text-foreground">{editingUser ? "Editar" : "Novo"} Usuário</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
@@ -384,6 +402,30 @@ const Admin = () => {
                         className="bg-dashboard-dark border-dashboard-border text-foreground" 
                       />
                     </div>
+                    {!editingUser && (
+                      <>
+                        <div>
+                          <Label className="text-foreground">Email</Label>
+                          <Input 
+                            type="email"
+                            value={userForm.email} 
+                            onChange={e => setUserForm({...userForm, email: e.target.value})} 
+                            className="bg-dashboard-dark border-dashboard-border text-foreground" 
+                            placeholder="usuario@email.com"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-foreground">Senha</Label>
+                          <Input 
+                            type="password"
+                            value={userForm.password} 
+                            onChange={e => setUserForm({...userForm, password: e.target.value})} 
+                            className="bg-dashboard-dark border-dashboard-border text-foreground" 
+                            placeholder="Mínimo 6 caracteres"
+                          />
+                        </div>
+                      </>
+                    )}
                     <div>
                       <Label className="text-foreground">Perfil</Label>
                       <Select value={userForm.role_id} onValueChange={v => setUserForm({...userForm, role_id: v})}>

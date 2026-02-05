@@ -15,6 +15,7 @@ export interface UserWithRole {
 export const useUsersManagement = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -132,6 +133,58 @@ export const useUsersManagement = () => {
     return true;
   }, [fetchUsers]);
 
+  const createUser = useCallback(async (
+    email: string,
+    password: string,
+    nome: string,
+    roleId?: string
+  ) => {
+    setIsCreating(true);
+    
+    try {
+      // Sign up the user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { nome }
+        }
+      });
+
+      if (authError) {
+        toast.error("Erro ao criar usuário: " + authError.message);
+        setIsCreating(false);
+        return false;
+      }
+
+      if (!authData.user) {
+        toast.error("Erro ao criar usuário: usuário não retornado");
+        setIsCreating(false);
+        return false;
+      }
+
+      // If role was provided, assign it
+      if (roleId) {
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({ user_id: authData.user.id, role_id: roleId });
+
+        if (roleError) {
+          console.error("Error assigning role:", roleError);
+        }
+      }
+
+      toast.success("Usuário criado com sucesso! Email de confirmação enviado.");
+      await fetchUsers();
+      setIsCreating(false);
+      return true;
+    } catch (error: any) {
+      toast.error("Erro ao criar usuário: " + error.message);
+      setIsCreating(false);
+      return false;
+    }
+  }, [fetchUsers]);
+
   const deleteUser = useCallback(async (userId: string) => {
     // Note: This only marks user as inactive, doesn't delete from auth
     const { error } = await supabase
@@ -152,7 +205,9 @@ export const useUsersManagement = () => {
   return {
     users,
     loading,
+    isCreating,
     fetchUsers,
+    createUser,
     updateUser,
     assignRole,
     deleteUser,
