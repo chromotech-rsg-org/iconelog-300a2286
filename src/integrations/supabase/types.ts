@@ -55,6 +55,33 @@ export type Database = {
           },
         ]
       }
+      bi_settings: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          logo_url: string | null
+          page_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id?: string
+          logo_url?: string | null
+          page_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          logo_url?: string | null
+          page_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       page_permissions: {
         Row: {
           apenas_dev: boolean

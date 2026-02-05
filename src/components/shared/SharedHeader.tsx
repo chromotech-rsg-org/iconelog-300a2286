@@ -1,4 +1,5 @@
-import { Clock, RotateCcw, Download, RefreshCw, ChevronDown } from "lucide-react";
+ import { Clock, RotateCcw, Download, RefreshCw, ChevronDown } from "lucide-react";
+ import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -9,10 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { months, years, regions } from "@/data/mockData";
 import { NavigationMenu } from "./NavigationMenu";
 import { useAuth } from "@/contexts/AuthContext";
-import logo from "@/assets/logo.jpg";
 
-interface SharedHeaderProps {
-  pageTitle: string;
+ interface SharedHeaderProps {
+   pageTitle?: string;
   pageId: string;
   lastUpdate: Date;
   // Filtros opcionais
@@ -30,23 +30,28 @@ interface SharedHeaderProps {
   hasActiveFilters?: boolean;
 }
 
-export const SharedHeader = ({
-  pageTitle,
-  pageId,
-  lastUpdate,
-  showFilters = false,
-  selectedMonths = [],
-  selectedYears = [],
-  selectedRegions = [],
-  onMonthsChange,
-  onYearsChange,
-  onRegionsChange,
-  onClearAllFilters,
-  onExportExcel,
-  onRefreshData,
-  hasActiveFilters = false,
-}: SharedHeaderProps) => {
+ export const SharedHeader = ({
+   pageTitle: propPageTitle,
+   pageId,
+   lastUpdate,
+   showFilters = false,
+   selectedMonths = [],
+   selectedYears = [],
+   selectedRegions = [],
+   onMonthsChange,
+   onYearsChange,
+   onRegionsChange,
+   onClearAllFilters,
+   onExportExcel,
+   onRefreshData,
+   hasActiveFilters = false,
+ }: SharedHeaderProps) => {
   const { canExport, canRefresh, isAuthenticated } = useAuth();
+   const { getPageTitle, getPageLogo } = useBiSettingsContext();
+   
+   // Use dynamic title from settings, fallback to prop
+   const pageTitle = propPageTitle || getPageTitle(pageId);
+   const pageLogo = getPageLogo(pageId);
   
   // Se não está autenticado, permite ações por padrão
   const showExport = !isAuthenticated || canExport(pageId);
@@ -119,13 +124,13 @@ export const SharedHeader = ({
   };
 
   return (
-    <header className="w-full border-b border-dashboard-border bg-dashboard-card">
+     <header className="w-full border-b border-dashboard-border bg-dashboard-card sticky top-0 z-40">
       {/* Top bar with logo, page title, update time, and navigation */}
       <div className="flex items-center justify-between px-6 py-4">
         {/* Logo and Page Title */}
         <div className="flex items-center gap-4">
           <img 
-            src={logo} 
+             src={pageLogo} 
             alt="Logo" 
             className="h-12 w-12 rounded-lg object-cover border-2 border-dashboard-accent"
           />
