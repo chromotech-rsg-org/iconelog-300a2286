@@ -1,23 +1,26 @@
 import { useState, useEffect } from "react";
- import { DocumentHead } from "@/components/shared/DocumentHead";
+import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBiSettings } from "@/hooks/useBiSettings";
 import { useRolesManagement, RoleWithPermissions, PagePermission as RolePagePermission, AdminPermission as RoleAdminPermission } from "@/hooks/useRolesManagement";
 import { useUsersManagement, UserWithRole } from "@/hooks/useUsersManagement";
 import { systemPages } from "@/data/authData";
 import { toast } from "sonner";
-import { Users, Shield, Plus, Pencil, Trash2, Globe, Loader2 } from "lucide-react";
+import { Users, Shield, Plus, Pencil, Trash2, Globe, Loader2, Image as ImageIcon } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import defaultLogo from "@/assets/logo.jpg";
 
 interface PagePermissionForm {
   page_id: string;
@@ -45,6 +48,9 @@ const Admin = () => {
     canDeleteAdmin,
     loading: authLoading
   } = useAuth();
+
+  const { getSystemSetting } = useBiSettings();
+  const systemSetting = getSystemSetting();
 
   const { roles, loading: rolesLoading, createRole, updateRole, deleteRole, fetchRoles } = useRolesManagement();
   const { users, loading: usersLoading, createUser, updateUser, fetchUsers } = useUsersManagement();
@@ -312,10 +318,28 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
-       <DocumentHead pageId="admin" />
+      <DocumentHead pageId="admin" />
       <SharedHeader pageTitle="Painel de Administração" pageId="admin" lastUpdate={lastUpdate} />
 
       <div className="p-6">
+        {/* Logo display at top */}
+        <div className="flex items-center gap-4 mb-6">
+          <Avatar className="h-12 w-12 rounded-lg border-2 border-dashboard-accent/50">
+            <AvatarImage
+              src={systemSetting?.logo_url || defaultLogo}
+              alt="Logo do Sistema"
+              className="object-cover"
+            />
+            <AvatarFallback className="rounded-lg bg-dashboard-border">
+              <ImageIcon className="h-6 w-6 text-muted-foreground" />
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">{systemSetting?.display_name || "Painel de Administração"}</h1>
+            <p className="text-sm text-muted-foreground">Gerencie usuários, perfis e acessos</p>
+          </div>
+        </div>
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-dashboard-card border border-dashboard-border">
             {availableTabs.map(tab => (
@@ -523,11 +547,12 @@ const Admin = () => {
 
               {/* Profile Dialog */}
               <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
-                <DialogContent className="bg-dashboard-card border-dashboard-border max-w-5xl max-h-[90vh]">
+                <DialogContent className="bg-dashboard-card border-dashboard-border max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
                   <DialogHeader>
                     <DialogTitle className="text-foreground">{editingRole ? "Editar" : "Novo"} Perfil</DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-4">
+                  <ScrollArea className="flex-1 pr-4">
+                    <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label className="text-foreground">Nome do Perfil</Label>
@@ -706,7 +731,8 @@ const Admin = () => {
                         </Table>
                       </div>
                     </div>
-                  </div>
+                    </div>
+                  </ScrollArea>
                   <DialogFooter className="gap-2">
                     <Button variant="outline" onClick={() => setIsProfileDialogOpen(false)} className="border-dashboard-border">
                       Cancelar

@@ -1,7 +1,6 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeliveryData } from "@/data/entregasData";
 import { formatNumber } from "@/data/mockData";
-import { MapPin } from "lucide-react";
 
 interface RegionalCardsProps {
   data: DeliveryData[];
@@ -10,61 +9,61 @@ interface RegionalCardsProps {
 }
 
 export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: RegionalCardsProps) => {
+  // Calculate total geral
+  const totalGeral = data.reduce((sum, item) => sum + item.entregaTotal + item.reposicaoTotal, 0);
+  
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-      {data.map((item) => {
-        const entregaPercent = (item.entregaFinalizado / item.entregaTotal) * 100;
-        const reposicaoPercent = (item.reposicaoFinalizado / item.reposicaoTotal) * 100;
-        const isSelected = selectedRegional === item.regional;
-        
-        return (
-          <Card 
-            key={item.id} 
-            className={`bg-dashboard-card border-dashboard-border hover:border-dashboard-accent/50 transition-all cursor-pointer ${isSelected ? 'ring-2 ring-dashboard-accent border-dashboard-accent' : ''}`}
-            onClick={() => onRegionalClick?.(item.regional)}
-          >
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2 mb-3">
-                <MapPin className={`h-4 w-4 ${isSelected ? 'text-dashboard-accent' : 'text-muted-foreground'}`} />
-                <span className={`text-sm font-medium truncate ${isSelected ? 'text-dashboard-accent' : 'text-foreground'}`}>{item.regional}</span>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground">Entrega</span>
-                  <span className="text-xs font-medium text-green-500">{entregaPercent.toFixed(0)}%</span>
+    <Card className="bg-dashboard-card border-dashboard-border">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-bold text-dashboard-accent uppercase tracking-wide">
+          TOTAL DE PEDIDOS POR REGIÃO
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {data.map((item) => {
+            const total = item.entregaTotal + item.reposicaoTotal;
+            const finalizados = item.entregaFinalizado + item.reposicaoFinalizado;
+            const emTransito = item.entregaEmTransito + item.reposicaoEmTransito;
+            const percentFinalizado = total > 0 ? (finalizados / total) * 100 : 0;
+            const isSelected = selectedRegional === item.regional;
+            
+            return (
+              <div 
+                key={item.id} 
+                className={`p-3 rounded-md cursor-pointer transition-all hover:bg-dashboard-border/50 ${isSelected ? 'bg-dashboard-accent/10 ring-1 ring-dashboard-accent' : ''}`}
+                onClick={() => onRegionalClick?.(item.regional)}
+              >
+                <div className={`text-xs font-bold uppercase mb-1 ${isSelected ? 'text-dashboard-accent' : 'text-foreground'}`}>
+                  {item.regional}
                 </div>
-                <div className="h-1.5 bg-dashboard-border rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-green-500 rounded-full transition-all"
-                    style={{ width: `${entregaPercent}%` }}
-                  />
+                <div className="flex items-baseline gap-1 mb-2">
+                  <span className="text-2xl font-bold text-dashboard-accent">{formatNumber(total)}</span>
+                  <span className="text-xs text-muted-foreground">pedidos</span>
                 </div>
                 
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground">Reposição</span>
-                  <span className="text-xs font-medium text-dashboard-accent">{reposicaoPercent.toFixed(0)}%</span>
-                </div>
-                <div className="h-1.5 bg-dashboard-border rounded-full overflow-hidden">
+                {/* Progress bar - only finalizados */}
+                <div className="h-1.5 bg-dashboard-border rounded-full overflow-hidden mb-2">
                   <div 
                     className="h-full bg-dashboard-accent rounded-full transition-all"
-                    style={{ width: `${reposicaoPercent}%` }}
+                    style={{ width: `${percentFinalizado}%` }}
                   />
                 </div>
                 
-                <div className="pt-2 border-t border-dashboard-border">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Total</span>
-                    <span className="text-foreground font-medium">
-                      {formatNumber(item.entregaTotal + item.reposicaoTotal)}
-                    </span>
-                  </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Finalizados: {formatNumber(finalizados)} • Em trânsito: {formatNumber(emTransito)}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
+            );
+          })}
+        </div>
+        
+        {/* Total Geral */}
+        <div className="flex justify-between items-center mt-4 pt-3 border-t border-dashboard-border">
+          <span className="text-sm text-muted-foreground">Total Geral</span>
+          <span className="text-xl font-bold text-dashboard-accent">{formatNumber(totalGeral)}</span>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

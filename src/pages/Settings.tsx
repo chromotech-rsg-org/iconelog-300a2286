@@ -1,19 +1,19 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-  import { DocumentHead } from "@/components/shared/DocumentHead";
- import { SharedHeader } from "@/components/shared/SharedHeader";
- import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
- import { Button } from "@/components/ui/button";
- import { Input } from "@/components/ui/input";
- import { Label } from "@/components/ui/label";
- import { Badge } from "@/components/ui/badge";
- import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
- import { Skeleton } from "@/components/ui/skeleton";
-import { Upload, Save, X, Image as ImageIcon, Settings as SettingsIcon, Building2, LayoutGrid } from "lucide-react";
- import { useBiSettings, BiSetting } from "@/hooks/useBiSettings";
- import { useAuth } from "@/contexts/AuthContext";
- import { Navigate } from "react-router-dom";
- import { toast } from "sonner";
- import defaultLogo from "@/assets/logo.jpg";
+import { DocumentHead } from "@/components/shared/DocumentHead";
+import { SharedHeader } from "@/components/shared/SharedHeader";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid } from "lucide-react";
+import { useBiSettings } from "@/hooks/useBiSettings";
+import { useAuth } from "@/contexts/AuthContext";
+import { Navigate } from "react-router-dom";
+import { toast } from "sonner";
+import defaultLogo from "@/assets/logo.jpg";
  
  const Settings = () => {
    const { isDeveloper, loading: authLoading } = useAuth();
@@ -152,15 +152,34 @@ import { Upload, Save, X, Image as ImageIcon, Settings as SettingsIcon, Building
      );
    }
  
-   return (
-     <div className="min-h-screen bg-dashboard-dark">
-       <SharedHeader
-         pageTitle="Configurações"
-         pageId="settings"
-         lastUpdate={new Date()}
-       />
+  return (
+    <div className="min-h-screen bg-dashboard-dark">
+      <DocumentHead pageId="settings" />
+      <SharedHeader
+        pageTitle="Configurações"
+        pageId="settings"
+        lastUpdate={new Date()}
+      />
  
-       <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6">
+        {/* Logo display at top */}
+        <div className="flex items-center gap-4 mb-4">
+          <Avatar className="h-12 w-12 rounded-lg border-2 border-dashboard-accent/50">
+            <AvatarImage
+              src={systemSetting?.logo_url || defaultLogo}
+              alt="Logo do Sistema"
+              className="object-cover"
+            />
+            <AvatarFallback className="rounded-lg bg-dashboard-border">
+              <ImageIcon className="h-6 w-6 text-muted-foreground" />
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">{systemSetting?.display_name || "Configurações"}</h1>
+            <p className="text-sm text-muted-foreground">Gerencie as configurações do sistema</p>
+          </div>
+        </div>
+
         {/* System Settings Section */}
         <Card className="bg-dashboard-card border-dashboard-accent/30">
           <CardHeader className="pb-3">

@@ -4,6 +4,7 @@ import { SharedHeader } from "@/components/shared/SharedHeader";
 import { EntregasKPICards } from "@/components/entregas/EntregasKPICards";
 import { ProgressBars } from "@/components/entregas/ProgressBars";
 import { RegionalCards } from "@/components/entregas/RegionalCards";
+import { EntregasTables } from "@/components/entregas/EntregasTables";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -190,14 +191,26 @@ const Entregas = () => {
         {/* Progress Bars */}
         <ProgressBars
           entregaFinalizado={totals.entregaFinalizado}
+          entregaEmTransito={totals.entregaEmTransito}
           entregaTotal={totals.entregaTotal}
           reposicaoFinalizado={totals.reposicaoFinalizado}
+          reposicaoEmTransito={totals.reposicaoEmTransito}
           reposicaoTotal={totals.reposicaoTotal}
+          onEntregaClick={() => handleTipoClick("Entrega")}
+          onReposicaoClick={() => handleTipoClick("Reposição")}
+          selectedTipo={selectedTipo}
         />
 
         {/* Regional Cards - clickable */}
         <RegionalCards 
           data={filteredDeliveryData} 
+          onRegionalClick={handleRegionalClick}
+          selectedRegional={selectedRegional}
+        />
+
+        {/* Entrega e Reposição Tables */}
+        <EntregasTables 
+          data={filteredDeliveryData}
           onRegionalClick={handleRegionalClick}
           selectedRegional={selectedRegional}
         />
