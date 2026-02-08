@@ -85,6 +85,33 @@ export type Database = {
         }
         Relationships: []
       }
+      city_regional_mapping: {
+        Row: {
+          cidade: string
+          created_at: string
+          id: string
+          regional: string
+          uf: string
+          updated_at: string
+        }
+        Insert: {
+          cidade: string
+          created_at?: string
+          id?: string
+          regional: string
+          uf: string
+          updated_at?: string
+        }
+        Update: {
+          cidade?: string
+          created_at?: string
+          id?: string
+          regional?: string
+          uf?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       page_permissions: {
         Row: {
           apenas_dev: boolean
