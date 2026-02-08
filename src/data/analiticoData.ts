@@ -26,6 +26,7 @@ export interface AnaliticoRegional {
 
 export const subAbas = [
   { id: "visao-geral", nome: "Visão Geral" },
+  { id: "mapeamento-cidades", nome: "Mapeamento Cidades" },
   { id: "entregas", nome: "Entregas" },
   { id: "devolucoes", nome: "Devoluções" },
   { id: "prazos", nome: "Prazos" },
