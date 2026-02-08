@@ -51,11 +51,13 @@ export const useSupabaseAuth = () => {
     perfis: AdminPermission;
     acesso_publico: PublicAccessPermission;
     painel_controle: PainelControlePermission;
+    cadastro_cidades: AdminPermission;
   }>({
     usuarios: { ver: false, editar: false, criar: false, excluir: false },
     perfis: { ver: false, editar: false, criar: false, excluir: false },
     acesso_publico: { ver: false, editar: false },
-   painel_controle: { ver: false },
+    painel_controle: { ver: false },
+    cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
   });
   const [publicAccess, setPublicAccessState] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -132,7 +134,8 @@ export const useSupabaseAuth = () => {
         usuarios: { ver: false, editar: false, criar: false, excluir: false },
         perfis: { ver: false, editar: false, criar: false, excluir: false },
         acesso_publico: { ver: false, editar: false },
-     painel_controle: { ver: false },
+        painel_controle: { ver: false },
+        cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
       };
     }
 
@@ -147,7 +150,8 @@ export const useSupabaseAuth = () => {
         usuarios: { ver: false, editar: false, criar: false, excluir: false },
         perfis: { ver: false, editar: false, criar: false, excluir: false },
         acesso_publico: { ver: false, editar: false },
-     painel_controle: { ver: false },
+        painel_controle: { ver: false },
+        cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
       };
     }
 
@@ -156,12 +160,13 @@ export const useSupabaseAuth = () => {
       usuarios: { ver: false, editar: false, criar: false, excluir: false },
       perfis: { ver: false, editar: false, criar: false, excluir: false },
       acesso_publico: { ver: false, editar: false } as PublicAccessPermission,
-     painel_controle: { ver: false },
+      painel_controle: { ver: false },
+      cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
     };
 
     data?.forEach((p) => {
       const section = p.permission_type as keyof typeof result;
-      if (section === "usuarios" || section === "perfis") {
+      if (section === "usuarios" || section === "perfis" || section === "cadastro_cidades") {
         result[section].ver = result[section].ver || p.ver;
         result[section].editar = result[section].editar || p.editar;
         result[section].criar = result[section].criar || p.criar;
@@ -169,8 +174,8 @@ export const useSupabaseAuth = () => {
       } else if (section === "acesso_publico") {
         result.acesso_publico.ver = result.acesso_publico.ver || p.ver;
         result.acesso_publico.editar = result.acesso_publico.editar || p.editar;
-     } else if (section === "painel_controle") {
-       result.painel_controle.ver = result.painel_controle.ver || p.ver;
+      } else if (section === "painel_controle") {
+        result.painel_controle.ver = result.painel_controle.ver || p.ver;
       }
     });
 
@@ -239,6 +244,7 @@ export const useSupabaseAuth = () => {
             perfis: { ver: false, editar: false, criar: false, excluir: false },
             acesso_publico: { ver: false, editar: false },
             painel_controle: { ver: false },
+            cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
           });
         }
       }
@@ -359,31 +365,43 @@ export const useSupabaseAuth = () => {
     return publicAccess[pageId] === true;
   }, [publicAccess]);
 
-  const canViewAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico" | "painelControle") => {
+  const canViewAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico" | "painelControle" | "cadastroCidades") => {
     if (section === "acessoPublico") {
       return adminPermissions.acesso_publico.ver;
     }
-   if (section === "painelControle") {
-     return adminPermissions.painel_controle.ver;
-   }
+    if (section === "painelControle") {
+      return adminPermissions.painel_controle.ver;
+    }
+    if (section === "cadastroCidades") {
+      return adminPermissions.cadastro_cidades.ver;
+    }
     return adminPermissions[section]?.ver ?? false;
   }, [adminPermissions]);
 
-  const canEditAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico" | "painelControle") => {
+  const canEditAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico" | "painelControle" | "cadastroCidades") => {
     if (section === "acessoPublico") {
       return adminPermissions.acesso_publico.editar;
     }
-   if (section === "painelControle") {
-     return false; // painel_controle não tem editar
-   }
+    if (section === "painelControle") {
+      return false;
+    }
+    if (section === "cadastroCidades") {
+      return adminPermissions.cadastro_cidades.editar;
+    }
     return adminPermissions[section]?.editar ?? false;
   }, [adminPermissions]);
 
-  const canCreateAdmin = useCallback((section: "usuarios" | "perfis") => {
+  const canCreateAdmin = useCallback((section: "usuarios" | "perfis" | "cadastroCidades") => {
+    if (section === "cadastroCidades") {
+      return adminPermissions.cadastro_cidades.criar;
+    }
     return adminPermissions[section]?.criar ?? false;
   }, [adminPermissions]);
 
-  const canDeleteAdmin = useCallback((section: "usuarios" | "perfis") => {
+  const canDeleteAdmin = useCallback((section: "usuarios" | "perfis" | "cadastroCidades") => {
+    if (section === "cadastroCidades") {
+      return adminPermissions.cadastro_cidades.excluir;
+    }
     return adminPermissions[section]?.excluir ?? false;
   }, [adminPermissions]);
 

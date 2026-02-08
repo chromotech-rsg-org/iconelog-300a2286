@@ -16,9 +16,10 @@ import { useRolesManagement, RoleWithPermissions, PagePermission as RolePagePerm
 import { useUsersManagement, UserWithRole } from "@/hooks/useUsersManagement";
 import { systemPages } from "@/data/authData";
 import { toast } from "sonner";
-import { Users, Shield, Plus, Pencil, Trash2, Globe, Loader2 } from "lucide-react";
+import { Users, Shield, Plus, Pencil, Trash2, Globe, Loader2, MapPin } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NavigationMenu } from "@/components/shared/NavigationMenu";
+import { CityMappingCRUD } from "@/components/admin/CityMappingCRUD";
 
 interface PagePermissionForm {
   page_id: string;
@@ -73,6 +74,7 @@ const Admin = () => {
       perfis: AdminPermissionForm;
       acesso_publico: AdminPermissionForm;
       painel_controle: AdminPermissionForm;
+      cadastro_cidades: AdminPermissionForm;
     };
   }>({
     nome: "",
@@ -83,6 +85,7 @@ const Admin = () => {
       perfis: { ver: false, editar: false, criar: false, excluir: false },
       acesso_publico: { ver: false, editar: false, criar: false, excluir: false },
       painel_controle: { ver: false, editar: false, criar: false, excluir: false },
+      cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
     }
   });
 
@@ -149,6 +152,7 @@ const Admin = () => {
         perfis: { ver: false, editar: false, criar: false, excluir: false },
         acesso_publico: { ver: false, editar: false, criar: false, excluir: false },
         painel_controle: { ver: false, editar: false, criar: false, excluir: false },
+        cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
       }
     });
     setIsProfileDialogOpen(true);
@@ -199,6 +203,12 @@ const Admin = () => {
         editar: false,
         criar: false,
         excluir: false,
+      },
+      cadastro_cidades: {
+        ver: role.adminPermissions.cadastro_cidades?.ver ?? false,
+        editar: role.adminPermissions.cadastro_cidades?.editar ?? false,
+        criar: role.adminPermissions.cadastro_cidades?.criar ?? false,
+        excluir: role.adminPermissions.cadastro_cidades?.excluir ?? false,
       },
       }
     });
@@ -261,7 +271,7 @@ const Admin = () => {
     }));
   };
 
-  const handleToggleAdminPermission = (section: "usuarios" | "perfis" | "acesso_publico" | "painel_controle", key: keyof AdminPermissionForm) => {
+  const handleToggleAdminPermission = (section: "usuarios" | "perfis" | "acesso_publico" | "painel_controle" | "cadastro_cidades", key: keyof AdminPermissionForm) => {
     setProfileForm(prev => ({
       ...prev,
       adminPermissions: {
@@ -292,6 +302,7 @@ const Admin = () => {
     { id: "usuarios", label: "Usuários", icon: Users, visible: canViewAdmin("usuarios") },
     { id: "perfis", label: "Perfis", icon: Shield, visible: canViewAdmin("perfis") },
     { id: "publico", label: "Acesso Público", icon: Globe, visible: canViewAdmin("acessoPublico") },
+    { id: "cidades", label: "Cadastro de Cidades", icon: MapPin, visible: canViewAdmin("cadastroCidades") },
   ].filter(tab => tab.visible);
 
   // Set default tab to first available
@@ -728,6 +739,33 @@ const Admin = () => {
                                 <span className="text-muted-foreground text-xs">-</span>
                               </TableCell>
                             </TableRow>
+                            <TableRow className="border-dashboard-border">
+                              <TableCell className="text-foreground text-sm">Cadastro de Cidades</TableCell>
+                              <TableCell className="text-center">
+                                <Switch 
+                                  checked={profileForm.adminPermissions.cadastro_cidades.ver} 
+                                  onCheckedChange={() => handleToggleAdminPermission("cadastro_cidades", "ver")} 
+                                />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Switch 
+                                  checked={profileForm.adminPermissions.cadastro_cidades.editar} 
+                                  onCheckedChange={() => handleToggleAdminPermission("cadastro_cidades", "editar")} 
+                                />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Switch 
+                                  checked={profileForm.adminPermissions.cadastro_cidades.criar} 
+                                  onCheckedChange={() => handleToggleAdminPermission("cadastro_cidades", "criar")} 
+                                />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Switch 
+                                  checked={profileForm.adminPermissions.cadastro_cidades.excluir} 
+                                  onCheckedChange={() => handleToggleAdminPermission("cadastro_cidades", "excluir")} 
+                                />
+                              </TableCell>
+                            </TableRow>
                           </TableBody>
                         </Table>
                       </div>
@@ -783,6 +821,17 @@ const Admin = () => {
                   </Table>
                 </CardContent>
               </Card>
+            </TabsContent>
+          )}
+
+          {/* === CADASTRO DE CIDADES TAB === */}
+          {canViewAdmin("cadastroCidades") && (
+            <TabsContent value="cidades" className="mt-4">
+              <CityMappingCRUD
+                canEdit={canEditAdmin("cadastroCidades")}
+                canCreate={canCreateAdmin("cadastroCidades")}
+                canDelete={canDeleteAdmin("cadastroCidades")}
+              />
             </TabsContent>
           )}
         </Tabs>

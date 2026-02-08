@@ -35,6 +35,7 @@ export interface RoleWithPermissions extends Role {
     perfis: AdminPermission;
     acesso_publico: AdminPermission;
     painel_controle: AdminPermission;
+    cadastro_cidades: AdminPermission;
   };
 }
 
@@ -92,6 +93,7 @@ export const useRolesManagement = () => {
         perfis: roleAdminPerms.find((p) => p.permission_type === "perfis") || { ...defaultAdminPerm, permission_type: "perfis" },
         acesso_publico: roleAdminPerms.find((p) => p.permission_type === "acesso_publico") || { ...defaultAdminPerm, permission_type: "acesso_publico" },
         painel_controle: roleAdminPerms.find((p) => p.permission_type === "painel_controle") || { ...defaultAdminPerm, permission_type: "painel_controle" },
+        cadastro_cidades: roleAdminPerms.find((p) => p.permission_type === "cadastro_cidades") || { ...defaultAdminPerm, permission_type: "cadastro_cidades" },
       };
 
       return {
@@ -118,6 +120,7 @@ export const useRolesManagement = () => {
       perfis: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
       acesso_publico: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
       painel_controle: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
+      cadastro_cidades: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
     }
   ) => {
     // Create role
@@ -157,6 +160,7 @@ export const useRolesManagement = () => {
       { role_id: roleId, permission_type: "perfis", ...adminPermissions.perfis },
       { role_id: roleId, permission_type: "acesso_publico", ...adminPermissions.acesso_publico },
       { role_id: roleId, permission_type: "painel_controle", ...adminPermissions.painel_controle },
+      { role_id: roleId, permission_type: "cadastro_cidades", ...adminPermissions.cadastro_cidades },
     ];
 
     const { error: adminPermsError } = await supabase
@@ -182,6 +186,7 @@ export const useRolesManagement = () => {
       perfis: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
       acesso_publico: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
       painel_controle: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
+      cadastro_cidades: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
     }
   ) => {
     // Update role
@@ -216,6 +221,7 @@ export const useRolesManagement = () => {
       { role_id: roleId, permission_type: "perfis", ...adminPermissions.perfis },
       { role_id: roleId, permission_type: "acesso_publico", ...adminPermissions.acesso_publico },
       { role_id: roleId, permission_type: "painel_controle", ...adminPermissions.painel_controle },
+      { role_id: roleId, permission_type: "cadastro_cidades", ...adminPermissions.cadastro_cidades },
     ];
 
     await supabase.from("admin_permissions").insert(adminPermsToInsert);

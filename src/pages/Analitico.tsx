@@ -36,6 +36,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { TrendingUp, TrendingDown, Minus, X } from "lucide-react";
+import { AnaliticoCityView } from "@/components/analitico/AnaliticoCityView";
 
 const Analitico = () => {
   const currentMonth = new Date().getMonth() + 1;
@@ -365,7 +366,11 @@ const Analitico = () => {
             </div>
           </TabsContent>
 
-          {subAbas.filter(a => a.id !== "visao-geral").map((aba) => (
+          <TabsContent value="mapeamento-cidades" className="mt-4">
+            <AnaliticoCityView />
+          </TabsContent>
+
+          {subAbas.filter(a => a.id !== "visao-geral" && a.id !== "mapeamento-cidades").map((aba) => (
             <TabsContent key={aba.id} value={aba.id} className="mt-4">
               <Card className="bg-dashboard-card border-dashboard-border">
                 <CardContent className="p-12 text-center">

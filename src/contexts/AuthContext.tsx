@@ -26,10 +26,10 @@ interface AuthContextType {
   canRefresh: (pageId: string) => boolean;
   isDevOnly: (pageId: string) => boolean;
   isPublicAccess: (pageId: string) => boolean;
-  canViewAdmin: (section: "usuarios" | "perfis" | "acessoPublico" | "painelControle") => boolean;
-  canEditAdmin: (section: "usuarios" | "perfis" | "acessoPublico" | "painelControle") => boolean;
-  canCreateAdmin: (section: "usuarios" | "perfis") => boolean;
-  canDeleteAdmin: (section: "usuarios" | "perfis") => boolean;
+  canViewAdmin: (section: "usuarios" | "perfis" | "acessoPublico" | "painelControle" | "cadastroCidades") => boolean;
+  canEditAdmin: (section: "usuarios" | "perfis" | "acessoPublico" | "painelControle" | "cadastroCidades") => boolean;
+  canCreateAdmin: (section: "usuarios" | "perfis" | "cadastroCidades") => boolean;
+  canDeleteAdmin: (section: "usuarios" | "perfis" | "cadastroCidades") => boolean;
   publicAccess: Record<string, boolean>;
   setPublicAccess: (pageId: string, enabled: boolean) => Promise<void>;
   refreshUserData: () => void;
