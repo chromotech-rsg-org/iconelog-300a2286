@@ -12,11 +12,15 @@ interface FollowupItem {
   [key: string]: any;
 }
 
+// Normalize string: remove accents, trim, uppercase
+const normalize = (str: string): string =>
+  str.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+
 // Resolve regional from city using the mapping table
 const resolveRegional = (cidade: string, mappings: CityRegionalMapping[]): string => {
   if (!cidade) return "Sem Regional";
-  const normalized = cidade.trim().toUpperCase();
-  const found = mappings.find(m => m.cidade.toUpperCase() === normalized);
+  const normalized = normalize(cidade);
+  const found = mappings.find(m => normalize(m.cidade) === normalized);
   return found?.regional || "Sem Regional";
 };
 
