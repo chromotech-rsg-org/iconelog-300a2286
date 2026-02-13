@@ -1,6 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DeliveryData } from "@/data/entregasData";
 import { formatNumber } from "@/data/mockData";
+
+interface DeliveryData {
+  id: string;
+  regional: string;
+  entregaFinalizado: number;
+  entregaEmTransito: number;
+  entregaTotal: number;
+  reposicaoFinalizado: number;
+  reposicaoEmTransito: number;
+  reposicaoTotal: number;
+}
 
 interface RegionalCardsProps {
   data: DeliveryData[];

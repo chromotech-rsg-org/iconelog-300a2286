@@ -8,7 +8,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { DeliveryData } from "@/data/entregasData";
+
+interface DeliveryData {
+  id: string;
+  regional: string;
+  entregaFinalizado: number;
+  entregaEmTransito: number;
+  entregaTotal: number;
+  reposicaoFinalizado: number;
+  reposicaoEmTransito: number;
+  reposicaoTotal: number;
+}
 import { formatNumber } from "@/data/mockData";
 
 interface EntregasTablesProps {
