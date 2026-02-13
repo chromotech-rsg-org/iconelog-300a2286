@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ApiProxyRequest {
@@ -16,9 +16,25 @@ interface ApiProxyResponse {
   execution_time_ms?: number;
 }
 
+interface IntegrationCache {
+  name: string;
+  base_url: string;
+}
+
 export const useApiProxy = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const integrationsCache = useRef<IntegrationCache[]>([]);
+
+  const loadIntegrations = useCallback(async () => {
+    if (integrationsCache.current.length > 0) return;
+    const { data } = await supabase
+      .from("api_integrations")
+      .select("name, base_url");
+    if (data) {
+      integrationsCache.current = data.filter(d => d.base_url) as IntegrationCache[];
+    }
+  }, []);
 
   const callApi = useCallback(async (request: ApiProxyRequest): Promise<ApiProxyResponse | null> => {
     setLoading(true);
@@ -43,17 +59,25 @@ export const useApiProxy = () => {
     }
   }, []);
 
-  // Convenience method for the main API
+  // Call API by integration name (e.g. "FOLLOWUP", "SALDOBASE")
+  // Uses the base_url from api_integrations table
   const callMainApi = useCallback(async (
-    query: string,
+    integrationName: string,
     codCli: string,
     extraBody?: Record<string, any>
   ): Promise<any[] | null> => {
+    await loadIntegrations();
+
+    const integration = integrationsCache.current.find(
+      i => i.name.toUpperCase() === integrationName.toUpperCase()
+    );
+
+    const url = integration?.base_url || `https://nfe9.websiteseguro.com/iconelog/public/v2/${integrationName}`;
+
     const response = await callApi({
-      url: "https://nfe9.websiteseguro.com/app_api_v3.php",
+      url,
       method: "POST",
       body: {
-        query,
         cod_cli: codCli,
         ...extraBody,
       },
@@ -64,11 +88,13 @@ export const useApiProxy = () => {
     }
 
     const body = response.body;
+    // Handle response format: { sucesso, ocorrencias: [...] }
+    if (body?.ocorrencias && Array.isArray(body.ocorrencias)) return body.ocorrencias;
     if (Array.isArray(body)) return body;
     if (body?.data && Array.isArray(body.data)) return body.data;
     if (body?.results && Array.isArray(body.results)) return body.results;
     return body ? [body] : null;
-  }, [callApi]);
+  }, [callApi, loadIntegrations]);
 
   return { callApi, callMainApi, loading, error };
 };
