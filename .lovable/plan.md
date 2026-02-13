@@ -1,64 +1,42 @@
 
-# Plano: Carregamento Instantaneo + Filtros do Banco + Feedback de Atualizacao
+# Fix: Erro 401 na Edge Function e Última Atualização
 
 ## Problemas Identificados
 
-1. **Carregamento lento**: O cache existe no banco (14.300 registros, ~777KB), mas o loading spinner bloqueia a tela inteira enquanto carrega. O `settingsLoading` tambem causa delay.
-2. **Filtros de mes/ano nao funcionam**: O cache salva todos os dados com uma unica chave (`followup_099`), sem distinguir mes/ano. Os dados tem o campo `dt_inicio` (ex: `2026/02/12`) que permite filtrar por mes/ano no client-side.
-3. **Sem feedback durante atualizacao**: Ao clicar em "Atualizar", nao ha indicacao visual do progresso.
+1. **Edge Function retorna 401**: O metodo `getClaims(token)` nao existe na versao padrao do `@supabase/supabase-js@2` importada via esm.sh. A chamada falha silenciosamente, e a funcao retorna "Unauthorized".
+2. **Ultima atualizacao nao persiste**: O upsert em `bi_last_update` e `bi_data_cache` tambem falha com 401 porque e feito via client-side e pode haver um problema de sessao expirada. Alem disso, o `lastUpdateAt` e atualizado localmente antes de confirmar que o save funcionou.
+3. **Sem logs de debug**: A edge function nao tem console.log para diagnosticar erros, dificultando a depuracao.
 
 ## Solucao
 
-### 1. Carregamento Instantaneo do Cache
+### 1. Corrigir autenticacao na Edge Function
 
-- Remover o loading spinner de tela cheia para o carregamento do cache
-- Mostrar os dados imediatamente assim que o cache for carregado, sem bloquear a renderizacao
-- Separar o estado `loading` (cache) do estado `refreshing` (API)
-- Se nao houver dados no cache, mostrar mensagem "Nenhum dado. Clique em Atualizar" ao inves de spinner
+Substituir `getClaims(token)` por `getUser(token)` que e o metodo padrao e funciona em todas as versoes do supabase-js:
 
-### 2. Filtros de Mes/Ano 100% Client-Side
+```typescript
+const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+if (userError || !user) {
+  console.error("Auth error:", userError?.message);
+  return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+}
+```
 
-- Adicionar filtragem por mes/ano nos metodos `getMinutasData()` e `getMinutasDailyData()` usando o campo `dt_inicio` dos dados cacheados
-- Passar `selectedMonths` e `selectedYears` como parametros para esses metodos
-- Os filtros operam instantaneamente sobre os dados ja carregados do banco, sem consultar a API
-- Ao mudar mes/ano, apenas recalcula os dados filtrados localmente
+### 2. Adicionar logs de debug na Edge Function
 
-### 3. Feedback Visual de Atualizacao com Etapas
+Adicionar `console.error` e `console.log` em pontos criticos para facilitar depuracao futura:
+- Log quando auth falha (com mensagem de erro)
+- Log da URL sendo chamada
+- Log de erros do fetch externo
 
-- Criar um componente `RefreshProgress` que mostra o progresso da atualizacao em etapas:
-  - "Solicitando dados da API..."
-  - "Recebendo dados do Followup... (X registros)"
-  - "Recebendo dados de Produtos..."
-  - "Salvando no banco..."
-  - "Concluido!"
-- Exibir como um toast/banner fixo durante a atualizacao, sem bloquear os dados ja exibidos
-- Os dados antigos continuam visiveis enquanto a atualizacao acontece em background
+### 3. Garantir persistencia da ultima atualizacao
 
-## Detalhes Tecnicos
+No hook `useFollowupData.ts`, so atualizar `lastUpdateAt` localmente apos confirmar que o upsert no banco funcionou (verificar o retorno do upsert).
 
-### Arquivo: `src/hooks/useFollowupData.ts`
+### 4. Redeploiar e testar
 
-- Adicionar estado `refreshing` separado de `loading`
-- Adicionar estado `refreshStage` para rastrear etapas ("requesting_followup", "receiving_followup", "requesting_produtos", "saving", "done")
-- Modificar `getMinutasData(months, years)` e `getMinutasDailyData(months, years)` para filtrar por `dt_inicio`:
-  ```
-  // Extrair mes/ano de dt_inicio (formato "2026/02/12")
-  const [y, m] = item.dt_inicio.split("/").map(Number);
-  if (!years.includes(y) || !months.includes(m)) return; // skip
-  ```
-- O `loadCache` nao ativa `loading` -- apenas carrega silenciosamente
-- O `fetchFollowup` ativa `refreshing` + `refreshStage` em vez de `loading`
+Apos as alteracoes, redeploiar a edge function e testar chamando-a diretamente para confirmar que o 401 foi resolvido.
 
-### Arquivo: `src/pages/Index.tsx`
+## Arquivos Modificados
 
-- Remover dependencia do `loading` para exibir spinner de tela cheia
-- Se `followupData` estiver vazio e nao estiver carregando cache, mostrar mensagem de "sem dados"
-- Passar `selectedMonths` e `selectedYears` para `getMinutasData` e `getMinutasDailyData`
-- Exibir componente de progresso quando `refreshing === true`
-- Os graficos continuam visiveis durante a atualizacao
-
-### Novo componente: `src/components/dashboard/RefreshProgress.tsx`
-
-- Barra/banner no topo mostrando etapa atual da atualizacao
-- Icone de spinner ao lado da etapa
-- Desaparece automaticamente quando concluido (com breve mensagem de sucesso)
+- `supabase/functions/api-proxy/index.ts` - Trocar getClaims por getUser, adicionar logs
+- `src/hooks/useFollowupData.ts` - Melhorar tratamento de erro no saveLastUpdate
