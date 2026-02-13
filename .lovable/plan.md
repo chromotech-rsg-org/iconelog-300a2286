@@ -1,164 +1,109 @@
 
-# Plano de Reestruturação Completa da Plataforma
+# Integrar API Real nos BIs: Minutas, B-Side Entregas e B-Side Estoque
 
-## Visao Geral
+## Resumo
 
-Este plano transforma a plataforma de um sistema com dados mock para um sistema totalmente conectado a APIs reais, com painel administrativo reestruturado com sidebar lateral, gestao de integrações, testes de API, e BIs configuráveis.
+Os hooks de dados reais (`useFollowupData`, `useEstoqueData`, `useApiProxy`) ja estao criados mas nao sao usados. As tres paginas ainda importam dados mock (`mockData.ts`, `entregasData.ts`, `stockData.ts`). Este plano conecta cada pagina aos dados reais via Edge Function `api-proxy`.
 
-Devido à complexidade (estimo ~15-20 arquivos novos/modificados e ~5 migrações de banco), o trabalho será implementado em 4 blocos sequenciais dentro desta mesma entrega.
-
----
-
-## Bloco 1: Reestruturação do Painel Administrativo
-
-### 1.1 - Layout com Sidebar Lateral
-- Remover o item "Configurações" do menu suspenso (NavigationMenu)
-- Criar a rota `/admin` com sidebar fixa à esquerda, no estilo da imagem de referência (fundo escuro, menus colapsáveis)
-- Menus da sidebar:
-  - **Usuarios** (existente)
-  - **Perfis** (existente)
-  - **Acesso Publico** (existente)
-  - **Cadastro de Regionais** (renomear de "Cadastro de Cidades")
-  - **Configuracoes** (colapsável, com sub-itens):
-    - Configurar BI (atual Settings, renomeado)
-    - Empresas / Clientes
-    - Integracao (tokens, variáveis, senhas)
-    - Testes de API
-    - Logs
-- Remover a rota `/settings` separada; todo o conteúdo passa para dentro do painel admin
-
-### 1.2 - Permissoes para Novos Menus
-- Atualizar a constraint `admin_permissions_permission_type_check` para incluir novos tipos:
-  - `configurar_bi` (antigo settings)
-  - `empresas_clientes`
-  - `integracao`
-  - `testes_api`
-  - `logs_api`
-- Atualizar `useRolesManagement`, `useSupabaseAuth`, `AuthContext` para suportar os novos tipos
-- Na edição de perfis (modal), adicionar toggles para cada novo tipo
-- Lógica: se o usuário tem permissão em ao menos 1 sub-item de "Configurações", mostra o menu pai; senão, esconde
+Cada pagina lera o `cod_cli` configurado em `bi_settings` para o respectivo `page_id`.
 
 ---
 
-## Bloco 2: Novas Funcionalidades Administrativas
+## Pagina 1: Minutas (`src/pages/Index.tsx`)
 
-### 2.1 - Configurar BI (renomear atual Settings)
-- Mover o conteúdo atual de `Settings.tsx` para um componente dentro do admin
-- Adicionar botao "Duplicar" em cada card de BI: ao duplicar, cria uma copia com novo page_id, permitindo editar imagem, titulo, nome da empresa, cod_cli
-- Adicionar campo `cod_cli` na tabela `bi_settings` para associar cada BI a um cliente
+### O que muda
+- Remover imports de `generateAllRegionalDailyData`, `calculateTotals` de `mockData.ts`
+- Importar `useFollowupData` e `useBiSettingsContext`
+- Ler `cod_cli` do `bi_settings` para `page_id = "minutas"`
+- No mount, chamar `fetchFollowup()` e `fetchProdutosDistribuidos()`
+- Substituir `barChartData` por `getMinutasData()`
+- Substituir `aggregatedDailyData` por `getMinutasDailyData()`
+- Usar `getTotalValue()` para exibir valor financeiro nos KPIs
+- Calcular `totalExpedidas` e `totalBaixadas` a partir dos dados reais
+- Manter todos os filtros interativos (dia, metrica, regiao) funcionando sobre os dados reais
+- Adicionar estado de loading e mensagem de erro
+- O botao "Atualizar" re-chama as APIs
 
-### 2.2 - Cadastro de Empresas/Clientes
-- Nova tabela `clients` no banco: `id`, `cod_cli` (codigo), `nome`, `descricao`, `ativo`
-- Seed com os dados fornecidos (PAY/EPAY, 099/99 FOOD, ICO/ICONE LOG GERAL, etc.)
-- CRUD completo na sidebar
-
-### 2.3 - Area de Integracao (Tokens/Variaveis)
-- Nova tabela `api_integrations`: `id`, `name`, `base_url`, `auth_type`, `auth_token`, `headers_json`, `created_at`
-- UI para cadastrar, editar e excluir variáveis de integração (tokens, URLs, senhas)
-- Os valores sensiveis são armazenados criptografados no banco
-
-### 2.4 - Testes de API (Postman interno)
-- Interface com: seletor de método (GET/POST/PUT/DELETE), campo URL, headers editáveis, body JSON editável
-- Botao "Enviar" que chama um edge function para proxiar a requisição (evitar CORS)
-- Exibir resposta: status code, headers, body formatado
-- Os endpoints da collection já vêm pré-cadastrados como templates
-
-### 2.5 - Logs de Testes
-- Nova tabela `api_test_logs`: `id`, `endpoint`, `method`, `request_body`, `response_status`, `response_body`, `created_at`, `user_id`
-- Cada teste salvo automaticamente
-- Listar logs com busca e filtros
-- Exportar em CSV, JSON, Excel e TXT
+### Componentes afetados
+- `KPICards` - recebe dados reais, sem mudanca de interface
+- `RegionalBarChart` - recebe dados reais, sem mudanca de interface
+- `RegionalLineCharts` - recebe dados reais, sem mudanca de interface
 
 ---
 
-## Bloco 3: Conexao dos BIs com APIs Reais
+## Pagina 2: B-Side Entregas (`src/pages/Entregas.tsx`)
 
-### 3.1 - Edge Function Proxy de API
-- Criar edge function `api-proxy` para fazer chamadas à API `nfe9.websiteseguro.com`
-- Recebe: endpoint, body, token (do banco de integrações)
-- Retorna: resposta da API
-- Isso resolve o problema de CORS
+### O que muda
+- Remover imports de `generateDeliveryData`, `generateDeliveryItems`, `calculateDeliveryTotals` de `entregasData.ts`
+- Importar `useFollowupData` e `useBiSettingsContext`
+- Ler `cod_cli` do `bi_settings` para `page_id = "entregas"`
+- No mount, chamar `fetchFollowup()`
+- Substituir `deliveryData` por `getEntregasData()` que ja retorna o formato `DeliveryData[]`
+- Remover a tabela "Ultimas Movimentacoes" (dados granulares mock) -- ou manter usando `followupData` raw filtrado
+- Calcular totals a partir do array retornado por `getEntregasData()`
+- Manter filtros de regional, tipo e status funcionando
+- Adicionar loading e erro
+- O botao "Atualizar" re-chama a API
 
-### 3.2 - Minutas (Followup + ProdutosDistribuidos)
-- Substituir dados mock por chamadas reais à API FOLLOWUP
-- Campos usados: `dt_expedicao`, `dt_baixa_minuta` para contabilizar expedidas x baixadas
-- Cruzar campo cidade da API com tabela `city_regional_mapping` para agrupar por regional
-- Gráfico esquerdo: totais por regional
-- Gráficos direita: evolução diária
-- Para valores em reais: chamar API PRODUTOSDISTRIBUIDOS, relacionar por numero do pedido, usar campo `vl_total`
-
-### 3.3 - B-Side Entregas (Followup)
-- Conectar à API FOLLOWUP
-- Usar campo `fl_status_real` para classificar Finalizado vs Em Trânsito
-- Filtrar campanhas:
-  - Entrega: "Kit restaurante" e "Positivação Kit"
-  - Reposição: "reposição Kit"
-  - Excluir `ds_tipo_servico = "Reentrega"` de tudo
-- Cruzar com `city_regional_mapping` para regionais
-- Manter layout atual
-
-### 3.4 - B-Side Estoque (Saldo Base)
-- Conectar à API SALDOBASE
-- Apenas 1 tabela: Matriz (BARUERI), sem gráficos
-- Foto maior na tabela; ao passar mouse, abre preview grande
-- Novas colunas: QTD última entrada, Data última entrada
-- Nova tabela admin `stock_kit_config`: configurar quantidade por kit por SKU
-- Nova tabela admin `stock_product_whitelist`: quais produtos aparecem no dash (cadastrar por código)
-- Produtos com estoque zerado ficam ocultos
-- Conectar à API RECEBIMENTOS para dados de última entrada
+### Componentes afetados
+- `EntregasKPICards` - sem mudanca de interface
+- `ProgressBars` - sem mudanca de interface
+- `RegionalCards` - precisa aceitar o novo formato (ja compativel com `DeliveryData`)
+- `EntregasTables` - precisa aceitar o novo formato (ja compativel com `DeliveryData`)
+- A tabela de "Ultimas Movimentacoes" sera alimentada por dados raw do Followup
 
 ---
 
-## Bloco 4: Configuracao Dinamica dos BIs
+## Pagina 3: B-Side Estoque (`src/pages/Estoque.tsx`)
 
-### 4.1 - Tabela de Configuracao de BI
-- Nova tabela `bi_chart_config`: `id`, `bi_page_id`, `chart_position`, `chart_type`, `api_endpoint`, `field_mappings_json`, `filters_json`, `aggregation_type`
-- Permitir que cada BI tenha seus gráficos configuráveis: qual API alimenta, quais campos usar, como agregar
-- UI na area "Configurar BI" para editar essas configurações
+### O que muda
+- Remover imports de `generateStockData`, `calculateMatrizTotals`, etc. de `stockData.ts`
+- Importar `useEstoqueData` e `useBiSettingsContext`
+- Ler `cod_cli` do `bi_settings` para `page_id = "estoque"`
+- No mount, chamar `fetchSaldoBase()` e `fetchRecebimentos()`
+- Substituir `stockData` por `stockItems` do hook (ja processado com whitelist e kits)
+- Layout simplificado: apenas tabela Matriz (Barueri), sem graficos, sem tabela Base
+- Remover os 4 graficos (PieChart, BarChart, TimePieChart, TimeBarChart)
+- Manter layout 3:1 com tabela + ProductDetailPanel
+- Usar `totals` do hook para KPIs (valor, m3, qtdeSKUs, kits)
+- Adaptar `StockLocationTables` ou criar versao simplificada com apenas Matriz
+- Adicionar colunas "Ult. Entrada Qtd" e "Ult. Entrada Data" na tabela
+- Foto maior com hover para preview
+- Adicionar loading e erro
+
+### Componentes afetados
+- `StockDualKPICards` - simplificar para single KPI (apenas Matriz)
+- `StockLocationTables` - adaptar para mostrar apenas Matriz com novas colunas
+- `ProductDetailPanel` - sem mudanca
+- Remover uso de `StockGroupPieChart`, `StockValueBarChart`, `StockTimePieChart`, `StockTimeBarChart`
 
 ---
 
-## Mudancas no Banco de Dados (Migracoes)
+## Detalhes Tecnicos
 
-1. Atualizar constraint de `admin_permissions` com novos tipos
-2. Adicionar campo `cod_cli` em `bi_settings`
-3. Criar tabela `clients`
-4. Criar tabela `api_integrations`
-5. Criar tabela `api_test_logs`
-6. Criar tabela `stock_kit_config`
-7. Criar tabela `stock_product_whitelist`
-8. Criar tabela `bi_chart_config`
-9. Renomear referências de "Cadastro de Cidades" para "Cadastro de Regionais"
+### Leitura do cod_cli
+Cada pagina usara o `useBiSettingsContext()` para buscar as settings do page_id e extrair o `cod_cli`:
+```text
+const { settings } = useBiSettingsContext();
+const biSetting = settings.find(s => s.page_id === "minutas");
+const codCli = biSetting?.cod_cli || "";
+```
 
-## Edge Functions
+### Fluxo de dados
+```text
+Pagina monta -> le cod_cli do bi_settings -> passa para useFollowupData(codCli) ou useEstoqueData(codCli) -> hook chama fetchFollowup/fetchSaldoBase -> useApiProxy chama Edge Function api-proxy -> Edge Function faz request para API externa -> retorna dados -> hook processa e retorna dados formatados -> pagina renderiza
+```
 
-1. `api-proxy`: proxy para chamadas à API externa (resolve CORS, centraliza autenticação)
+### Tratamento de Loading/Erro
+- Cada pagina exibira um skeleton/spinner enquanto `loading === true`
+- Se `error` existir, mostra alerta com a mensagem
+- Se `cod_cli` nao estiver configurado, mostra mensagem orientando o admin a configurar
 
-## Arquivos Principais Modificados/Criados
-
-- `src/pages/Admin.tsx` - reestruturar com sidebar
-- `src/pages/Settings.tsx` - remover (conteúdo migra para Admin)
-- `src/components/admin/AdminSidebar.tsx` - novo
-- `src/components/admin/ConfigurarBI.tsx` - novo (antigo Settings)
-- `src/components/admin/ClientsCRUD.tsx` - novo
-- `src/components/admin/IntegrationManager.tsx` - novo
-- `src/components/admin/ApiTester.tsx` - novo
-- `src/components/admin/ApiTestLogs.tsx` - novo
-- `src/components/admin/StockKitConfig.tsx` - novo
-- `src/components/admin/StockProductWhitelist.tsx` - novo
-- `src/components/shared/NavigationMenu.tsx` - remover link Settings
-- `src/App.tsx` - remover rota /settings
-- `src/hooks/useRolesManagement.ts` - novos tipos de permissão
-- `src/hooks/useSupabaseAuth.ts` - novos tipos de permissão
-- `src/contexts/AuthContext.tsx` - novos tipos de permissão
-- `src/pages/Index.tsx` - conectar à API real (Followup)
-- `src/pages/Estoque.tsx` - conectar à API real (Saldo Base)
-- `src/pages/Entregas.tsx` - conectar à API real (Followup)
-- `supabase/functions/api-proxy/index.ts` - novo
-
-## Observacoes Importantes
-
-- O token da API (`eyJ0eXA...`) será armazenado de forma segura na tabela `api_integrations`, acessível apenas via edge function
-- O `cod_cli` será configurável por empresa/BI
-- Todas as chamadas externas passam pelo edge function proxy para evitar expor tokens no frontend
-- O cadastro de cidades será renomeado para "Cadastro de Regionais" mantendo a mesma funcionalidade
+### Arquivos modificados
+1. `src/pages/Index.tsx` - conectar a useFollowupData
+2. `src/pages/Entregas.tsx` - conectar a useFollowupData
+3. `src/pages/Estoque.tsx` - conectar a useEstoqueData, simplificar layout
+4. `src/components/stock/StockLocationTables.tsx` - adicionar colunas de ultima entrada
+5. `src/components/stock/StockDualKPICards.tsx` - adaptar para single (apenas Matriz)
+6. `src/hooks/useBiSettings.ts` - garantir que `cod_cli` esta no type BiSetting
+7. `src/contexts/BiSettingsContext.tsx` - expor metodo para obter cod_cli por pageId
