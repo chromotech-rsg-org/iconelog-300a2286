@@ -121,7 +121,7 @@ export const useFollowupData = (codCli: string) => {
     const regionMap = new Map<string, { expedidas: number; baixadas: number }>();
 
     followupData.forEach(item => {
-      const cidade = item.ds_cidade || item.cidade || "";
+      const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
       const regional = resolveRegional(cidade, cityMappings);
 
       if (!regionMap.has(regional)) {
@@ -144,7 +144,7 @@ export const useFollowupData = (codCli: string) => {
     const regionDayMap = new Map<string, Map<number, { expedidas: number; baixadas: number }>>();
 
     followupData.forEach(item => {
-      const cidade = item.ds_cidade || item.cidade || "";
+      const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
       const regional = resolveRegional(cidade, cityMappings);
 
       // Parse day from dt_expedicao
@@ -190,7 +190,7 @@ export const useFollowupData = (codCli: string) => {
     }>();
 
     followupData.forEach(item => {
-      const cidade = item.ds_cidade || item.cidade || "";
+      const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
       const regional = resolveRegional(cidade, cityMappings);
       const tipoServico = (item.ds_tipo_servico || "").toLowerCase();
       const campanha = (item.ds_campanha || item.campanha || "").toLowerCase();
