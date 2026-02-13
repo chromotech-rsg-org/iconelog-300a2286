@@ -45,6 +45,7 @@ const Index = () => {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<"expedidas" | "baixadas" | null>(null);
+  const [selectedDateRange, setSelectedDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [isFiltering, startFilterTransition] = useTransition();
 
   // Sync lastUpdate from DB
@@ -139,6 +140,7 @@ const Index = () => {
       setSelectedRegions([]);
       setSelectedMonths(allMonthValues);
       setSelectedYears([currentYear]);
+      setSelectedDateRange({ from: undefined, to: undefined });
     });
   }, [currentMonth, currentYear]);
 
@@ -153,7 +155,7 @@ const Index = () => {
 
   const isDefaultMonthYear = selectedMonths.length === 12 &&
     selectedYears.length === 1 && selectedYears[0] === currentYear;
-  const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegions.length > 0 || !isDefaultMonthYear;
+  const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegions.length > 0 || !isDefaultMonthYear || !!selectedDateRange.from;
 
   const exportToExcel = useCallback(() => {
     const exportData = barChartData.map(region => ({
@@ -210,6 +212,8 @@ const Index = () => {
         onMonthsChange={(v) => startFilterTransition(() => setSelectedMonths(v))}
         onYearsChange={(v) => startFilterTransition(() => setSelectedYears(v))}
         onRegionsChange={(v) => startFilterTransition(() => setSelectedRegions(v))}
+        selectedDateRange={selectedDateRange}
+        onDateRangeChange={(range) => startFilterTransition(() => setSelectedDateRange(range))}
         onClearAllFilters={clearAllFilters}
         onExportExcel={exportToExcel}
         onRefreshData={handleRefreshData}
@@ -296,6 +300,7 @@ const Index = () => {
               data={sortedDailyData}
               selectedDay={selectedDay}
               selectedMetric={selectedMetric}
+              selectedMonths={selectedMonths}
               selectedRegion={selectedRegions.length === 1 ? selectedRegions[0] : "all"}
               onDayClick={handleDayClick}
               onRegionClick={handleRegionClick}

@@ -1,7 +1,11 @@
 import { useState, useCallback } from "react";
-import { Clock, RotateCcw, Download, RefreshCw, ChevronDown } from "lucide-react";
+import { Clock, RotateCcw, Download, RefreshCw, ChevronDown, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
  import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -34,6 +38,9 @@ import { supabase } from "@/integrations/supabase/client";
   onMonthsChange?: (months: number[]) => void;
   onYearsChange?: (years: number[]) => void;
   onRegionsChange?: (regions: string[]) => void;
+  // Date range filter
+  selectedDateRange?: { from: Date | undefined; to: Date | undefined };
+  onDateRangeChange?: (range: { from: Date | undefined; to: Date | undefined }) => void;
   // Dados para filtros dinâmicos
   followupData?: any[];
   cityMappings?: any[];
@@ -55,6 +62,8 @@ import { supabase } from "@/integrations/supabase/client";
     onMonthsChange,
     onYearsChange,
     onRegionsChange,
+    selectedDateRange,
+    onDateRangeChange,
     onClearAllFilters,
     onExportExcel,
     onRefreshData,
@@ -395,7 +404,61 @@ import { supabase } from "@/integrations/supabase/client";
             </PopoverContent>
           </Popover>
 
-          {/* Export Excel button */}
+          {/* Calendar date range filter */}
+          {onDateRangeChange && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-auto justify-start border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border",
+                    selectedDateRange?.from && "text-dashboard-accent border-dashboard-accent/50"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDateRange?.from ? (
+                    selectedDateRange.to ? (
+                      <>
+                        {format(selectedDateRange.from, "dd/MM", { locale: ptBR })} - {format(selectedDateRange.to, "dd/MM", { locale: ptBR })}
+                      </>
+                    ) : (
+                      format(selectedDateRange.from, "dd/MM/yyyy", { locale: ptBR })
+                    )
+                  ) : (
+                    <span className="text-muted-foreground">Período</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-dashboard-card border-dashboard-border z-50" align="start">
+                <Calendar
+                  mode="range"
+                  selected={selectedDateRange?.from ? { from: selectedDateRange.from, to: selectedDateRange.to } : undefined}
+                  onSelect={(range) => {
+                    onDateRangeChange({
+                      from: range?.from,
+                      to: range?.to,
+                    });
+                  }}
+                  numberOfMonths={2}
+                  locale={ptBR}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+                {selectedDateRange?.from && (
+                  <div className="p-2 border-t border-dashboard-border">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onDateRangeChange({ from: undefined, to: undefined })}
+                      className="w-full text-xs text-muted-foreground hover:text-dashboard-accent"
+                    >
+                      Limpar período
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
+
           {showExport && onExportExcel && (
             <Button
               variant="outline"

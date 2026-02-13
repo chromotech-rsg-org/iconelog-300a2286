@@ -16,6 +16,7 @@ interface RegionalLineChartsProps {
   data: RegionalDailyData[];
   selectedDay: number | null;
   selectedMetric: "expedidas" | "baixadas" | null;
+  selectedMonths: number[];
   selectedRegion: string;
   onDayClick: (day: number) => void;
   onRegionClick: (region: string) => void;
@@ -26,6 +27,7 @@ export const RegionalLineCharts = ({
   data, 
   selectedDay,
   selectedMetric,
+  selectedMonths,
   selectedRegion,
   onDayClick,
   onRegionClick,
@@ -51,6 +53,7 @@ export const RegionalLineCharts = ({
               index={index}
               selectedDay={selectedDay}
               selectedMetric={selectedMetric}
+              selectedMonths={selectedMonths}
               isSelected={selectedRegion === regionalData.region}
               onDayClick={onDayClick}
               onRegionClick={onRegionClick}

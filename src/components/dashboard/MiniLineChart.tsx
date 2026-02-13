@@ -21,6 +21,7 @@ interface MiniLineChartProps {
   index: number;
   selectedDay: number | null;
   selectedMetric: "expedidas" | "baixadas" | null;
+  selectedMonths: number[];
   isSelected: boolean;
   onDayClick: (day: number) => void;
   onRegionClick: (region: string) => void;
@@ -50,6 +51,7 @@ export const MiniLineChart = ({
   index, 
   selectedDay,
   selectedMetric,
+  selectedMonths,
   isSelected,
   onDayClick,
   onRegionClick,
@@ -94,18 +96,25 @@ export const MiniLineChart = ({
       <ResponsiveContainer width="100%" height={120}>
         <LineChart 
           data={data} 
-          margin={{ top: 5, right: 10, left: -20, bottom: 5 }}
+          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
         >
           <XAxis
             dataKey="day"
             stroke="#4a5568"
             tick={{ fill: '#a0aec0', fontSize: 9 }}
-            tickFormatter={(value) => value % 5 === 0 ? value : ''}
+            tickFormatter={(value) => `${value}/${String(selectedMonths?.[0] || '').padStart(2, '0')}`}
+            interval={data.length > 20 ? 4 : data.length > 10 ? 2 : 0}
           />
           <YAxis
             stroke="#4a5568"
             tick={{ fill: '#a0aec0', fontSize: 9 }}
-            tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+            tickFormatter={(value) => {
+              if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+              if (value >= 10000) return `${(value / 1000).toFixed(0)}k`;
+              if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+              return String(value);
+            }}
+            width={45}
           />
           <Tooltip content={<CustomTooltip />} />
           {selectedDay !== null && (

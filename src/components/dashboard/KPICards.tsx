@@ -1,5 +1,5 @@
 import { TrendingUp, TrendingDown } from "lucide-react";
-import { formatCurrency } from "@/data/mockData";
+import { formatNumber } from "@/data/mockData";
 
 interface KPICardsProps {
   totalExpedidas: number;
@@ -33,7 +33,7 @@ export const KPICards = ({
               Total Expedidas
             </p>
             <p className="mt-2 text-3xl font-bold text-dashboard-accent animate-fade-in">
-              {formatCurrency(totalExpedidas)}
+              {formatNumber(totalExpedidas)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Clique para filtrar
@@ -65,7 +65,7 @@ export const KPICards = ({
               Total Baixadas
             </p>
             <p className="mt-2 text-3xl font-bold text-dashboard-accent animate-fade-in">
-              {formatCurrency(totalBaixadas)}
+              {formatNumber(totalBaixadas)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Clique para filtrar
