@@ -28,16 +28,26 @@ export interface AdminPermission {
   excluir: boolean;
 }
 
+// All admin permission types in DB snake_case
+const ALL_ADMIN_TYPES = [
+  "usuarios", "perfis", "acesso_publico", "painel_controle", "cadastro_cidades",
+  "configurar_bi", "empresas_clientes", "integracao", "testes_api", "logs_api",
+];
+
 export interface RoleWithPermissions extends Role {
   pagePermissions: Record<string, PagePermission>;
-  adminPermissions: {
-    usuarios: AdminPermission;
-    perfis: AdminPermission;
-    acesso_publico: AdminPermission;
-    painel_controle: AdminPermission;
-    cadastro_cidades: AdminPermission;
-  };
+  adminPermissions: Record<string, AdminPermission>;
 }
+
+const defaultAdminPerm = (roleId: string, permType: string): AdminPermission => ({
+  id: undefined,
+  role_id: roleId,
+  permission_type: permType,
+  ver: false,
+  editar: false,
+  criar: false,
+  excluir: false,
+});
 
 export const useRolesManagement = () => {
   const [roles, setRoles] = useState<RoleWithPermissions[]>([]);
@@ -46,7 +56,6 @@ export const useRolesManagement = () => {
   const fetchRoles = useCallback(async () => {
     setLoading(true);
     
-    // Fetch roles
     const { data: rolesData, error: rolesError } = await supabase
       .from("roles")
       .select("*")
@@ -58,49 +67,23 @@ export const useRolesManagement = () => {
       return;
     }
 
-    // Fetch all page permissions
-    const { data: pagePermsData } = await supabase
-      .from("page_permissions")
-      .select("*");
+    const { data: pagePermsData } = await supabase.from("page_permissions").select("*");
+    const { data: adminPermsData } = await supabase.from("admin_permissions").select("*");
 
-    // Fetch all admin permissions
-    const { data: adminPermsData } = await supabase
-      .from("admin_permissions")
-      .select("*");
-
-    // Map roles with their permissions
     const rolesWithPerms: RoleWithPermissions[] = (rolesData || []).map((role) => {
       const rolePagePerms = (pagePermsData || []).filter((p) => p.role_id === role.id);
       const roleAdminPerms = (adminPermsData || []).filter((p) => p.role_id === role.id);
 
       const pagePermissions: Record<string, PagePermission> = {};
-      rolePagePerms.forEach((p) => {
-        pagePermissions[p.page_id] = p;
+      rolePagePerms.forEach((p) => { pagePermissions[p.page_id] = p; });
+
+      const adminPermissions: Record<string, AdminPermission> = {};
+      ALL_ADMIN_TYPES.forEach(type => {
+        adminPermissions[type] = roleAdminPerms.find((p) => p.permission_type === type) 
+          || defaultAdminPerm(role.id, type);
       });
 
-      const defaultAdminPerm = {
-        id: undefined,
-        role_id: role.id,
-        permission_type: "",
-        ver: false,
-        editar: false,
-        criar: false,
-        excluir: false,
-      };
-
-      const adminPermissions = {
-        usuarios: roleAdminPerms.find((p) => p.permission_type === "usuarios") || { ...defaultAdminPerm, permission_type: "usuarios" },
-        perfis: roleAdminPerms.find((p) => p.permission_type === "perfis") || { ...defaultAdminPerm, permission_type: "perfis" },
-        acesso_publico: roleAdminPerms.find((p) => p.permission_type === "acesso_publico") || { ...defaultAdminPerm, permission_type: "acesso_publico" },
-        painel_controle: roleAdminPerms.find((p) => p.permission_type === "painel_controle") || { ...defaultAdminPerm, permission_type: "painel_controle" },
-        cadastro_cidades: roleAdminPerms.find((p) => p.permission_type === "cadastro_cidades") || { ...defaultAdminPerm, permission_type: "cadastro_cidades" },
-      };
-
-      return {
-        ...role,
-        pagePermissions,
-        adminPermissions,
-      };
+      return { ...role, pagePermissions, adminPermissions };
     });
 
     setRoles(rolesWithPerms);
@@ -115,15 +98,8 @@ export const useRolesManagement = () => {
     nome: string,
     descricao: string | null,
     pagePermissions: Record<string, Omit<PagePermission, "id" | "role_id">>,
-    adminPermissions: {
-      usuarios: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
-      perfis: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
-      acesso_publico: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
-      painel_controle: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
-      cadastro_cidades: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
-    }
+    adminPermissions: Record<string, Omit<AdminPermission, "id" | "role_id" | "permission_type">>
   ) => {
-    // Create role
     const { data: roleData, error: roleError } = await supabase
       .from("roles")
       .insert({ nome, descricao })
@@ -137,7 +113,6 @@ export const useRolesManagement = () => {
 
     const roleId = roleData.id;
 
-    // Create page permissions
     const pagePermsToInsert = Object.entries(pagePermissions).map(([pageId, perm]) => ({
       role_id: roleId,
       page_id: pageId,
@@ -145,30 +120,17 @@ export const useRolesManagement = () => {
     }));
 
     if (pagePermsToInsert.length > 0) {
-      const { error: pagePermsError } = await supabase
-        .from("page_permissions")
-        .insert(pagePermsToInsert);
-
-      if (pagePermsError) {
-        console.error("Error creating page permissions:", pagePermsError);
-      }
+      await supabase.from("page_permissions").insert(pagePermsToInsert);
     }
 
-    // Create admin permissions
-    const adminPermsToInsert = [
-      { role_id: roleId, permission_type: "usuarios", ...adminPermissions.usuarios },
-      { role_id: roleId, permission_type: "perfis", ...adminPermissions.perfis },
-      { role_id: roleId, permission_type: "acesso_publico", ...adminPermissions.acesso_publico },
-      { role_id: roleId, permission_type: "painel_controle", ...adminPermissions.painel_controle },
-      { role_id: roleId, permission_type: "cadastro_cidades", ...adminPermissions.cadastro_cidades },
-    ];
+    const adminPermsToInsert = Object.entries(adminPermissions).map(([permType, perm]) => ({
+      role_id: roleId,
+      permission_type: permType,
+      ...perm,
+    }));
 
-    const { error: adminPermsError } = await supabase
-      .from("admin_permissions")
-      .insert(adminPermsToInsert);
-
-    if (adminPermsError) {
-      console.error("Error creating admin permissions:", adminPermsError);
+    if (adminPermsToInsert.length > 0) {
+      await supabase.from("admin_permissions").insert(adminPermsToInsert);
     }
 
     toast.success("Perfil criado com sucesso!");
@@ -181,15 +143,8 @@ export const useRolesManagement = () => {
     nome: string,
     descricao: string | null,
     pagePermissions: Record<string, Omit<PagePermission, "id" | "role_id">>,
-    adminPermissions: {
-      usuarios: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
-      perfis: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
-      acesso_publico: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
-      painel_controle: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
-      cadastro_cidades: Omit<AdminPermission, "id" | "role_id" | "permission_type">;
-    }
+    adminPermissions: Record<string, Omit<AdminPermission, "id" | "role_id" | "permission_type">>
   ) => {
-    // Update role
     const { error: roleError } = await supabase
       .from("roles")
       .update({ nome, descricao })
@@ -200,7 +155,6 @@ export const useRolesManagement = () => {
       return false;
     }
 
-    // Delete existing page permissions and recreate
     await supabase.from("page_permissions").delete().eq("role_id", roleId);
 
     const pagePermsToInsert = Object.entries(pagePermissions).map(([pageId, perm]) => ({
@@ -213,18 +167,17 @@ export const useRolesManagement = () => {
       await supabase.from("page_permissions").insert(pagePermsToInsert);
     }
 
-    // Delete existing admin permissions and recreate
     await supabase.from("admin_permissions").delete().eq("role_id", roleId);
 
-    const adminPermsToInsert = [
-      { role_id: roleId, permission_type: "usuarios", ...adminPermissions.usuarios },
-      { role_id: roleId, permission_type: "perfis", ...adminPermissions.perfis },
-      { role_id: roleId, permission_type: "acesso_publico", ...adminPermissions.acesso_publico },
-      { role_id: roleId, permission_type: "painel_controle", ...adminPermissions.painel_controle },
-      { role_id: roleId, permission_type: "cadastro_cidades", ...adminPermissions.cadastro_cidades },
-    ];
+    const adminPermsToInsert = Object.entries(adminPermissions).map(([permType, perm]) => ({
+      role_id: roleId,
+      permission_type: permType,
+      ...perm,
+    }));
 
-    await supabase.from("admin_permissions").insert(adminPermsToInsert);
+    if (adminPermsToInsert.length > 0) {
+      await supabase.from("admin_permissions").insert(adminPermsToInsert);
+    }
 
     toast.success("Perfil atualizado com sucesso!");
     await fetchRoles();
@@ -232,7 +185,6 @@ export const useRolesManagement = () => {
   }, [fetchRoles]);
 
   const deleteRole = useCallback(async (roleId: string) => {
-    // Check if role has users
     const { data: userRolesData } = await supabase
       .from("user_roles")
       .select("id")
@@ -243,10 +195,7 @@ export const useRolesManagement = () => {
       return false;
     }
 
-    const { error } = await supabase
-      .from("roles")
-      .delete()
-      .eq("id", roleId);
+    const { error } = await supabase.from("roles").delete().eq("id", roleId);
 
     if (error) {
       toast.error("Erro ao excluir perfil: " + error.message);
@@ -258,12 +207,5 @@ export const useRolesManagement = () => {
     return true;
   }, [fetchRoles]);
 
-  return {
-    roles,
-    loading,
-    fetchRoles,
-    createRole,
-    updateRole,
-    deleteRole,
-  };
+  return { roles, loading, fetchRoles, createRole, updateRole, deleteRole };
 };

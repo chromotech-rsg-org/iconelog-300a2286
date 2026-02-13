@@ -55,8 +55,130 @@ export type Database = {
           },
         ]
       }
+      api_integrations: {
+        Row: {
+          auth_token: string | null
+          auth_type: string
+          base_url: string | null
+          created_at: string
+          description: string | null
+          headers_json: Json | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          auth_token?: string | null
+          auth_type?: string
+          base_url?: string | null
+          created_at?: string
+          description?: string | null
+          headers_json?: Json | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          auth_token?: string | null
+          auth_type?: string
+          base_url?: string | null
+          created_at?: string
+          description?: string | null
+          headers_json?: Json | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      api_test_logs: {
+        Row: {
+          created_at: string
+          endpoint: string
+          execution_time_ms: number | null
+          id: string
+          method: string
+          request_body: Json | null
+          request_headers: Json | null
+          response_body: Json | null
+          response_headers: Json | null
+          response_status: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          execution_time_ms?: number | null
+          id?: string
+          method?: string
+          request_body?: Json | null
+          request_headers?: Json | null
+          response_body?: Json | null
+          response_headers?: Json | null
+          response_status?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          execution_time_ms?: number | null
+          id?: string
+          method?: string
+          request_body?: Json | null
+          request_headers?: Json | null
+          response_body?: Json | null
+          response_headers?: Json | null
+          response_status?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      bi_chart_config: {
+        Row: {
+          aggregation_type: string | null
+          api_endpoint: string | null
+          bi_page_id: string
+          chart_position: string
+          chart_type: string
+          created_at: string
+          field_mappings: Json | null
+          filters: Json | null
+          id: string
+          label: string | null
+          updated_at: string
+        }
+        Insert: {
+          aggregation_type?: string | null
+          api_endpoint?: string | null
+          bi_page_id: string
+          chart_position?: string
+          chart_type?: string
+          created_at?: string
+          field_mappings?: Json | null
+          filters?: Json | null
+          id?: string
+          label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aggregation_type?: string | null
+          api_endpoint?: string | null
+          bi_page_id?: string
+          chart_position?: string
+          chart_type?: string
+          created_at?: string
+          field_mappings?: Json | null
+          filters?: Json | null
+          id?: string
+          label?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bi_settings: {
         Row: {
+          cod_cli: string | null
+          company_name: string | null
           created_at: string
           display_name: string
           display_order: number
@@ -66,6 +188,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cod_cli?: string | null
+          company_name?: string | null
           created_at?: string
           display_name: string
           display_order?: number
@@ -75,6 +199,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cod_cli?: string | null
+          company_name?: string | null
           created_at?: string
           display_name?: string
           display_order?: number
@@ -108,6 +234,36 @@ export type Database = {
           id?: string
           regional?: string
           uf?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          ativo: boolean
+          cod_cli: string
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cod_cli: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cod_cli?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
           updated_at?: string
         }
         Relationships: []
@@ -228,6 +384,57 @@ export type Database = {
           id?: string
           nome?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      stock_kit_config: {
+        Row: {
+          created_at: string
+          id: string
+          kit_quantity: number
+          sku_code: string
+          sku_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kit_quantity?: number
+          sku_code: string
+          sku_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kit_quantity?: number
+          sku_code?: string
+          sku_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      stock_product_whitelist: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          product_code: string
+          product_name: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          product_code: string
+          product_name?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          product_code?: string
+          product_name?: string | null
         }
         Relationships: []
       }
