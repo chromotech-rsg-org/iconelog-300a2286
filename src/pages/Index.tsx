@@ -8,7 +8,7 @@ import { ActiveFilters } from "@/components/dashboard/ActiveFilters";
 import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
 import { useFollowupData } from "@/hooks/useFollowupData";
 import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
-import { months as allMonths } from "@/data/mockData";
+import { months as allMonths, allMonthValues } from "@/data/mockData";
 import { AlertCircle, InboxIcon, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -39,7 +39,7 @@ const Index = () => {
   const [showError, setShowError] = useState(true);
   const [showRefreshProgress, setShowRefreshProgress] = useState(true);
 
-  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -137,7 +137,7 @@ const Index = () => {
       setSelectedDay(null);
       setSelectedMetric(null);
       setSelectedRegions([]);
-      setSelectedMonths([currentMonth]);
+      setSelectedMonths(allMonthValues);
       setSelectedYears([currentYear]);
     });
   }, [currentMonth, currentYear]);
@@ -151,7 +151,7 @@ const Index = () => {
     }
   }, [codCli, refreshing, fetchFollowup, selectedMonths, selectedYears]);
 
-  const isDefaultMonthYear = selectedMonths.length === 1 && selectedMonths[0] === currentMonth &&
+  const isDefaultMonthYear = selectedMonths.length === 12 &&
     selectedYears.length === 1 && selectedYears[0] === currentYear;
   const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegions.length > 0 || !isDefaultMonthYear;
 

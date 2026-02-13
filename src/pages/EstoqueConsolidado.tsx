@@ -33,7 +33,7 @@ import {
   getTempoParadoByGrupo,
   getTopTempoParado,
 } from "@/data/estoqueConsolidadoData";
-import { formatNumber, formatCurrency } from "@/data/mockData";
+import { formatNumber, formatCurrency, allMonthValues } from "@/data/mockData";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -50,7 +50,7 @@ const EstoqueConsolidado = () => {
   const [estoqueBase] = useState(() => generateEstoqueBase(80));
 
   // Global filters
-  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
 
@@ -146,7 +146,7 @@ const EstoqueConsolidado = () => {
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
-    setSelectedMonths([currentMonth]);
+    setSelectedMonths(allMonthValues);
     setSelectedYears([currentYear]);
     setSelectedRegions([]);
     clearAllFilters();

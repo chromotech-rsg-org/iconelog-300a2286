@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { allMonthValues } from "@/data/mockData";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { EntregasKPICards } from "@/components/entregas/EntregasKPICards";
@@ -29,7 +30,7 @@ const Entregas = () => {
   } = useFollowupData(codCli);
 
   const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [selectedRegional, setSelectedRegional] = useState<string | null>(null);
@@ -111,7 +112,7 @@ const Entregas = () => {
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
-    setSelectedMonths([currentMonth]);
+    setSelectedMonths(allMonthValues);
     setSelectedYears([currentYear]);
     setSelectedRegions([]);
     clearAllFilters();
