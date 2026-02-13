@@ -1,31 +1,16 @@
- import { useState, useMemo, useCallback } from "react";
- import { Expand } from "lucide-react";
- import { Button } from "@/components/ui/button";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { Expand } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { SharedHeader } from "@/components/shared/SharedHeader";
- import { DocumentHead } from "@/components/shared/DocumentHead";
+import { DocumentHead } from "@/components/shared/DocumentHead";
 import { StockDualKPICards } from "@/components/stock/StockDualKPICards";
-import { StockGroupPieChart } from "@/components/stock/StockGroupPieChart";
-import { StockValueBarChart } from "@/components/stock/StockValueBarChart";
-import { StockTimePieChart } from "@/components/stock/StockTimePieChart";
-import { StockTimeBarChart } from "@/components/stock/StockTimeBarChart";
 import { StockLocationTables } from "@/components/stock/StockLocationTables";
- import { ProductDetailPanel } from "@/components/stock/ProductDetailPanel";
- import { ProductDetailModal } from "@/components/stock/ProductDetailModal";
+import { ProductDetailPanel } from "@/components/stock/ProductDetailPanel";
+import { ProductDetailModal } from "@/components/stock/ProductDetailModal";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
-import { 
-  generateStockData, 
-  calculateMatrizTotals, 
-  calculateBaseTotals,
-  getStockByGrupo,
-  getTempoParadoDistribution,
-  getTempoParadoMedioByGrupo,
-  getMatrizItems,
-  getBaseItems,
-  getTempoParadoCategory,
-  SKUItem 
-} from "@/data/stockData";
-import { months, years, regions } from "@/data/mockData";
+import { useEstoqueData } from "@/hooks/useEstoqueData";
+import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
+import { X, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -34,124 +19,76 @@ const Estoque = () => {
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
+  const { getCodCli, loading: settingsLoading } = useBiSettingsContext();
+  const codCli = getCodCli("estoque");
+
+  const {
+    stockItems,
+    totals,
+    loading: dataLoading,
+    error,
+    fetchSaldoBase,
+    fetchRecebimentos,
+  } = useEstoqueData(codCli);
+
   const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [stockData, setStockData] = useState<SKUItem[]>(() => generateStockData());
-  
-  // Global filters
   const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-
-  // Filter states for BI interactivity
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedGrupo, setSelectedGrupo] = useState<string | null>(null);
-  const [selectedTempo, setSelectedTempo] = useState<string | null>(null);
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
- 
-   // Product detail state
-   const [selectedProduct, setSelectedProduct] = useState<SKUItem | null>(null);
-   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Filtered data based on selections
-  const filteredStockData = useMemo(() => {
-    return stockData.filter(item => {
-      const matchesCategory = !selectedCategory || item.category === selectedCategory;
-      const matchesGrupo = !selectedGrupo || item.grupo === selectedGrupo;
-      const matchesTempo = !selectedTempo || getTempoParadoCategory(item.tempoParado) === selectedTempo;
-      const matchesSKU = !selectedSKU || item.sku === selectedSKU;
-      return matchesCategory && matchesGrupo && matchesTempo && matchesSKU;
-    });
-  }, [stockData, selectedCategory, selectedGrupo, selectedTempo, selectedSKU]);
+  // Fetch data on mount
+  useEffect(() => {
+    if (codCli) {
+      fetchSaldoBase();
+      fetchRecebimentos();
+    }
+  }, [codCli, fetchSaldoBase, fetchRecebimentos]);
 
-  // Calculated data
-  const matrizTotals = useMemo(() => calculateMatrizTotals(filteredStockData), [filteredStockData]);
-  const baseTotals = useMemo(() => calculateBaseTotals(filteredStockData), [filteredStockData]);
-  const grupoData = useMemo(() => getStockByGrupo(filteredStockData), [filteredStockData]);
-  const tempoDistribution = useMemo(() => getTempoParadoDistribution(filteredStockData), [filteredStockData]);
-  const tempoMedioByGrupo = useMemo(() => getTempoParadoMedioByGrupo(filteredStockData), [filteredStockData]);
-  const matrizItems = useMemo(() => getMatrizItems(filteredStockData), [filteredStockData]);
-  const baseItems = useMemo(() => getBaseItems(filteredStockData), [filteredStockData]);
+  // Find selected product
+  const currentProduct = useMemo(() => {
+    if (!selectedSKU) return null;
+    return stockItems.find(item => item.sku === selectedSKU) || null;
+  }, [selectedSKU, stockItems]);
 
-   // Find selected product from SKU
-   const currentProduct = useMemo(() => {
-     if (selectedProduct) return selectedProduct;
-     if (selectedSKU) {
-       return filteredStockData.find(item => item.sku === selectedSKU) || null;
-     }
-     return null;
-   }, [selectedSKU, selectedProduct, filteredStockData]);
- 
-  const handleRefreshData = () => {
-    setStockData(generateStockData());
-    setLastUpdate(new Date());
-    setSelectedCategory(null);
-    setSelectedGrupo(null);
-    setSelectedTempo(null);
-    setSelectedSKU(null);
-     setSelectedProduct(null);
-    toast.success("Dados atualizados com sucesso!");
-  };
+  const handleRefreshData = useCallback(() => {
+    if (codCli) {
+      fetchSaldoBase();
+      fetchRecebimentos();
+      setLastUpdate(new Date());
+      setSelectedSKU(null);
+      toast.success("Dados atualizados!");
+    }
+  }, [codCli, fetchSaldoBase, fetchRecebimentos]);
 
-  const handleExportExcel = () => {
-    const exportData = filteredStockData.map(item => ({
+  const handleExportExcel = useCallback(() => {
+    const exportData = stockItems.map(item => ({
       SKU: item.sku,
       Nome: item.name,
       Descrição: item.description,
-      Categoria: item.category,
-      Grupo: item.grupo,
       Estoque: item.stockQuantity,
       Kits: item.kitsQuantity,
-      "Estoque Mínimo": item.minStock,
-      "Estoque Máximo": item.maxStock,
       "Preço Unitário": item.unitPrice,
       "M³": item.m3,
-      "Tempo Parado (dias)": item.tempoParado,
-      Localização: item.location,
-      "Tipo Local": item.locationType,
-      Base: item.base || "-",
-      Fornecedor: item.supplier,
-      "Última Atualização": item.lastUpdate.toLocaleDateString('pt-BR')
+      "Ult. Entrada Qtd": item.lastEntryQty || "-",
+      "Ult. Entrada Data": item.lastEntryDate || "-",
     }));
-
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Estoque");
-    
     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     const data = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    
-    const date = new Date().toISOString().split('T')[0];
-    saveAs(data, `estoque_${date}.xlsx`);
-    
-    toast.success("Arquivo Excel exportado com sucesso!");
-  };
-
-  // Filter handlers
-  const handleGrupoClick = useCallback((grupo: string) => {
-    setSelectedGrupo(prev => prev === grupo ? null : grupo);
-  }, []);
-
-  const handleTempoClick = useCallback((tempo: string) => {
-    setSelectedTempo(prev => prev === tempo ? null : tempo);
-  }, []);
+    saveAs(data, `estoque_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Arquivo Excel exportado!");
+  }, [stockItems]);
 
   const handleSKUClick = useCallback((sku: string) => {
-     const product = stockData.find(item => item.sku === sku);
-     if (selectedSKU === sku) {
-       setSelectedSKU(null);
-       setSelectedProduct(null);
-     } else {
-       setSelectedSKU(sku);
-       setSelectedProduct(product || null);
-     }
-   }, [stockData, selectedSKU]);
+    setSelectedSKU(prev => (prev === sku ? null : sku));
+  }, []);
 
   const clearAllFilters = useCallback(() => {
-    setSelectedCategory(null);
-    setSelectedGrupo(null);
-    setSelectedTempo(null);
     setSelectedSKU(null);
-     setSelectedProduct(null);
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
@@ -159,15 +96,28 @@ const Estoque = () => {
     setSelectedYears([currentYear]);
     setSelectedRegions([]);
     clearAllFilters();
-  }, []);
+  }, [currentMonth, currentYear, clearAllFilters]);
 
-  const hasActiveFilters = selectedCategory !== null || selectedGrupo !== null || selectedTempo !== null || selectedSKU !== null;
+  const hasActiveFilters = selectedSKU !== null;
   const hasGlobalFilters = selectedMonths.length !== 1 || selectedMonths[0] !== currentMonth || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedRegions.length > 0;
+  const loading = settingsLoading || dataLoading;
+
+  if (!settingsLoading && !codCli) {
+    return (
+      <div className="min-h-screen bg-dashboard-dark flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+          <h2 className="text-lg font-semibold text-foreground">Configuração necessária</h2>
+          <p className="text-sm text-muted-foreground">Configure o código do cliente (cod_cli) para "estoque" em Configurar BI.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
-       <DocumentHead pageId="estoque" />
-      <SharedHeader 
+      <DocumentHead pageId="estoque" />
+      <SharedHeader
         pageId="estoque"
         lastUpdate={lastUpdate}
         showFilters={true}
@@ -183,33 +133,12 @@ const Estoque = () => {
         hasActiveFilters={hasGlobalFilters || hasActiveFilters}
       />
 
-      {/* Active Filters Bar */}
       {hasActiveFilters && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-dashboard-border bg-dashboard-card/50 animate-fade-in">
           <span className="text-xs text-muted-foreground">Filtros:</span>
-          {selectedGrupo && (
-            <Badge 
-              variant="outline" 
-              className="border-dashboard-accent bg-dashboard-accent/10 text-dashboard-accent cursor-pointer hover:bg-dashboard-accent/20"
-              onClick={() => setSelectedGrupo(null)}
-            >
-              Grupo: {selectedGrupo}
-              <X className="ml-1 h-3 w-3" />
-            </Badge>
-          )}
-          {selectedTempo && (
-            <Badge 
-              variant="outline" 
-              className="border-dashboard-orange bg-dashboard-orange/10 text-dashboard-orange cursor-pointer hover:bg-dashboard-orange/20"
-              onClick={() => setSelectedTempo(null)}
-            >
-              Tempo: {selectedTempo}
-              <X className="ml-1 h-3 w-3" />
-            </Badge>
-          )}
           {selectedSKU && (
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className="border-dashboard-blue bg-dashboard-blue/10 text-dashboard-blue cursor-pointer hover:bg-dashboard-blue/20"
               onClick={() => setSelectedSKU(null)}
             >
@@ -217,92 +146,64 @@ const Estoque = () => {
               <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearAllFilters}
-            className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground"
-          >
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
             Limpar todos
           </Button>
         </div>
       )}
 
-      <div className="p-6 space-y-4">
-        {/* Dual KPI Cards - Matriz e Base */}
-        <StockDualKPICards 
-          matrizValor={matrizTotals.valor}
-          matrizM3={matrizTotals.m3}
-          matrizQtdeSKUs={matrizTotals.qtdeSKUs}
-           matrizKits={matrizTotals.kits}
-          baseValor={baseTotals.valor}
-          baseM3={baseTotals.m3}
-          baseQtdeSKUs={baseTotals.qtdeSKUs}
-           baseKits={baseTotals.kits}
-        />
+      {error && (
+        <div className="mx-6 mt-4 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
+          {error}
+        </div>
+      )}
 
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StockGroupPieChart 
-            data={grupoData}
-            selectedGrupo={selectedGrupo}
-            onGrupoClick={handleGrupoClick}
+      {loading ? (
+        <div className="flex items-center justify-center h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="p-6 space-y-4">
+          <StockDualKPICards
+            matrizValor={totals.valor}
+            matrizM3={totals.m3}
+            matrizQtdeSKUs={totals.qtdeSKUs}
+            matrizKits={totals.kits}
           />
-          <StockValueBarChart 
-            data={grupoData}
-            selectedGrupo={selectedGrupo}
-            onGrupoClick={handleGrupoClick}
-          />
-          <StockTimePieChart 
-            data={tempoDistribution}
-            selectedTempo={selectedTempo}
-            onTempoClick={handleTempoClick}
-          />
-          <StockTimeBarChart 
-            data={tempoMedioByGrupo}
-            selectedGrupo={selectedGrupo}
-            onGrupoClick={handleGrupoClick}
+
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div className="lg:col-span-3">
+              <StockLocationTables
+                matrizItems={stockItems}
+                selectedSKU={selectedSKU}
+                onSKUClick={handleSKUClick}
+              />
+            </div>
+
+            <div className="lg:col-span-1 relative">
+              <ProductDetailPanel product={currentProduct as any} />
+              {currentProduct && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="absolute top-4 right-4 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
+                  onClick={() => setIsModalOpen(true)}
+                >
+                  <Expand className="h-4 w-4 mr-1" />
+                  Expandir
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <ProductDetailModal
+            product={currentProduct as any}
+            open={isModalOpen}
+            onOpenChange={setIsModalOpen}
           />
         </div>
-
-       {/* Tables with Detail Panel */}
-       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-         {/* Tables Column */}
-         <div className="lg:col-span-3">
-           <StockLocationTables 
-             matrizItems={matrizItems}
-             baseItems={baseItems}
-             selectedSKU={selectedSKU}
-             selectedGrupo={selectedGrupo}
-             onSKUClick={handleSKUClick}
-             onGrupoClick={handleGrupoClick}
-           />
-         </div>
- 
-         {/* Product Detail Panel */}
-         <div className="lg:col-span-1 relative">
-           <ProductDetailPanel product={currentProduct} />
-           {currentProduct && (
-             <Button
-               variant="outline"
-               size="sm"
-               className="absolute top-4 right-4 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
-               onClick={() => setIsModalOpen(true)}
-             >
-               <Expand className="h-4 w-4 mr-1" />
-               Expandir
-             </Button>
-           )}
-         </div>
-       </div>
-       
-       {/* Product Detail Modal */}
-       <ProductDetailModal 
-         product={currentProduct}
-         open={isModalOpen}
-         onOpenChange={setIsModalOpen}
-       />
-      </div>
+      )}
     </div>
   );
 };

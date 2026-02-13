@@ -7,6 +7,8 @@
    display_name: string;
    logo_url: string | null;
   display_order: number;
+  cod_cli: string | null;
+  company_name: string | null;
    created_at: string;
    updated_at: string;
  }

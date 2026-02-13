@@ -2,7 +2,7 @@ import React, { createContext, useContext, ReactNode, useMemo } from "react";
 import { useBiSettings, BiSetting, type BiSetting as BiSettingType } from "@/hooks/useBiSettings";
  import defaultLogo from "@/assets/logo.jpg";
  
- interface BiSettingsContextType {
+interface BiSettingsContextType {
    settings: BiSetting[];
    loading: boolean;
    getPageTitle: (pageId: string) => string;
@@ -10,6 +10,7 @@ import { useBiSettings, BiSetting, type BiSetting as BiSettingType } from "@/hoo
   getSystemLogo: () => string;
   getSystemName: () => string;
   getOrderedBiSettings: () => BiSetting[];
+  getCodCli: (pageId: string) => string;
    refetch: () => void;
  }
  
@@ -50,18 +51,24 @@ import { useBiSettings, BiSetting, type BiSetting as BiSettingType } from "@/hoo
     return systemSetting?.display_name || defaultTitles.system;
   };
 
+  const getCodCli = (pageId: string): string => {
+    const setting = getSettingByPageId(pageId);
+    return setting?.cod_cli || "";
+  };
+
    return (
      <BiSettingsContext.Provider
-       value={{
-         settings,
-         loading,
-         getPageTitle,
-         getPageLogo,
-        getSystemLogo,
-        getSystemName,
-        getOrderedBiSettings,
-         refetch,
-       }}
+        value={{
+          settings,
+          loading,
+          getPageTitle,
+          getPageLogo,
+         getSystemLogo,
+         getSystemName,
+         getOrderedBiSettings,
+         getCodCli,
+          refetch,
+        }}
      >
        {children}
      </BiSettingsContext.Provider>

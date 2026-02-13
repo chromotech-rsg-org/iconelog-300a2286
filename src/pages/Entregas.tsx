@@ -1,72 +1,79 @@
-import { useState, useMemo, useCallback } from "react";
- import { DocumentHead } from "@/components/shared/DocumentHead";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { EntregasKPICards } from "@/components/entregas/EntregasKPICards";
 import { ProgressBars } from "@/components/entregas/ProgressBars";
 import { RegionalCards } from "@/components/entregas/RegionalCards";
 import { EntregasTables } from "@/components/entregas/EntregasTables";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  generateDeliveryData,
-  generateDeliveryItems,
-  calculateDeliveryTotals,
-  DeliveryItem,
-} from "@/data/entregasData";
+import { useFollowupData } from "@/hooks/useFollowupData";
+import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { X } from "lucide-react";
+import { X, Loader2, AlertCircle } from "lucide-react";
 
 const Entregas = () => {
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
+  const { getCodCli, loading: settingsLoading } = useBiSettingsContext();
+  const codCli = getCodCli("entregas");
+
+  const {
+    loading: dataLoading,
+    error,
+    fetchFollowup,
+    getEntregasData,
+  } = useFollowupData(codCli);
+
   const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [deliveryData] = useState(() => generateDeliveryData());
-  const [deliveryItems] = useState<DeliveryItem[]>(() => generateDeliveryItems(50));
-  
-  // Global filters
   const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-
-  // Filter states for BI interactivity
   const [selectedRegional, setSelectedRegional] = useState<string | null>(null);
   const [selectedTipo, setSelectedTipo] = useState<"Entrega" | "Reposição" | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<"Finalizado" | "Em Trânsito" | "Pendente" | null>(null);
 
-  // Filtered data
+  // Fetch on mount
+  useEffect(() => {
+    if (codCli) {
+      fetchFollowup();
+    }
+  }, [codCli, fetchFollowup]);
+
+  // Get real delivery data
+  const deliveryData = useMemo(() => getEntregasData(), [getEntregasData]);
+
   const filteredDeliveryData = useMemo(() => {
     if (!selectedRegional) return deliveryData;
     return deliveryData.filter(d => d.regional === selectedRegional);
   }, [deliveryData, selectedRegional]);
 
-  const filteredDeliveryItems = useMemo(() => {
-    let result = deliveryItems;
-    if (selectedRegional) result = result.filter(item => item.regional === selectedRegional);
-    if (selectedTipo) result = result.filter(item => item.tipo === selectedTipo);
-    if (selectedStatus) result = result.filter(item => item.status === selectedStatus);
-    return result;
-  }, [deliveryItems, selectedRegional, selectedTipo, selectedStatus]);
-  
-  const totals = useMemo(() => calculateDeliveryTotals(filteredDeliveryData), [filteredDeliveryData]);
+  const totals = useMemo(() => {
+    return filteredDeliveryData.reduce(
+      (acc, item) => ({
+        entregaFinalizado: acc.entregaFinalizado + item.entregaFinalizado,
+        entregaEmTransito: acc.entregaEmTransito + item.entregaEmTransito,
+        entregaTotal: acc.entregaTotal + item.entregaTotal,
+        reposicaoFinalizado: acc.reposicaoFinalizado + item.reposicaoFinalizado,
+        reposicaoEmTransito: acc.reposicaoEmTransito + item.reposicaoEmTransito,
+        reposicaoTotal: acc.reposicaoTotal + item.reposicaoTotal,
+      }),
+      { entregaFinalizado: 0, entregaEmTransito: 0, entregaTotal: 0, reposicaoFinalizado: 0, reposicaoEmTransito: 0, reposicaoTotal: 0 }
+    );
+  }, [filteredDeliveryData]);
 
-  const handleRefreshData = () => {
-    setLastUpdate(new Date());
-    toast.success("Dados atualizados com sucesso!");
-  };
+  const handleRefreshData = useCallback(() => {
+    if (codCli) {
+      fetchFollowup();
+      setLastUpdate(new Date());
+      toast.success("Dados atualizados!");
+    }
+  }, [codCli, fetchFollowup]);
 
-  const handleExportExcel = () => {
+  const handleExportExcel = useCallback(() => {
     const exportData = filteredDeliveryData.map(item => ({
       Regional: item.regional,
       "Entrega Finalizado": item.entregaFinalizado,
@@ -76,29 +83,25 @@ const Entregas = () => {
       "Reposição em Trânsito": item.reposicaoEmTransito,
       "Reposição Total": item.reposicaoTotal,
     }));
-
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Entregas");
-    
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    saveAs(blob, `entregas_${new Date().toISOString().split('T')[0]}.xlsx`);
-    
-    toast.success("Arquivo Excel exportado com sucesso!");
-  };
+    saveAs(blob, `entregas_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Arquivo Excel exportado!");
+  }, [filteredDeliveryData]);
 
-  // BI Click handlers
   const handleRegionalClick = useCallback((regional: string) => {
-    setSelectedRegional(prev => prev === regional ? null : regional);
+    setSelectedRegional(prev => (prev === regional ? null : regional));
   }, []);
 
   const handleTipoClick = useCallback((tipo: "Entrega" | "Reposição") => {
-    setSelectedTipo(prev => prev === tipo ? null : tipo);
+    setSelectedTipo(prev => (prev === tipo ? null : tipo));
   }, []);
 
   const handleStatusClick = useCallback((status: "Finalizado" | "Em Trânsito" | "Pendente") => {
-    setSelectedStatus(prev => prev === status ? null : status);
+    setSelectedStatus(prev => (prev === status ? null : status));
   }, []);
 
   const clearAllFilters = useCallback(() => {
@@ -112,25 +115,27 @@ const Entregas = () => {
     setSelectedYears([currentYear]);
     setSelectedRegions([]);
     clearAllFilters();
-  }, []);
+  }, [currentMonth, currentYear, clearAllFilters]);
 
   const hasActiveFilters = !!(selectedRegional || selectedTipo || selectedStatus);
   const hasGlobalFilters = selectedMonths.length !== 1 || selectedMonths[0] !== currentMonth || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedRegions.length > 0;
+  const loading = settingsLoading || dataLoading;
 
-  const getStatusBadge = (status: DeliveryItem["status"]) => {
-    switch (status) {
-      case "Finalizado":
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30 cursor-pointer" onClick={() => handleStatusClick("Finalizado")}>Finalizado</Badge>;
-      case "Em Trânsito":
-        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 cursor-pointer" onClick={() => handleStatusClick("Em Trânsito")}>Em Trânsito</Badge>;
-      case "Pendente":
-        return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 cursor-pointer" onClick={() => handleStatusClick("Pendente")}>Pendente</Badge>;
-    }
-  };
+  if (!settingsLoading && !codCli) {
+    return (
+      <div className="min-h-screen bg-dashboard-dark flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+          <h2 className="text-lg font-semibold text-foreground">Configuração necessária</h2>
+          <p className="text-sm text-muted-foreground">Configure o código do cliente (cod_cli) para "entregas" em Configurar BI.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
-       <DocumentHead pageId="entregas" />
+      <DocumentHead pageId="entregas" />
       <SharedHeader
         pageId="entregas"
         lastUpdate={lastUpdate}
@@ -147,7 +152,6 @@ const Entregas = () => {
         hasActiveFilters={hasGlobalFilters || hasActiveFilters}
       />
 
-      {/* Active Filters Bar */}
       {hasActiveFilters && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-dashboard-border bg-dashboard-card/50 animate-fade-in">
           <span className="text-xs text-muted-foreground">Filtros:</span>
@@ -162,11 +166,7 @@ const Entregas = () => {
             </Badge>
           )}
           {selectedStatus && (
-            <Badge variant="outline" className={`cursor-pointer ${
-              selectedStatus === "Finalizado" ? "border-green-500 bg-green-500/10 text-green-500" :
-              selectedStatus === "Em Trânsito" ? "border-blue-500 bg-blue-500/10 text-blue-500" :
-              "border-yellow-500 bg-yellow-500/10 text-yellow-500"
-            }`} onClick={() => setSelectedStatus(null)}>
+            <Badge variant="outline" className={`cursor-pointer ${selectedStatus === "Finalizado" ? "border-green-500 bg-green-500/10 text-green-500" : selectedStatus === "Em Trânsito" ? "border-blue-500 bg-blue-500/10 text-blue-500" : "border-yellow-500 bg-yellow-500/10 text-yellow-500"}`} onClick={() => setSelectedStatus(null)}>
               Status: {selectedStatus} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
@@ -176,98 +176,54 @@ const Entregas = () => {
         </div>
       )}
 
-      <div className="p-6 space-y-4">
-        {/* KPI Cards - clickable */}
-        <EntregasKPICards
-          entregaFinalizado={totals.entregaFinalizado}
-          entregaEmTransito={totals.entregaEmTransito}
-          reposicaoFinalizado={totals.reposicaoFinalizado}
-          reposicaoEmTransito={totals.reposicaoEmTransito}
-          onEntregaClick={() => handleTipoClick("Entrega")}
-          onReposicaoClick={() => handleTipoClick("Reposição")}
-          selectedTipo={selectedTipo}
-        />
+      {error && (
+        <div className="mx-6 mt-4 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
+          {error}
+        </div>
+      )}
 
-        {/* Progress Bars */}
-        <ProgressBars
-          entregaFinalizado={totals.entregaFinalizado}
-          entregaEmTransito={totals.entregaEmTransito}
-          entregaTotal={totals.entregaTotal}
-          reposicaoFinalizado={totals.reposicaoFinalizado}
-          reposicaoEmTransito={totals.reposicaoEmTransito}
-          reposicaoTotal={totals.reposicaoTotal}
-          onEntregaClick={() => handleTipoClick("Entrega")}
-          onReposicaoClick={() => handleTipoClick("Reposição")}
-          selectedTipo={selectedTipo}
-        />
+      {loading ? (
+        <div className="flex items-center justify-center h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="p-6 space-y-4">
+          <EntregasKPICards
+            entregaFinalizado={totals.entregaFinalizado}
+            entregaEmTransito={totals.entregaEmTransito}
+            reposicaoFinalizado={totals.reposicaoFinalizado}
+            reposicaoEmTransito={totals.reposicaoEmTransito}
+            onEntregaClick={() => handleTipoClick("Entrega")}
+            onReposicaoClick={() => handleTipoClick("Reposição")}
+            selectedTipo={selectedTipo}
+          />
 
-        {/* Regional Cards - clickable */}
-        <RegionalCards 
-          data={filteredDeliveryData} 
-          onRegionalClick={handleRegionalClick}
-          selectedRegional={selectedRegional}
-        />
+          <ProgressBars
+            entregaFinalizado={totals.entregaFinalizado}
+            entregaEmTransito={totals.entregaEmTransito}
+            entregaTotal={totals.entregaTotal}
+            reposicaoFinalizado={totals.reposicaoFinalizado}
+            reposicaoEmTransito={totals.reposicaoEmTransito}
+            reposicaoTotal={totals.reposicaoTotal}
+            onEntregaClick={() => handleTipoClick("Entrega")}
+            onReposicaoClick={() => handleTipoClick("Reposição")}
+            selectedTipo={selectedTipo}
+          />
 
-        {/* Entrega e Reposição Tables */}
-        <EntregasTables 
-          data={filteredDeliveryData}
-          onRegionalClick={handleRegionalClick}
-          selectedRegional={selectedRegional}
-        />
+          <RegionalCards
+            data={filteredDeliveryData}
+            onRegionalClick={handleRegionalClick}
+            selectedRegional={selectedRegional}
+          />
 
-        {/* Delivery Items Table */}
-        <Card className="bg-dashboard-card border-dashboard-border">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-foreground">
-              Últimas Movimentações {hasActiveFilters && <span className="text-sm font-normal text-muted-foreground">({filteredDeliveryItems.length} resultados)</span>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-auto max-h-[400px] custom-scrollbar">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-dashboard-border">
-                  <TableHead className="text-muted-foreground">Pedido</TableHead>
-                  <TableHead className="text-muted-foreground">Cliente</TableHead>
-                  <TableHead className="text-muted-foreground">Regional</TableHead>
-                  <TableHead className="text-muted-foreground">Tipo</TableHead>
-                  <TableHead className="text-muted-foreground">Status</TableHead>
-                  <TableHead className="text-muted-foreground">Kits</TableHead>
-                  <TableHead className="text-muted-foreground">Itens</TableHead>
-                  <TableHead className="text-muted-foreground">Data Envio</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDeliveryItems.slice(0, 20).map((item) => (
-                  <TableRow key={item.id} className="border-dashboard-border hover:bg-dashboard-border/50">
-                    <TableCell className="text-dashboard-accent font-medium">{item.pedido}</TableCell>
-                    <TableCell className="text-foreground">{item.cliente}</TableCell>
-                    <TableCell 
-                      className="text-muted-foreground cursor-pointer hover:text-foreground"
-                      onClick={() => handleRegionalClick(item.regional)}
-                    >
-                      {item.regional}
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        className={`cursor-pointer ${item.tipo === "Entrega" ? "bg-dashboard-accent/20 text-dashboard-accent" : "bg-dashboard-blue/20 text-dashboard-blue"}`}
-                        onClick={() => handleTipoClick(item.tipo)}
-                      >
-                        {item.tipo}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(item.status)}</TableCell>
-                    <TableCell className="text-foreground">{item.kits}</TableCell>
-                    <TableCell className="text-foreground">{item.itens}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {item.dataEnvio.toLocaleDateString('pt-BR')}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+          <EntregasTables
+            data={filteredDeliveryData}
+            onRegionalClick={handleRegionalClick}
+            selectedRegional={selectedRegional}
+          />
+        </div>
+      )}
     </div>
   );
 };
