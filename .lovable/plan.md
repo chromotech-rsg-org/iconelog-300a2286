@@ -1,42 +1,35 @@
 
-# Fix: Erro 401 na Edge Function e Última Atualização
 
 ## Problemas Identificados
 
-1. **Edge Function retorna 401**: O metodo `getClaims(token)` nao existe na versao padrao do `@supabase/supabase-js@2` importada via esm.sh. A chamada falha silenciosamente, e a funcao retorna "Unauthorized".
-2. **Ultima atualizacao nao persiste**: O upsert em `bi_last_update` e `bi_data_cache` tambem falha com 401 porque e feito via client-side e pode haver um problema de sessao expirada. Alem disso, o `lastUpdateAt` e atualizado localmente antes de confirmar que o save funcionou.
-3. **Sem logs de debug**: A edge function nao tem console.log para diagnosticar erros, dificultando a depuracao.
+### 1. Hoje mostra zero (bug de mutacao de data)
+A funcao `filterByDateRange` no arquivo `src/hooks/useFollowupData.ts` usa `from.setHours(0,0,0,0)` e `to.setHours(23,59,59,999)` que **mutam o objeto Date original**. Como o `today` e criado uma unica vez via `useMemo`, apos a primeira chamada de filtro ele e alterado permanentemente, quebrando comparacoes futuras.
 
-## Solucao
+**Correcao**: Criar copias dos objetos Date antes de chamar `setHours`.
 
-### 1. Corrigir autenticacao na Edge Function
+### 2. Clicar no dia 12 inclui o dia 13 (modo range do calendario)
+O calendario esta em `mode="range"`, que faz com que o primeiro clique defina `from` e o segundo clique defina `to`, criando automaticamente um intervalo. Nao e possivel selecionar apenas um dia de forma confiavel nesse modo.
 
-Substituir `getClaims(token)` por `getUser(token)` que e o metodo padrao e funciona em todas as versoes do supabase-js:
+**Correcao**: Melhorar a logica de `onSelect` para detectar quando o usuario quer filtrar um unico dia (clicou no mesmo dia ou clicou pela primeira vez) e passar `to` como o mesmo dia que `from` para garantir filtragem correta de um dia so.
 
+---
+
+## Alteracoes Tecnicas
+
+### Arquivo: `src/hooks/useFollowupData.ts`
+- Na funcao `filterByDateRange` (linhas 44-53), criar copias dos objetos Date antes de mutar:
 ```typescript
-const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-if (userError || !user) {
-  console.error("Auth error:", userError?.message);
-  return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
-}
+const filterByDateRange = (items, from, to) => {
+  const fromDate = new Date(from);
+  fromDate.setHours(0, 0, 0, 0);
+  const toDate = new Date(to);
+  toDate.setHours(23, 59, 59, 999);
+  // ... filtrar usando fromDate e toDate
+};
 ```
 
-### 2. Adicionar logs de debug na Edge Function
+### Arquivo: `src/components/shared/SharedHeader.tsx`
+- Ajustar a logica `onSelect` do calendario para tratar corretamente selecao de um unico dia vs periodo
+- Quando o usuario clica em um dia e `to` nao existe, enviar `from` e `to` como o mesmo dia
+- Quando o usuario clica no mesmo dia que ja esta selecionado, limpar a selecao
 
-Adicionar `console.error` e `console.log` em pontos criticos para facilitar depuracao futura:
-- Log quando auth falha (com mensagem de erro)
-- Log da URL sendo chamada
-- Log de erros do fetch externo
-
-### 3. Garantir persistencia da ultima atualizacao
-
-No hook `useFollowupData.ts`, so atualizar `lastUpdateAt` localmente apos confirmar que o upsert no banco funcionou (verificar o retorno do upsert).
-
-### 4. Redeploiar e testar
-
-Apos as alteracoes, redeploiar a edge function e testar chamando-a diretamente para confirmar que o 401 foi resolvido.
-
-## Arquivos Modificados
-
-- `supabase/functions/api-proxy/index.ts` - Trocar getClaims por getUser, adicionar logs
-- `src/hooks/useFollowupData.ts` - Melhorar tratamento de erro no saveLastUpdate
