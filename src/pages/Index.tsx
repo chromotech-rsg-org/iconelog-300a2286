@@ -53,9 +53,10 @@ const Index = () => {
     if (lastUpdateAt) setLastUpdate(lastUpdateAt);
   }, [lastUpdateAt]);
 
-  // Get data filtered by selected months/years (client-side)
-  const barChartDataRaw = useMemo(() => getMinutasData(selectedMonths, selectedYears), [getMinutasData, selectedMonths, selectedYears]);
-  const aggregatedDailyData = useMemo(() => getMinutasDailyData(selectedMonths, selectedYears), [getMinutasDailyData, selectedMonths, selectedYears]);
+  // When date range is active, it overrides month/year filters
+  const dateRangeActive = !!selectedDateRange.from;
+  const barChartDataRaw = useMemo(() => getMinutasData(selectedMonths, selectedYears, dateRangeActive ? selectedDateRange as any : undefined), [getMinutasData, selectedMonths, selectedYears, selectedDateRange, dateRangeActive]);
+  const aggregatedDailyData = useMemo(() => getMinutasDailyData(selectedMonths, selectedYears, dateRangeActive ? selectedDateRange as any : undefined), [getMinutasDailyData, selectedMonths, selectedYears, selectedDateRange, dateRangeActive]);
 
   // Filter by selected regions
   const filteredBarChartData = useMemo(() => {
@@ -209,11 +210,22 @@ const Index = () => {
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
         selectedRegions={selectedRegions}
-        onMonthsChange={(v) => startFilterTransition(() => setSelectedMonths(v))}
-        onYearsChange={(v) => startFilterTransition(() => setSelectedYears(v))}
+        onMonthsChange={(v) => startFilterTransition(() => { setSelectedMonths(v); setSelectedDateRange({ from: undefined, to: undefined }); })}
+        onYearsChange={(v) => startFilterTransition(() => { setSelectedYears(v); setSelectedDateRange({ from: undefined, to: undefined }); })}
         onRegionsChange={(v) => startFilterTransition(() => setSelectedRegions(v))}
         selectedDateRange={selectedDateRange}
-        onDateRangeChange={(range) => startFilterTransition(() => setSelectedDateRange(range))}
+        onDateRangeChange={(range) => startFilterTransition(() => {
+          setSelectedDateRange(range);
+          if (range.from) {
+            // Calendar overrides month/year
+            setSelectedMonths([]);
+            setSelectedYears([]);
+          } else {
+            // Clearing calendar restores default month/year
+            setSelectedMonths(allMonthValues);
+            setSelectedYears([currentYear]);
+          }
+        })}
         onClearAllFilters={clearAllFilters}
         onExportExcel={exportToExcel}
         onRefreshData={handleRefreshData}
