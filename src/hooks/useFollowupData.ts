@@ -243,17 +243,17 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     const filtered = dateRange?.from
       ? filterByDateRange(followupData, dateRange.from, dateRange.to || dateRange.from)
       : filterByMonthYear(followupData, months, years);
+    
+    // Build date boundaries for constraining which days appear in the chart
+    const hasDateRange = dateRange?.from;
+    const rangeFrom = hasDateRange ? new Date(dateRange.from!) : null;
+    const rangeTo = hasDateRange ? new Date(dateRange.to || dateRange.from!) : null;
+    if (rangeFrom) rangeFrom.setHours(0, 0, 0, 0);
+    if (rangeTo) rangeTo.setHours(23, 59, 59, 999);
+
     const regionDayMap = new Map<string, Map<number, { expedidas: number; baixadas: number }>>();
 
-    filtered.forEach(item => {
-      const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
-      const regional = resolveRegional(cidade, cityMappings);
-
-      const dtExp = item.dt_expedicao ? new Date(item.dt_expedicao) : null;
-      const dtBaixa = item.dt_baixa_minuta ? new Date(item.dt_baixa_minuta) : null;
-      const day = dtExp?.getDate() || dtBaixa?.getDate();
-      if (!day) return;
-
+    const addToDay = (regional: string, day: number) => {
       if (!regionDayMap.has(regional)) {
         regionDayMap.set(regional, new Map());
       }
@@ -261,10 +261,30 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       if (!dayMap.has(day)) {
         dayMap.set(day, { expedidas: 0, baixadas: 0 });
       }
-      const totals = dayMap.get(day)!;
+      return dayMap.get(day)!;
+    };
 
-      if (dtExp) totals.expedidas++;
-      if (dtBaixa) totals.baixadas++;
+    const isDateInRange = (d: Date): boolean => {
+      if (!rangeFrom || !rangeTo) return true;
+      return d.getTime() >= rangeFrom.getTime() && d.getTime() <= rangeTo.getTime();
+    };
+
+    filtered.forEach(item => {
+      const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
+      const regional = resolveRegional(cidade, cityMappings);
+
+      const dtExp = item.dt_expedicao ? new Date(item.dt_expedicao) : null;
+      const dtBaixa = item.dt_baixa_minuta ? new Date(item.dt_baixa_minuta) : null;
+
+      // Only count each date if it falls within the selected range
+      if (dtExp && isDateInRange(dtExp)) {
+        const totals = addToDay(regional, dtExp.getDate());
+        totals.expedidas++;
+      }
+      if (dtBaixa && isDateInRange(dtBaixa)) {
+        const totals = addToDay(regional, dtBaixa.getDate());
+        totals.baixadas++;
+      }
     });
 
     return Array.from(regionDayMap.entries()).map(([region, dayMap]) => ({

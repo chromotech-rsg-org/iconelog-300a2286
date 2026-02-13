@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
@@ -17,18 +17,13 @@ interface CalendarFilterProps {
 }
 
 export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: CalendarFilterProps) => {
-  // Track click count: 0 = nothing selected, 1 = single day selected, 2 = range selected
-  const clickState = useRef<"none" | "single" | "range">("none");
+  // "waiting" means user clicked same day twice and is now picking the end of a range
+  const [waitingForRangeEnd, setWaitingForRangeEnd] = useState(false);
 
-  // Sync clickState with external state
   const isSingleDay = selectedDateRange?.from && selectedDateRange?.to &&
     selectedDateRange.from.toDateString() === selectedDateRange.to.toDateString();
   const isRange = selectedDateRange?.from && selectedDateRange?.to &&
     selectedDateRange.from.toDateString() !== selectedDateRange.to.toDateString();
-
-  if (!selectedDateRange?.from) clickState.current = "none";
-  else if (isSingleDay) clickState.current = "single";
-  else if (isRange) clickState.current = "range";
 
   const getLabel = () => {
     if (!selectedDateRange?.from) return <span className="text-muted-foreground">Período</span>;
@@ -42,33 +37,42 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
     return format(selectedDateRange.from, "dd/MM/yyyy", { locale: ptBR });
   };
 
+  const getHint = () => {
+    if (waitingForRangeEnd) return "Clique em outro dia para definir o período";
+    if (isRange) return "Período selecionado";
+    if (isSingleDay) return "Clique no mesmo dia para selecionar período";
+    return "Clique em um dia para filtrar";
+  };
+
   const handleDayClick = (day: Date) => {
     if (!day) return;
 
-    const state = clickState.current;
-
-    if (state === "none") {
-      // First click: select single day
-      onDateRangeChange({ from: day, to: day });
-      clickState.current = "single";
-    } else if (state === "single") {
-      // Check if clicking the same day
-      if (selectedDateRange?.from && day.toDateString() === selectedDateRange.from.toDateString()) {
-        // Same day: clear selection
+    if (waitingForRangeEnd && selectedDateRange?.from) {
+      // User is picking the end of a range
+      const from = selectedDateRange.from;
+      if (day.toDateString() === from.toDateString()) {
+        // Clicked same day again: cancel period mode, clear selection
+        setWaitingForRangeEnd(false);
         onDateRangeChange({ from: undefined, to: undefined });
-        clickState.current = "none";
       } else {
-        // Different day: create range
-        const from = selectedDateRange!.from!;
         const sortedFrom = day < from ? day : from;
         const sortedTo = day < from ? from : day;
         onDateRangeChange({ from: sortedFrom, to: sortedTo });
-        clickState.current = "range";
+        setWaitingForRangeEnd(false);
       }
-    } else {
-      // Already a range: reset to single day
+      return;
+    }
+
+    if (!selectedDateRange?.from) {
+      // Nothing selected: select single day
       onDateRangeChange({ from: day, to: day });
-      clickState.current = "single";
+    } else if (isSingleDay && day.toDateString() === selectedDateRange.from!.toDateString()) {
+      // Clicking same selected day: enter period mode
+      setWaitingForRangeEnd(true);
+    } else {
+      // Clicking different day or when range is active: select new single day
+      setWaitingForRangeEnd(false);
+      onDateRangeChange({ from: day, to: day });
     }
   };
 
@@ -88,8 +92,8 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 bg-dashboard-card border-dashboard-border z-50" align="start">
         <div className="px-4 pt-3 pb-1">
-          <span className="text-xs text-muted-foreground">
-            {isRange ? "Período selecionado" : isSingleDay ? "Dia selecionado — clique outro dia para período" : "Clique em um dia para filtrar"}
+          <span className={cn("text-xs text-muted-foreground", waitingForRangeEnd && "text-dashboard-accent font-medium")}>
+            {getHint()}
           </span>
         </div>
 
@@ -111,8 +115,8 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
               : undefined,
           }}
           modifiersStyles={{
-            range_start: { backgroundColor: "hsl(var(--dashboard-accent))", color: "white", borderRadius: "50%" },
-            range_end: { backgroundColor: "hsl(var(--dashboard-accent))", color: "white", borderRadius: "50%" },
+            range_start: { backgroundColor: "hsl(var(--dashboard-accent))", color: "hsl(var(--primary-foreground))", borderRadius: "50%" },
+            range_end: { backgroundColor: "hsl(var(--dashboard-accent))", color: "hsl(var(--primary-foreground))", borderRadius: "50%" },
             in_range: { backgroundColor: "hsl(var(--dashboard-accent) / 0.15)", borderRadius: 0 },
           }}
         />
@@ -124,7 +128,7 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
               size="sm"
               onClick={() => {
                 onDateRangeChange({ from: undefined, to: undefined });
-                clickState.current = "none";
+                setWaitingForRangeEnd(false);
               }}
               className="w-full text-xs text-muted-foreground hover:text-dashboard-accent"
             >
