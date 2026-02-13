@@ -26,6 +26,7 @@ export const useFollowupData = (codCli: string) => {
   const [produtosData, setProdutosData] = useState<FollowupItem[]>([]);
   const [cityMappings, setCityMappings] = useState<CityRegionalMapping[]>([]);
   const [loading, setLoading] = useState(false);
+  const [lastUpdateAt, setLastUpdateAt] = useState<Date | null>(null);
 
   // Fetch city-regional mappings
   useEffect(() => {
@@ -36,31 +37,77 @@ export const useFollowupData = (codCli: string) => {
     fetchMappings();
   }, []);
 
-  // Build date range for current month
-  const getDateRange = useCallback(() => {
+  // Fetch last update from DB
+  useEffect(() => {
+    const fetchLastUpdate = async () => {
+      const { data } = await supabase
+        .from("bi_last_update")
+        .select("last_update_at")
+        .eq("page_id", "minutas")
+        .maybeSingle();
+      if (data) setLastUpdateAt(new Date(data.last_update_at));
+    };
+    fetchLastUpdate();
+  }, []);
+
+  // Save last update to DB
+  const saveLastUpdate = useCallback(async () => {
     const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    setLastUpdateAt(now);
+    await supabase
+      .from("bi_last_update")
+      .upsert({ page_id: "minutas", last_update_at: now.toISOString() }, { onConflict: "page_id" });
+  }, []);
+
+  // Build date range for given months/years
+  const getDateRange = useCallback((months: number[], years: number[]) => {
     const fmt = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+    // Find earliest first-day and latest last-day across all month/year combos
+    let earliest: Date | null = null;
+    let latest: Date | null = null;
+
+    for (const year of years) {
+      for (const month of months) {
+        const firstDay = new Date(year, month - 1, 1);
+        const lastDay = new Date(year, month, 0);
+        if (!earliest || firstDay < earliest) earliest = firstDay;
+        if (!latest || lastDay > latest) latest = lastDay;
+      }
+    }
+
+    if (!earliest || !latest) {
+      const now = new Date();
+      earliest = new Date(now.getFullYear(), now.getMonth(), 1);
+      latest = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
+
     return {
-      data_inicial: `${fmt(firstDay)} 00:00`,
-      data_final: `${fmt(lastDay)} 23:59`,
+      data_inicial: `${fmt(earliest)} 00:00`,
+      data_final: `${fmt(latest)} 23:59`,
     };
   }, []);
 
-  const fetchFollowup = useCallback(async () => {
+  const fetchFollowup = useCallback(async (months?: number[], years?: number[]) => {
     if (!codCli) return;
     setLoading(true);
-    const dates = getDateRange();
+    const now = new Date();
+    const m = months || [now.getMonth() + 1];
+    const y = years || [now.getFullYear()];
+    const dates = getDateRange(m, y);
     const data = await callMainApi("FOLLOWUP", codCli, dates);
     if (data) setFollowupData(data);
+    await saveLastUpdate();
     setLoading(false);
-  }, [codCli, callMainApi, getDateRange]);
+  }, [codCli, callMainApi, getDateRange, saveLastUpdate]);
 
-  const fetchProdutosDistribuidos = useCallback(async () => {
+  const fetchProdutosDistribuidos = useCallback(async (months?: number[], years?: number[]) => {
     if (!codCli) return;
-    const dates = getDateRange();
+    const now = new Date();
+    const m = months || [now.getMonth() + 1];
+    const y = years || [now.getFullYear()];
+    const dates = getDateRange(m, y);
     const data = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, dates);
     if (data) setProdutosData(data);
   }, [codCli, callMainApi, getDateRange]);
@@ -197,5 +244,6 @@ export const useFollowupData = (codCli: string) => {
     getTotalValue,
     getEntregasData,
     cityMappings,
+    lastUpdateAt,
   };
 };
