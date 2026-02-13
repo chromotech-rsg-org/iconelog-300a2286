@@ -22,6 +22,7 @@ interface MiniLineChartProps {
   selectedDay: number | null;
   selectedMetric: "expedidas" | "baixadas" | null;
   selectedMonths: number[];
+  selectedDateRange?: { from: Date | undefined; to: Date | undefined };
   isSelected: boolean;
   onDayClick: (day: number) => void;
   onRegionClick: (region: string) => void;
@@ -52,6 +53,7 @@ export const MiniLineChart = ({
   selectedDay,
   selectedMetric,
   selectedMonths,
+  selectedDateRange,
   isSelected,
   onDayClick,
   onRegionClick,
@@ -102,7 +104,17 @@ export const MiniLineChart = ({
             dataKey="day"
             stroke="#4a5568"
             tick={{ fill: '#a0aec0', fontSize: 9 }}
-            tickFormatter={(value) => `${value}/${String(selectedMonths?.[0] || '').padStart(2, '0')}`}
+            tickFormatter={(value) => {
+              let month = '';
+              if (selectedMonths && selectedMonths.length > 0) {
+                month = String(selectedMonths[0]).padStart(2, '0');
+              } else if (selectedDateRange?.from) {
+                month = String(selectedDateRange.from.getMonth() + 1).padStart(2, '0');
+              } else {
+                month = String(new Date().getMonth() + 1).padStart(2, '0');
+              }
+              return `${value}/${month}`;
+            }}
             interval={data.length > 20 ? 4 : data.length > 10 ? 2 : 0}
           />
           <YAxis

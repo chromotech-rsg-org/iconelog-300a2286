@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
@@ -10,7 +10,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 
 interface CalendarFilterProps {
   selectedDateRange?: { from: Date | undefined; to: Date | undefined };
@@ -18,10 +17,18 @@ interface CalendarFilterProps {
 }
 
 export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: CalendarFilterProps) => {
-  const [rangeMode, setRangeMode] = useState(false);
+  // Track click count: 0 = nothing selected, 1 = single day selected, 2 = range selected
+  const clickState = useRef<"none" | "single" | "range">("none");
 
+  // Sync clickState with external state
+  const isSingleDay = selectedDateRange?.from && selectedDateRange?.to &&
+    selectedDateRange.from.toDateString() === selectedDateRange.to.toDateString();
   const isRange = selectedDateRange?.from && selectedDateRange?.to &&
     selectedDateRange.from.toDateString() !== selectedDateRange.to.toDateString();
+
+  if (!selectedDateRange?.from) clickState.current = "none";
+  else if (isSingleDay) clickState.current = "single";
+  else if (isRange) clickState.current = "range";
 
   const getLabel = () => {
     if (!selectedDateRange?.from) return <span className="text-muted-foreground">Período</span>;
@@ -33,6 +40,36 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
       );
     }
     return format(selectedDateRange.from, "dd/MM/yyyy", { locale: ptBR });
+  };
+
+  const handleDayClick = (day: Date) => {
+    if (!day) return;
+
+    const state = clickState.current;
+
+    if (state === "none") {
+      // First click: select single day
+      onDateRangeChange({ from: day, to: day });
+      clickState.current = "single";
+    } else if (state === "single") {
+      // Check if clicking the same day
+      if (selectedDateRange?.from && day.toDateString() === selectedDateRange.from.toDateString()) {
+        // Same day: clear selection
+        onDateRangeChange({ from: undefined, to: undefined });
+        clickState.current = "none";
+      } else {
+        // Different day: create range
+        const from = selectedDateRange!.from!;
+        const sortedFrom = day < from ? day : from;
+        const sortedTo = day < from ? from : day;
+        onDateRangeChange({ from: sortedFrom, to: sortedTo });
+        clickState.current = "range";
+      }
+    } else {
+      // Already a range: reset to single day
+      onDateRangeChange({ from: day, to: day });
+      clickState.current = "single";
+    }
   };
 
   return (
@@ -50,68 +87,45 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 bg-dashboard-card border-dashboard-border z-50" align="start">
-        {/* Mode toggle */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-1">
+        <div className="px-4 pt-3 pb-1">
           <span className="text-xs text-muted-foreground">
-            {rangeMode ? "Selecionar período" : "Selecionar dia"}
+            {isRange ? "Período selecionado" : isSingleDay ? "Dia selecionado — clique outro dia para período" : "Clique em um dia para filtrar"}
           </span>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Período</span>
-            <Switch
-              checked={rangeMode}
-              onCheckedChange={(checked) => {
-                setRangeMode(checked);
-                // Reset selection when toggling mode
-                onDateRangeChange({ from: undefined, to: undefined });
-              }}
-              className="data-[state=checked]:bg-dashboard-accent"
-            />
-          </div>
         </div>
 
-        {rangeMode ? (
-          <Calendar
-            mode="range"
-            selected={selectedDateRange?.from ? { from: selectedDateRange.from, to: selectedDateRange.to } : undefined}
-            onSelect={(range) => {
-              if (!range) {
-                onDateRangeChange({ from: undefined, to: undefined });
-              } else if (range.from && range.to) {
-                onDateRangeChange({ from: range.from, to: range.to });
-              } else if (range.from) {
-                // First click in range mode - wait for second click
-                onDateRangeChange({ from: range.from, to: undefined });
-              }
-            }}
-            numberOfMonths={2}
-            locale={ptBR}
-            defaultMonth={new Date()}
-            className={cn("p-3 pointer-events-auto")}
-          />
-        ) : (
-          <Calendar
-            mode="single"
-            selected={selectedDateRange?.from}
-            onSelect={(day) => {
-              if (day) {
-                onDateRangeChange({ from: day, to: day });
-              } else {
-                onDateRangeChange({ from: undefined, to: undefined });
-              }
-            }}
-            numberOfMonths={2}
-            locale={ptBR}
-            defaultMonth={new Date()}
-            className={cn("p-3 pointer-events-auto")}
-          />
-        )}
+        <Calendar
+          mode="single"
+          selected={selectedDateRange?.from}
+          onSelect={(day) => {
+            if (day) handleDayClick(day);
+          }}
+          numberOfMonths={2}
+          locale={ptBR}
+          defaultMonth={new Date()}
+          className={cn("p-3 pointer-events-auto")}
+          modifiers={{
+            range_start: selectedDateRange?.from ? [selectedDateRange.from] : [],
+            range_end: selectedDateRange?.to && isRange ? [selectedDateRange.to] : [],
+            in_range: isRange && selectedDateRange?.from && selectedDateRange?.to
+              ? { after: selectedDateRange.from, before: selectedDateRange.to }
+              : undefined,
+          }}
+          modifiersStyles={{
+            range_start: { backgroundColor: "hsl(var(--dashboard-accent))", color: "white", borderRadius: "50%" },
+            range_end: { backgroundColor: "hsl(var(--dashboard-accent))", color: "white", borderRadius: "50%" },
+            in_range: { backgroundColor: "hsl(var(--dashboard-accent) / 0.15)", borderRadius: 0 },
+          }}
+        />
 
         {selectedDateRange?.from && (
           <div className="p-2 border-t border-dashboard-border">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onDateRangeChange({ from: undefined, to: undefined })}
+              onClick={() => {
+                onDateRangeChange({ from: undefined, to: undefined });
+                clickState.current = "none";
+              }}
               className="w-full text-xs text-muted-foreground hover:text-dashboard-accent"
             >
               Limpar seleção
