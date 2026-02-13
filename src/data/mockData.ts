@@ -33,6 +33,8 @@ export const months = [
   { short: "Dez", full: "Dezembro", value: 12 }
 ];
 
+export const allMonthValues = months.map(m => m.value);
+
 export const years = [2024, 2025, 2026];
 
 // Get number of days in a month

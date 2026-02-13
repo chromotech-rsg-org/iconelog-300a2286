@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { months, years, regions } from "@/data/mockData";
+import { months, years, regions, allMonthValues } from "@/data/mockData";
 import { NavigationMenu } from "./NavigationMenu";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -75,6 +75,16 @@ import { useAuth } from "@/contexts/AuthContext";
       }
     } else {
       onMonthsChange([...selectedMonths, monthValue].sort((a, b) => a - b));
+    }
+  };
+
+  const toggleAllMonths = () => {
+    if (!onMonthsChange) return;
+    if (selectedMonths.length === 12) {
+      // Deselect all → keep only current month
+      onMonthsChange([new Date().getMonth() + 1]);
+    } else {
+      onMonthsChange(allMonthValues);
     }
   };
 
@@ -165,7 +175,20 @@ import { useAuth } from "@/contexts/AuthContext";
       {showFilters && (
         <div className="flex flex-wrap items-center gap-4 px-6 py-3 border-t border-dashboard-border">
           {/* Month selection - desktop */}
-          <div className="hidden md:flex flex-wrap gap-1">
+          <div className="hidden md:flex flex-wrap items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleAllMonths}
+              className={`px-2 py-1 text-xs font-bold transition-all duration-200 border ${
+                selectedMonths.length === 12
+                  ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent hover:bg-dashboard-accent/80"
+                  : "text-muted-foreground border-dashboard-border hover:text-dashboard-accent hover:bg-dashboard-border"
+              }`}
+              title={selectedMonths.length === 12 ? "Desmarcar todos" : "Selecionar todos"}
+            >
+              {selectedMonths.length === 12 ? "✓" : "∀"}
+            </Button>
             {months.map((month) => (
               <Button
                 key={month.value}
@@ -196,6 +219,18 @@ import { useAuth } from "@/contexts/AuthContext";
             </PopoverTrigger>
             <PopoverContent className="w-64 p-3 bg-dashboard-card border-dashboard-border z-50">
               <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleAllMonths}
+                  className={`w-full px-3 py-1.5 text-xs font-bold transition-all duration-200 border mb-1 ${
+                    selectedMonths.length === 12
+                      ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent"
+                      : "text-muted-foreground border-dashboard-border hover:text-dashboard-accent"
+                  }`}
+                >
+                  {selectedMonths.length === 12 ? "Desmarcar todos" : "Selecionar todos"}
+                </Button>
                 {months.map((month) => (
                   <Button
                     key={month.value}

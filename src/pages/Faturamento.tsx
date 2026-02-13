@@ -27,7 +27,7 @@ import {
   generateFaturamentoByRegional,
   calculateFaturamentoTotals,
 } from "@/data/faturamentoData";
-import { formatCurrency } from "@/data/mockData";
+import { formatCurrency, allMonthValues } from "@/data/mockData";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -44,7 +44,7 @@ const Faturamento = () => {
   const [activeTab, setActiveTab] = useState("bside");
   
   // Global filters
-  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedGlobalRegions, setSelectedGlobalRegions] = useState<string[]>([]);
 
@@ -137,7 +137,7 @@ const Faturamento = () => {
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
-    setSelectedMonths([currentMonth]);
+    setSelectedMonths(allMonthValues);
     setSelectedYears([currentYear]);
     setSelectedGlobalRegions([]);
     clearAllFilters();

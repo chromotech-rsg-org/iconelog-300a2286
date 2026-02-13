@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { allMonthValues } from "@/data/mockData";
 import { Expand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SharedHeader } from "@/components/shared/SharedHeader";
@@ -32,7 +33,7 @@ const Estoque = () => {
   } = useEstoqueData(codCli);
 
   const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
@@ -92,7 +93,7 @@ const Estoque = () => {
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
-    setSelectedMonths([currentMonth]);
+    setSelectedMonths(allMonthValues);
     setSelectedYears([currentYear]);
     setSelectedRegions([]);
     clearAllFilters();

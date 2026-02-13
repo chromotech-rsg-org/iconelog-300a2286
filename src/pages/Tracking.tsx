@@ -34,7 +34,7 @@ import {
   getOrdersByRegional,
   TrackingOrder,
 } from "@/data/trackingData";
-import { formatNumber, formatCurrency } from "@/data/mockData";
+import { formatNumber, formatCurrency, allMonthValues } from "@/data/mockData";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -51,7 +51,7 @@ const Tracking = () => {
   const [orders] = useState(() => generateTrackingOrders(200));
 
   // Global filters
-  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedGlobalRegions, setSelectedGlobalRegions] = useState<string[]>([]);
 
@@ -150,7 +150,7 @@ const Tracking = () => {
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
-    setSelectedMonths([currentMonth]);
+    setSelectedMonths(allMonthValues);
     setSelectedYears([currentYear]);
     setSelectedGlobalRegions([]);
     clearAllFilters();

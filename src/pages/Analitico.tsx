@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { allMonthValues } from "@/data/mockData";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { AnaliticoCityView } from "@/components/analitico/AnaliticoCityView";
@@ -9,7 +10,7 @@ const Analitico = () => {
   const currentYear = new Date().getFullYear();
 
   const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedGlobalRegions, setSelectedGlobalRegions] = useState<string[]>([]);
 
@@ -19,12 +20,12 @@ const Analitico = () => {
   };
 
   const clearGlobalFilters = () => {
-    setSelectedMonths([currentMonth]);
+    setSelectedMonths(allMonthValues);
     setSelectedYears([currentYear]);
     setSelectedGlobalRegions([]);
   };
 
-  const hasGlobalFilters = selectedMonths.length !== 1 || selectedMonths[0] !== currentMonth || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedGlobalRegions.length > 0;
+  const hasGlobalFilters = selectedMonths.length !== 12 || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedGlobalRegions.length > 0;
 
   return (
     <div className="min-h-screen bg-dashboard-dark">
