@@ -41,6 +41,17 @@ const filterByMonthYear = (items: FollowupItem[], months: number[], years: numbe
   });
 };
 
+const filterByDateRange = (items: FollowupItem[], from: Date, to: Date): FollowupItem[] => {
+  const fromTime = from.setHours(0, 0, 0, 0);
+  const toTime = to.setHours(23, 59, 59, 999);
+  return items.filter(item => {
+    const dt = item.dt_inicio || item.dt_expedicao || item.dt_baixa_minuta;
+    if (!dt) return false;
+    const itemDate = new Date(dt).getTime();
+    return itemDate >= fromTime && itemDate <= toTime;
+  });
+};
+
 export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   const { callMainApi, error } = useApiProxy();
   const [followupData, setFollowupData] = useState<FollowupItem[]>([]);
@@ -200,8 +211,10 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     }, 3000);
   }, [codCli, callMainApi, getDateRange, saveLastUpdate, saveToCache]);
 
-  const getMinutasData = useCallback((months: number[], years: number[]) => {
-    const filtered = filterByMonthYear(followupData, months, years);
+  const getMinutasData = useCallback((months: number[], years: number[], dateRange?: { from?: Date; to?: Date }) => {
+    const filtered = dateRange?.from
+      ? filterByDateRange(followupData, dateRange.from, dateRange.to || dateRange.from)
+      : filterByMonthYear(followupData, months, years);
     const regionMap = new Map<string, { expedidas: number; baixadas: number }>();
 
     filtered.forEach(item => {
@@ -223,8 +236,10 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     }));
   }, [followupData, cityMappings]);
 
-  const getMinutasDailyData = useCallback((months: number[], years: number[]) => {
-    const filtered = filterByMonthYear(followupData, months, years);
+  const getMinutasDailyData = useCallback((months: number[], years: number[], dateRange?: { from?: Date; to?: Date }) => {
+    const filtered = dateRange?.from
+      ? filterByDateRange(followupData, dateRange.from, dateRange.to || dateRange.from)
+      : filterByMonthYear(followupData, months, years);
     const regionDayMap = new Map<string, Map<number, { expedidas: number; baixadas: number }>>();
 
     filtered.forEach(item => {
