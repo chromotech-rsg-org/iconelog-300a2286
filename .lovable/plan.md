@@ -1,109 +1,64 @@
 
-# Integrar API Real nos BIs: Minutas, B-Side Entregas e B-Side Estoque
+# Plano: Carregamento Instantaneo + Filtros do Banco + Feedback de Atualizacao
 
-## Resumo
+## Problemas Identificados
 
-Os hooks de dados reais (`useFollowupData`, `useEstoqueData`, `useApiProxy`) ja estao criados mas nao sao usados. As tres paginas ainda importam dados mock (`mockData.ts`, `entregasData.ts`, `stockData.ts`). Este plano conecta cada pagina aos dados reais via Edge Function `api-proxy`.
+1. **Carregamento lento**: O cache existe no banco (14.300 registros, ~777KB), mas o loading spinner bloqueia a tela inteira enquanto carrega. O `settingsLoading` tambem causa delay.
+2. **Filtros de mes/ano nao funcionam**: O cache salva todos os dados com uma unica chave (`followup_099`), sem distinguir mes/ano. Os dados tem o campo `dt_inicio` (ex: `2026/02/12`) que permite filtrar por mes/ano no client-side.
+3. **Sem feedback durante atualizacao**: Ao clicar em "Atualizar", nao ha indicacao visual do progresso.
 
-Cada pagina lera o `cod_cli` configurado em `bi_settings` para o respectivo `page_id`.
+## Solucao
 
----
+### 1. Carregamento Instantaneo do Cache
 
-## Pagina 1: Minutas (`src/pages/Index.tsx`)
+- Remover o loading spinner de tela cheia para o carregamento do cache
+- Mostrar os dados imediatamente assim que o cache for carregado, sem bloquear a renderizacao
+- Separar o estado `loading` (cache) do estado `refreshing` (API)
+- Se nao houver dados no cache, mostrar mensagem "Nenhum dado. Clique em Atualizar" ao inves de spinner
 
-### O que muda
-- Remover imports de `generateAllRegionalDailyData`, `calculateTotals` de `mockData.ts`
-- Importar `useFollowupData` e `useBiSettingsContext`
-- Ler `cod_cli` do `bi_settings` para `page_id = "minutas"`
-- No mount, chamar `fetchFollowup()` e `fetchProdutosDistribuidos()`
-- Substituir `barChartData` por `getMinutasData()`
-- Substituir `aggregatedDailyData` por `getMinutasDailyData()`
-- Usar `getTotalValue()` para exibir valor financeiro nos KPIs
-- Calcular `totalExpedidas` e `totalBaixadas` a partir dos dados reais
-- Manter todos os filtros interativos (dia, metrica, regiao) funcionando sobre os dados reais
-- Adicionar estado de loading e mensagem de erro
-- O botao "Atualizar" re-chama as APIs
+### 2. Filtros de Mes/Ano 100% Client-Side
 
-### Componentes afetados
-- `KPICards` - recebe dados reais, sem mudanca de interface
-- `RegionalBarChart` - recebe dados reais, sem mudanca de interface
-- `RegionalLineCharts` - recebe dados reais, sem mudanca de interface
+- Adicionar filtragem por mes/ano nos metodos `getMinutasData()` e `getMinutasDailyData()` usando o campo `dt_inicio` dos dados cacheados
+- Passar `selectedMonths` e `selectedYears` como parametros para esses metodos
+- Os filtros operam instantaneamente sobre os dados ja carregados do banco, sem consultar a API
+- Ao mudar mes/ano, apenas recalcula os dados filtrados localmente
 
----
+### 3. Feedback Visual de Atualizacao com Etapas
 
-## Pagina 2: B-Side Entregas (`src/pages/Entregas.tsx`)
-
-### O que muda
-- Remover imports de `generateDeliveryData`, `generateDeliveryItems`, `calculateDeliveryTotals` de `entregasData.ts`
-- Importar `useFollowupData` e `useBiSettingsContext`
-- Ler `cod_cli` do `bi_settings` para `page_id = "entregas"`
-- No mount, chamar `fetchFollowup()`
-- Substituir `deliveryData` por `getEntregasData()` que ja retorna o formato `DeliveryData[]`
-- Remover a tabela "Ultimas Movimentacoes" (dados granulares mock) -- ou manter usando `followupData` raw filtrado
-- Calcular totals a partir do array retornado por `getEntregasData()`
-- Manter filtros de regional, tipo e status funcionando
-- Adicionar loading e erro
-- O botao "Atualizar" re-chama a API
-
-### Componentes afetados
-- `EntregasKPICards` - sem mudanca de interface
-- `ProgressBars` - sem mudanca de interface
-- `RegionalCards` - precisa aceitar o novo formato (ja compativel com `DeliveryData`)
-- `EntregasTables` - precisa aceitar o novo formato (ja compativel com `DeliveryData`)
-- A tabela de "Ultimas Movimentacoes" sera alimentada por dados raw do Followup
-
----
-
-## Pagina 3: B-Side Estoque (`src/pages/Estoque.tsx`)
-
-### O que muda
-- Remover imports de `generateStockData`, `calculateMatrizTotals`, etc. de `stockData.ts`
-- Importar `useEstoqueData` e `useBiSettingsContext`
-- Ler `cod_cli` do `bi_settings` para `page_id = "estoque"`
-- No mount, chamar `fetchSaldoBase()` e `fetchRecebimentos()`
-- Substituir `stockData` por `stockItems` do hook (ja processado com whitelist e kits)
-- Layout simplificado: apenas tabela Matriz (Barueri), sem graficos, sem tabela Base
-- Remover os 4 graficos (PieChart, BarChart, TimePieChart, TimeBarChart)
-- Manter layout 3:1 com tabela + ProductDetailPanel
-- Usar `totals` do hook para KPIs (valor, m3, qtdeSKUs, kits)
-- Adaptar `StockLocationTables` ou criar versao simplificada com apenas Matriz
-- Adicionar colunas "Ult. Entrada Qtd" e "Ult. Entrada Data" na tabela
-- Foto maior com hover para preview
-- Adicionar loading e erro
-
-### Componentes afetados
-- `StockDualKPICards` - simplificar para single KPI (apenas Matriz)
-- `StockLocationTables` - adaptar para mostrar apenas Matriz com novas colunas
-- `ProductDetailPanel` - sem mudanca
-- Remover uso de `StockGroupPieChart`, `StockValueBarChart`, `StockTimePieChart`, `StockTimeBarChart`
-
----
+- Criar um componente `RefreshProgress` que mostra o progresso da atualizacao em etapas:
+  - "Solicitando dados da API..."
+  - "Recebendo dados do Followup... (X registros)"
+  - "Recebendo dados de Produtos..."
+  - "Salvando no banco..."
+  - "Concluido!"
+- Exibir como um toast/banner fixo durante a atualizacao, sem bloquear os dados ja exibidos
+- Os dados antigos continuam visiveis enquanto a atualizacao acontece em background
 
 ## Detalhes Tecnicos
 
-### Leitura do cod_cli
-Cada pagina usara o `useBiSettingsContext()` para buscar as settings do page_id e extrair o `cod_cli`:
-```text
-const { settings } = useBiSettingsContext();
-const biSetting = settings.find(s => s.page_id === "minutas");
-const codCli = biSetting?.cod_cli || "";
-```
+### Arquivo: `src/hooks/useFollowupData.ts`
 
-### Fluxo de dados
-```text
-Pagina monta -> le cod_cli do bi_settings -> passa para useFollowupData(codCli) ou useEstoqueData(codCli) -> hook chama fetchFollowup/fetchSaldoBase -> useApiProxy chama Edge Function api-proxy -> Edge Function faz request para API externa -> retorna dados -> hook processa e retorna dados formatados -> pagina renderiza
-```
+- Adicionar estado `refreshing` separado de `loading`
+- Adicionar estado `refreshStage` para rastrear etapas ("requesting_followup", "receiving_followup", "requesting_produtos", "saving", "done")
+- Modificar `getMinutasData(months, years)` e `getMinutasDailyData(months, years)` para filtrar por `dt_inicio`:
+  ```
+  // Extrair mes/ano de dt_inicio (formato "2026/02/12")
+  const [y, m] = item.dt_inicio.split("/").map(Number);
+  if (!years.includes(y) || !months.includes(m)) return; // skip
+  ```
+- O `loadCache` nao ativa `loading` -- apenas carrega silenciosamente
+- O `fetchFollowup` ativa `refreshing` + `refreshStage` em vez de `loading`
 
-### Tratamento de Loading/Erro
-- Cada pagina exibira um skeleton/spinner enquanto `loading === true`
-- Se `error` existir, mostra alerta com a mensagem
-- Se `cod_cli` nao estiver configurado, mostra mensagem orientando o admin a configurar
+### Arquivo: `src/pages/Index.tsx`
 
-### Arquivos modificados
-1. `src/pages/Index.tsx` - conectar a useFollowupData
-2. `src/pages/Entregas.tsx` - conectar a useFollowupData
-3. `src/pages/Estoque.tsx` - conectar a useEstoqueData, simplificar layout
-4. `src/components/stock/StockLocationTables.tsx` - adicionar colunas de ultima entrada
-5. `src/components/stock/StockDualKPICards.tsx` - adaptar para single (apenas Matriz)
-6. `src/hooks/useBiSettings.ts` - garantir que `cod_cli` esta no type BiSetting
-7. `src/contexts/BiSettingsContext.tsx` - expor metodo para obter cod_cli por pageId
+- Remover dependencia do `loading` para exibir spinner de tela cheia
+- Se `followupData` estiver vazio e nao estiver carregando cache, mostrar mensagem de "sem dados"
+- Passar `selectedMonths` e `selectedYears` para `getMinutasData` e `getMinutasDailyData`
+- Exibir componente de progresso quando `refreshing === true`
+- Os graficos continuam visiveis durante a atualizacao
+
+### Novo componente: `src/components/dashboard/RefreshProgress.tsx`
+
+- Barra/banner no topo mostrando etapa atual da atualizacao
+- Icone de spinner ao lado da etapa
+- Desaparece automaticamente quando concluido (com breve mensagem de sucesso)
