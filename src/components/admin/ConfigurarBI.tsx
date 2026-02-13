@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, lazy, Suspense } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,20 +6,26 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { useBiSettings } from "@/hooks/useBiSettings";
 import { toast } from "sonner";
 import defaultLogo from "@/assets/logo.jpg";
 import { supabase } from "@/integrations/supabase/client";
 
+const BiChartConfigManager = lazy(() => import("@/components/admin/BiChartConfigManager"));
+
 const ConfigurarBI = () => {
   const { settings, loading, uploadLogo, updateSetting, updateDisplayOrder, getSystemSetting, getOrderedBiSettings, refetch } = useBiSettings();
   const [editingNames, setEditingNames] = useState<Record<string, string>>({});
   const [editingOrders, setEditingOrders] = useState<Record<string, number>>({});
+  const [editingCodCli, setEditingCodCli] = useState<Record<string, string>>({});
+  const [editingCompany, setEditingCompany] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState<string | null>(null);
+  const [expandedCharts, setExpandedCharts] = useState<Record<string, boolean>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const systemFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -29,12 +35,18 @@ const ConfigurarBI = () => {
   useEffect(() => {
     const names: Record<string, string> = {};
     const orders: Record<string, number> = {};
-    settings.forEach((s) => {
+    const codClis: Record<string, string> = {};
+    const companies: Record<string, string> = {};
+    settings.forEach((s: any) => {
       names[s.page_id] = s.display_name;
       orders[s.page_id] = s.display_order;
+      codClis[s.page_id] = s.cod_cli || "";
+      companies[s.page_id] = s.company_name || "";
     });
     setEditingNames(names);
     setEditingOrders(orders);
+    setEditingCodCli(codClis);
+    setEditingCompany(companies);
   }, [settings]);
 
   const handleFileChange = async (pageId: string, file: File | null) => {
@@ -69,6 +81,17 @@ const ConfigurarBI = () => {
     else toast.error("Erro ao atualizar ordem");
   };
 
+  const handleExtraSave = async (pageId: string) => {
+    setSaving(pageId);
+    const { error } = await supabase.from("bi_settings").update({
+      cod_cli: editingCodCli[pageId] || null,
+      company_name: editingCompany[pageId] || null,
+    }).eq("page_id", pageId);
+    setSaving(null);
+    if (error) toast.error("Erro ao salvar: " + error.message);
+    else toast.success("Dados atualizados!");
+  };
+
   const handleDuplicate = async (setting: any) => {
     setDuplicating(setting.page_id);
     try {
@@ -78,6 +101,8 @@ const ConfigurarBI = () => {
         display_name: `${setting.display_name} (Cópia)`,
         logo_url: setting.logo_url,
         display_order: (setting.display_order || 0) + 1,
+        cod_cli: setting.cod_cli,
+        company_name: setting.company_name,
       });
       if (error) throw error;
       toast.success("BI duplicado com sucesso!");
@@ -228,11 +253,40 @@ const ConfigurarBI = () => {
                     className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9 w-20" />
                   <Button variant="outline" size="icon" className="h-9 w-9 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
                     onClick={() => handleOrderSave(setting.page_id)} disabled={savingOrder === setting.page_id || editingOrders[setting.page_id] === getCurrentSetting(setting.page_id)?.display_order}>
-                    {savingOrder === setting.page_id ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
-                  </Button>
+                     {savingOrder === setting.page_id ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
+                   </Button>
+                 </div>
+               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Cód. Cliente</Label>
+                  <Input value={editingCodCli[setting.page_id] || ""} onChange={(e) => setEditingCodCli(prev => ({ ...prev, [setting.page_id]: e.target.value }))}
+                    className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="Ex: PAY" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Empresa</Label>
+                  <Input value={editingCompany[setting.page_id] || ""} onChange={(e) => setEditingCompany(prev => ({ ...prev, [setting.page_id]: e.target.value }))}
+                    className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="Nome da empresa" />
                 </div>
               </div>
-            </CardContent>
+              <Button variant="outline" size="sm" className="w-full h-7 text-xs border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
+                onClick={() => handleExtraSave(setting.page_id)}>
+                <Save className="h-3 w-3 mr-1" /> Salvar Empresa/Cód
+              </Button>
+              <Collapsible open={expandedCharts[setting.page_id]} onOpenChange={(open) => setExpandedCharts(prev => ({ ...prev, [setting.page_id]: open }))}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full h-7 text-xs text-muted-foreground hover:text-foreground">
+                    {expandedCharts[setting.page_id] ? <ChevronDown className="h-3 w-3 mr-1" /> : <ChevronRight className="h-3 w-3 mr-1" />}
+                    Configurar Gráficos
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <Suspense fallback={<Loader2 className="h-4 w-4 animate-spin text-dashboard-accent mx-auto" />}>
+                    <BiChartConfigManager pageId={setting.page_id} pageName={setting.display_name} />
+                  </Suspense>
+                </CollapsibleContent>
+              </Collapsible>
+             </CardContent>
           </Card>
         ))}
       </div>
