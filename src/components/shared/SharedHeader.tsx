@@ -25,6 +25,7 @@ import { NavigationMenu } from "./NavigationMenu";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDynamicFilters } from "@/hooks/useDynamicFilters";
 import { supabase } from "@/integrations/supabase/client";
+import { CalendarFilter } from "./CalendarFilter";
 
  interface SharedHeaderProps {
    pageTitle?: string;
@@ -404,66 +405,12 @@ import { supabase } from "@/integrations/supabase/client";
             </PopoverContent>
           </Popover>
 
-          {/* Calendar date range filter */}
+          {/* Calendar date filter */}
           {onDateRangeChange && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-auto justify-start border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border",
-                    selectedDateRange?.from && "text-dashboard-accent border-dashboard-accent/50"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {selectedDateRange?.from ? (
-                    selectedDateRange.to ? (
-                      <>
-                        {format(selectedDateRange.from, "dd/MM", { locale: ptBR })} - {format(selectedDateRange.to, "dd/MM", { locale: ptBR })}
-                      </>
-                    ) : (
-                      format(selectedDateRange.from, "dd/MM/yyyy", { locale: ptBR })
-                    )
-                  ) : (
-                    <span className="text-muted-foreground">Período</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-dashboard-card border-dashboard-border z-50" align="start">
-              <Calendar
-                  mode="range"
-                  selected={selectedDateRange?.from ? { from: selectedDateRange.from, to: selectedDateRange.to } : undefined}
-                  onSelect={(range) => {
-                    if (!range) {
-                      onDateRangeChange({ from: undefined, to: undefined });
-                    } else if (range.from && !range.to) {
-                      onDateRangeChange({ from: range.from, to: range.from });
-                    } else if (range.from && range.to) {
-                      const sameDay = range.from.toDateString() === range.to.toDateString();
-                      onDateRangeChange({ from: range.from, to: sameDay ? range.from : range.to });
-                    } else {
-                      onDateRangeChange({ from: undefined, to: undefined });
-                    }
-                  }}
-                  numberOfMonths={2}
-                  locale={ptBR}
-                  defaultMonth={new Date()}
-                  className={cn("p-3 pointer-events-auto")}
-                />
-                {selectedDateRange?.from && (
-                  <div className="p-2 border-t border-dashboard-border">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDateRangeChange({ from: undefined, to: undefined })}
-                      className="w-full text-xs text-muted-foreground hover:text-dashboard-accent"
-                    >
-                      Limpar período
-                    </Button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
+            <CalendarFilter
+              selectedDateRange={selectedDateRange}
+              onDateRangeChange={onDateRangeChange}
+            />
           )}
 
           {showExport && onExportExcel && (

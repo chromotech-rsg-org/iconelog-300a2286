@@ -165,13 +165,14 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     };
   }, []);
 
-  const fetchFollowup = useCallback(async (months?: number[], years?: number[]) => {
+  const fetchFollowup = useCallback(async (_months?: number[], _years?: number[]) => {
     if (!codCli) return;
     setRefreshing(true);
     const now = new Date();
-    const m = months || [now.getMonth() + 1];
-    const y = years || [now.getFullYear()];
-    const dates = getDateRange(m, y);
+    // Always fetch full range: previous year Jan to current date
+    const allMonthsRange = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const allYearsRange = [now.getFullYear() - 1, now.getFullYear()];
+    const dates = getDateRange(allMonthsRange, allYearsRange);
 
     setRefreshStage("requesting_followup");
     const followupResult = await callMainApi("FOLLOWUP", codCli, dates, pageId);
