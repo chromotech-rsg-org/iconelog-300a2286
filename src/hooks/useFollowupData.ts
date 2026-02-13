@@ -105,10 +105,14 @@ export const useFollowupData = (codCli: string) => {
 
   const saveLastUpdate = useCallback(async () => {
     const now = new Date();
-    setLastUpdateAt(now);
-    await supabase
+    const { error: upsertError } = await supabase
       .from("bi_last_update")
       .upsert({ page_id: "minutas", last_update_at: now.toISOString() }, { onConflict: "page_id" });
+    if (!upsertError) {
+      setLastUpdateAt(now);
+    } else {
+      console.error("Failed to save last update:", upsertError.message);
+    }
   }, []);
 
   const saveToCache = useCallback(async (cacheKey: string, data: FollowupItem[]) => {
