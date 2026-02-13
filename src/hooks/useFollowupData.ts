@@ -36,19 +36,34 @@ export const useFollowupData = (codCli: string) => {
     fetchMappings();
   }, []);
 
+  // Build date range for current month
+  const getDateRange = useCallback(() => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return {
+      data_inicial: `${fmt(firstDay)} 00:00`,
+      data_final: `${fmt(lastDay)} 23:59`,
+    };
+  }, []);
+
   const fetchFollowup = useCallback(async () => {
     if (!codCli) return;
     setLoading(true);
-    const data = await callMainApi("Followup", codCli);
+    const dates = getDateRange();
+    const data = await callMainApi("FOLLOWUP", codCli, dates);
     if (data) setFollowupData(data);
     setLoading(false);
-  }, [codCli, callMainApi]);
+  }, [codCli, callMainApi, getDateRange]);
 
   const fetchProdutosDistribuidos = useCallback(async () => {
     if (!codCli) return;
-    const data = await callMainApi("ProdutosDistribuidos", codCli);
+    const dates = getDateRange();
+    const data = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, dates);
     if (data) setProdutosData(data);
-  }, [codCli, callMainApi]);
+  }, [codCli, callMainApi, getDateRange]);
 
   // Process Minutas data: group by regional, count expedidas vs baixadas
   const getMinutasData = useCallback(() => {
