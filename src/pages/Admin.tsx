@@ -27,6 +27,7 @@ const ClientsCRUD = lazy(() => import("@/components/admin/ClientsCRUD"));
 const IntegrationManager = lazy(() => import("@/components/admin/IntegrationManager"));
 const ApiTester = lazy(() => import("@/components/admin/ApiTester"));
 const ApiTestLogs = lazy(() => import("@/components/admin/ApiTestLogs"));
+const StockProductsManager = lazy(() => import("@/components/admin/StockProductsManager"));
 
 interface PagePermissionForm {
   page_id: string;
@@ -259,6 +260,8 @@ const Admin = () => {
         return canViewAdmin("testesApi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><ApiTester /></Suspense> : null;
       case "logs_api":
         return canViewAdmin("logsApi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><ApiTestLogs /></Suspense> : null;
+      case "produtos_estoque":
+        return canViewAdmin("configurarBi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><StockProductsManager /></Suspense> : null;
       default:
         return null;
     }

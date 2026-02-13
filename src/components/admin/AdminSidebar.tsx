@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Shield, Globe, MapPin, Settings, LayoutGrid, Building2, Link, FlaskConical, FileText, ChevronDown, ChevronRight } from "lucide-react";
+import { Users, Shield, Globe, MapPin, Settings, LayoutGrid, Building2, Link, FlaskConical, FileText, ChevronDown, ChevronRight, Package } from "lucide-react";
 import { useAuth, AdminSectionType } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 export type AdminSection = 
   | "usuarios" | "perfis" | "publico" | "regionais"
-  | "configurar_bi" | "empresas_clientes" | "integracao" | "testes_api" | "logs_api";
+  | "configurar_bi" | "empresas_clientes" | "integracao" | "testes_api" | "logs_api" | "produtos_estoque";
 
 interface AdminSidebarProps {
   activeSection: AdminSection;
@@ -32,6 +32,7 @@ const configItems: MenuItem[] = [
   { id: "configurar_bi", label: "Configurar BI", icon: LayoutGrid, permissionKey: "configurarBi" },
   { id: "empresas_clientes", label: "Empresas / Clientes", icon: Building2, permissionKey: "empresasClientes" },
   { id: "integracao", label: "Integração", icon: Link, permissionKey: "integracao" },
+  { id: "produtos_estoque", label: "Produtos & Kits", icon: Package, permissionKey: "configurarBi" },
   { id: "testes_api", label: "Testes de API", icon: FlaskConical, permissionKey: "testesApi" },
   { id: "logs_api", label: "Logs", icon: FileText, permissionKey: "logsApi" },
 ];
