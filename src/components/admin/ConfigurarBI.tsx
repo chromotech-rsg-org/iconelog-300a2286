@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useRef, useEffect, useMemo, lazy, Suspense, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { useBiSettings } from "@/hooks/useBiSettings";
 import { toast } from "sonner";
@@ -14,6 +16,19 @@ import defaultLogo from "@/assets/logo.jpg";
 import { supabase } from "@/integrations/supabase/client";
 
 const BiChartConfigManager = lazy(() => import("@/components/admin/BiChartConfigManager"));
+
+interface Client {
+  id: string;
+  cod_cli: string;
+  nome: string;
+  logo_url: string | null;
+}
+
+interface ApiIntegration {
+  id: string;
+  name: string;
+  base_url: string | null;
+}
 
 const ConfigurarBI = () => {
   const { settings, loading, uploadLogo, updateSetting, updateDisplayOrder, getSystemSetting, getOrderedBiSettings, refetch } = useBiSettings();
@@ -29,8 +44,25 @@ const ConfigurarBI = () => {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const systemFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Clients and integrations for selects
+  const [clients, setClients] = useState<Client[]>([]);
+  const [integrations, setIntegrations] = useState<ApiIntegration[]>([]);
+
   const systemSetting = useMemo(() => getSystemSetting(), [getSystemSetting]);
   const orderedBiSettings = useMemo(() => getOrderedBiSettings(), [getOrderedBiSettings]);
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      const { data } = await supabase.from("clients").select("id, cod_cli, nome, logo_url").eq("ativo", true).order("nome");
+      setClients((data as Client[]) || []);
+    };
+    const fetchIntegrations = async () => {
+      const { data } = await supabase.from("api_integrations").select("id, name, base_url").order("name");
+      setIntegrations(data || []);
+    };
+    fetchClients();
+    fetchIntegrations();
+  }, []);
 
   useEffect(() => {
     const names: Record<string, string> = {};
@@ -53,7 +85,6 @@ const ConfigurarBI = () => {
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Por favor, selecione uma imagem"); return; }
     if (file.size > 2 * 1024 * 1024) { toast.error("A imagem deve ter no máximo 2MB"); return; }
-
     setUploading(pageId);
     const result = await uploadLogo(pageId, file);
     setUploading(null);
@@ -79,6 +110,25 @@ const ConfigurarBI = () => {
     setSavingOrder(null);
     if (result.success) toast.success("Ordem atualizada!");
     else toast.error("Erro ao atualizar ordem");
+  };
+
+  const handleClientSelect = (pageId: string, codCli: string) => {
+    const client = clients.find(c => c.cod_cli === codCli);
+    if (client) {
+      setEditingCodCli(prev => ({ ...prev, [pageId]: client.cod_cli }));
+      setEditingCompany(prev => ({ ...prev, [pageId]: client.nome }));
+      // Auto-fill logo if client has one
+      if (client.logo_url) {
+        handleAutoLogo(pageId, client.logo_url);
+      }
+    }
+  };
+
+  const handleAutoLogo = async (pageId: string, logoUrl: string) => {
+    const { error } = await supabase.from("bi_settings").update({ logo_url: logoUrl }).eq("page_id", pageId);
+    if (!error) {
+      refetch();
+    }
   };
 
   const handleExtraSave = async (pageId: string) => {
@@ -195,11 +245,11 @@ const ConfigurarBI = () => {
         <LayoutGrid className="h-5 w-5 text-dashboard-accent" />
         <div>
           <h2 className="text-lg font-semibold text-foreground">Configurações dos BIs</h2>
-          <p className="text-sm text-muted-foreground">Configure logos, nomes, ordem e duplique módulos</p>
+          <p className="text-sm text-muted-foreground">Configure logos, nomes, empresa, APIs e gráficos</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {orderedBiSettings.map((setting) => (
           <Card key={setting.id} className="bg-dashboard-card border-dashboard-border hover:border-dashboard-accent/50 transition-colors">
             <CardHeader className="pb-3">
@@ -234,6 +284,7 @@ const ConfigurarBI = () => {
                   <p className="text-xs text-muted-foreground/60">PNG, JPG até 2MB</p>
                 </div>
               </div>
+
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Nome de exibição</Label>
                 <div className="flex gap-2">
@@ -245,6 +296,7 @@ const ConfigurarBI = () => {
                   </Button>
                 </div>
               </div>
+
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Ordem no menu</Label>
                 <div className="flex gap-2">
@@ -253,10 +305,32 @@ const ConfigurarBI = () => {
                     className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9 w-20" />
                   <Button variant="outline" size="icon" className="h-9 w-9 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
                     onClick={() => handleOrderSave(setting.page_id)} disabled={savingOrder === setting.page_id || editingOrders[setting.page_id] === getCurrentSetting(setting.page_id)?.display_order}>
-                     {savingOrder === setting.page_id ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
-                   </Button>
-                 </div>
-               </div>
+                    {savingOrder === setting.page_id ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Empresa - Select from clients */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Empresa</Label>
+                <Select value={editingCodCli[setting.page_id] || ""} onValueChange={(v) => handleClientSelect(setting.page_id, v)}>
+                  <SelectTrigger className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9">
+                    <SelectValue placeholder="Selecione uma empresa" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-dashboard-card border-dashboard-border">
+                    {clients.map(c => (
+                      <SelectItem key={c.id} value={c.cod_cli}>
+                        <div className="flex items-center gap-2">
+                          {c.logo_url && <img src={c.logo_url} className="h-4 w-4 rounded object-cover" />}
+                          <span>{c.nome}</span>
+                          <span className="text-muted-foreground text-xs">({c.cod_cli})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Cód. Cliente</Label>
@@ -264,15 +338,42 @@ const ConfigurarBI = () => {
                     className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="Ex: PAY" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Empresa</Label>
+                  <Label className="text-xs text-muted-foreground">Nome Empresa</Label>
                   <Input value={editingCompany[setting.page_id] || ""} onChange={(e) => setEditingCompany(prev => ({ ...prev, [setting.page_id]: e.target.value }))}
                     className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="Nome da empresa" />
                 </div>
               </div>
+
               <Button variant="outline" size="sm" className="w-full h-7 text-xs border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
                 onClick={() => handleExtraSave(setting.page_id)}>
                 <Save className="h-3 w-3 mr-1" /> Salvar Empresa/Cód
               </Button>
+
+              {/* APIs usadas - multi-select via checkboxes */}
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full h-7 text-xs text-muted-foreground hover:text-foreground">
+                    <ChevronRight className="h-3 w-3 mr-1" />
+                    APIs Utilizadas
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2 space-y-1">
+                  {integrations.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center">Cadastre integrações primeiro</p>
+                  ) : (
+                    integrations.map(api => (
+                      <div key={api.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-dashboard-dark/50">
+                        <Checkbox id={`${setting.page_id}-${api.id}`} />
+                        <label htmlFor={`${setting.page_id}-${api.id}`} className="text-xs text-foreground cursor-pointer flex-1">
+                          {api.name}
+                        </label>
+                        <span className="text-xs text-muted-foreground font-mono truncate max-w-[120px]">{api.base_url || ""}</span>
+                      </div>
+                    ))
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+
               <Collapsible open={expandedCharts[setting.page_id]} onOpenChange={(open) => setExpandedCharts(prev => ({ ...prev, [setting.page_id]: open }))}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="w-full h-7 text-xs text-muted-foreground hover:text-foreground">
@@ -286,7 +387,7 @@ const ConfigurarBI = () => {
                   </Suspense>
                 </CollapsibleContent>
               </Collapsible>
-             </CardContent>
+            </CardContent>
           </Card>
         ))}
       </div>

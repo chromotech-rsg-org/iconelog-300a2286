@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Pencil, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,6 +24,12 @@ interface Integration {
   created_at: string;
 }
 
+interface HeaderRow {
+  key: string;
+  value: string;
+  enabled: boolean;
+}
+
 const IntegrationManager = () => {
   const { canEditAdmin, canCreateAdmin, canDeleteAdmin } = useAuth();
   const [items, setItems] = useState<Integration[]>([]);
@@ -30,7 +37,11 @@ const IntegrationManager = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Integration | null>(null);
   const [showToken, setShowToken] = useState(false);
-  const [form, setForm] = useState({ name: "", base_url: "", auth_type: "bearer", auth_token: "", headers_json: "{}", description: "" });
+  const [form, setForm] = useState({ name: "", base_url: "", auth_type: "bearer", auth_token: "", description: "", method: "POST", test_body: "{}" });
+  const [headerRows, setHeaderRows] = useState<HeaderRow[]>([
+    { key: "Authorization", value: "", enabled: true },
+    { key: "Content-Type", value: "application/json", enabled: true },
+  ]);
 
   const fetchItems = useCallback(async () => {
     const { data, error } = await supabase.from("api_integrations").select("*").order("name");
@@ -41,24 +52,59 @@ const IntegrationManager = () => {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
+  const headersToRows = (headersJson: any): HeaderRow[] => {
+    if (!headersJson || typeof headersJson !== "object") {
+      return [{ key: "", value: "", enabled: true }];
+    }
+    const rows: HeaderRow[] = Object.entries(headersJson).map(([key, value]) => ({
+      key, value: String(value), enabled: true,
+    }));
+    if (rows.length === 0) rows.push({ key: "", value: "", enabled: true });
+    return rows;
+  };
+
+  const rowsToHeaders = (rows: HeaderRow[]): Record<string, string> => {
+    const result: Record<string, string> = {};
+    rows.filter(r => r.enabled && r.key.trim()).forEach(r => { result[r.key.trim()] = r.value; });
+    return result;
+  };
+
   const handleOpen = (item?: Integration) => {
     setShowToken(false);
     if (item) {
       setEditing(item);
-      setForm({ name: item.name, base_url: item.base_url || "", auth_type: item.auth_type, auth_token: item.auth_token || "", headers_json: JSON.stringify(item.headers_json || {}, null, 2), description: item.description || "" });
+      setForm({
+        name: item.name, base_url: item.base_url || "", auth_type: item.auth_type,
+        auth_token: item.auth_token || "", description: item.description || "",
+        method: "POST", test_body: "{}",
+      });
+      setHeaderRows(headersToRows(item.headers_json));
     } else {
       setEditing(null);
-      setForm({ name: "", base_url: "", auth_type: "bearer", auth_token: "", headers_json: "{}", description: "" });
+      setForm({ name: "", base_url: "", auth_type: "bearer", auth_token: "", description: "", method: "POST", test_body: "{}" });
+      setHeaderRows([
+        { key: "Authorization", value: "", enabled: true },
+        { key: "Content-Type", value: "application/json", enabled: true },
+      ]);
     }
     setDialogOpen(true);
   };
 
+  const addHeaderRow = () => setHeaderRows(prev => [...prev, { key: "", value: "", enabled: true }]);
+  const removeHeaderRow = (idx: number) => setHeaderRows(prev => prev.filter((_, i) => i !== idx));
+  const updateHeaderRow = (idx: number, field: keyof HeaderRow, value: any) => {
+    setHeaderRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error("Nome é obrigatório"); return; }
-    let headersJson = {};
-    try { headersJson = JSON.parse(form.headers_json); } catch { toast.error("Headers JSON inválido"); return; }
+    const headersJson = rowsToHeaders(headerRows);
 
-    const payload = { name: form.name.trim(), base_url: form.base_url.trim() || null, auth_type: form.auth_type, auth_token: form.auth_token.trim() || null, headers_json: headersJson, description: form.description.trim() || null };
+    const payload = {
+      name: form.name.trim(), base_url: form.base_url.trim() || null,
+      auth_type: form.auth_type, auth_token: form.auth_token.trim() || null,
+      headers_json: headersJson, description: form.description.trim() || null,
+    };
 
     if (editing) {
       const { error } = await supabase.from("api_integrations").update(payload).eq("id", editing.id);
@@ -121,7 +167,7 @@ const IntegrationManager = () => {
       </CardContent>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="bg-dashboard-card border-dashboard-border max-w-2xl">
+        <DialogContent className="bg-dashboard-card border-dashboard-border max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-foreground">{editing ? "Editar" : "Nova"} Integração</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -148,9 +194,53 @@ const IntegrationManager = () => {
                   {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div></div>
-            <div><Label className="text-foreground">Headers Adicionais (JSON)</Label>
-              <Textarea value={form.headers_json} onChange={e => setForm({...form, headers_json: e.target.value})}
-                className="bg-dashboard-dark border-dashboard-border text-foreground font-mono text-sm h-20" placeholder='{"Content-Type": "application/json"}' /></div>
+
+            {/* Headers como Postman - tabela key/value com checkbox */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-foreground">Headers</Label>
+                <Button variant="outline" size="sm" onClick={addHeaderRow} className="border-dashboard-border text-xs h-7">
+                  <Plus className="h-3 w-3 mr-1" /> Adicionar
+                </Button>
+              </div>
+              <div className="border border-dashboard-border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-dashboard-border bg-dashboard-dark/50">
+                      <TableHead className="text-muted-foreground text-xs w-10"></TableHead>
+                      <TableHead className="text-muted-foreground text-xs">Key</TableHead>
+                      <TableHead className="text-muted-foreground text-xs">Value</TableHead>
+                      <TableHead className="text-muted-foreground text-xs w-10"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {headerRows.map((row, idx) => (
+                      <TableRow key={idx} className="border-dashboard-border">
+                        <TableCell className="py-1 px-2">
+                          <Checkbox checked={row.enabled} onCheckedChange={(v) => updateHeaderRow(idx, "enabled", !!v)} />
+                        </TableCell>
+                        <TableCell className="py-1 px-2">
+                          <Input value={row.key} onChange={e => updateHeaderRow(idx, "key", e.target.value)}
+                            className="bg-transparent border-none text-foreground text-sm h-8 p-0 focus-visible:ring-0" placeholder="Key" />
+                        </TableCell>
+                        <TableCell className="py-1 px-2">
+                          <Input value={row.value} onChange={e => updateHeaderRow(idx, "value", e.target.value)}
+                            className="bg-transparent border-none text-foreground text-sm h-8 p-0 focus-visible:ring-0" placeholder="Value" />
+                        </TableCell>
+                        <TableCell className="py-1 px-2">
+                          {headerRows.length > 1 && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeHeaderRow(idx)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
             <div><Label className="text-foreground">Descrição</Label>
               <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" placeholder="Descrição opcional" /></div>
           </div>
