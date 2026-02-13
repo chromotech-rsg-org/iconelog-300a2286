@@ -386,86 +386,84 @@ const Admin = () => {
       </Card>
 
       <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
-        <DialogContent className="bg-dashboard-card border-dashboard-border max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="bg-dashboard-card border-dashboard-border max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-foreground">{editingRole ? "Editar" : "Novo"} Perfil</DialogTitle></DialogHeader>
-          <ScrollArea className="flex-1 pr-4">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label className="text-foreground">Nome do Perfil</Label>
-                  <Input value={profileForm.nome} onChange={e => setProfileForm({...profileForm, nome: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" placeholder="Ex: Gerente, Operador..." /></div>
-                <div><Label className="text-foreground">Descrição</Label>
-                  <Input value={profileForm.descricao} onChange={e => setProfileForm({...profileForm, descricao: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" placeholder="Descrição do perfil..." /></div>
-              </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label className="text-foreground">Nome do Perfil</Label>
+                <Input value={profileForm.nome} onChange={e => setProfileForm({...profileForm, nome: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" placeholder="Ex: Gerente, Operador..." /></div>
+              <div><Label className="text-foreground">Descrição</Label>
+                <Input value={profileForm.descricao} onChange={e => setProfileForm({...profileForm, descricao: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" placeholder="Descrição do perfil..." /></div>
+            </div>
 
-              {/* Page Permissions */}
-              <div>
-                <Label className="text-foreground mb-2 block">Permissões de Módulos</Label>
-                <ScrollArea className="h-[250px] border border-dashboard-border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-dashboard-border">
-                        <TableHead className="text-muted-foreground min-w-[200px]">Módulo</TableHead>
-                        <TableHead className="text-muted-foreground text-center">Visualizar</TableHead>
-                        <TableHead className="text-muted-foreground text-center">Exportar</TableHead>
-                        <TableHead className="text-muted-foreground text-center">Atualizar</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {systemPages.map(page => {
-                        const perm = profileForm.pagePermissions[page.id];
-                        return (
-                          <TableRow key={page.id} className="border-dashboard-border">
-                            <TableCell className="text-foreground text-sm">{page.nome}</TableCell>
-                            <TableCell className="text-center"><Switch checked={perm?.visualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "visualizar")} /></TableCell>
-                            <TableCell className="text-center"><Switch checked={perm?.exportar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "exportar")} /></TableCell>
-                            <TableCell className="text-center"><Switch checked={perm?.atualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "atualizar")} /></TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </div>
-
-              {/* Admin Permissions */}
-              <div>
-                <Label className="text-foreground mb-2 block">Permissões de Administração</Label>
-                <div className="border border-dashboard-border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-dashboard-border">
-                        <TableHead className="text-muted-foreground min-w-[150px]">Seção</TableHead>
-                        <TableHead className="text-muted-foreground text-center">Ver</TableHead>
-                        <TableHead className="text-muted-foreground text-center">Editar</TableHead>
-                        <TableHead className="text-muted-foreground text-center">Criar</TableHead>
-                        <TableHead className="text-muted-foreground text-center">Excluir</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {ALL_ADMIN_TYPES.map(type => {
-                        const perm = profileForm.adminPermissions[type.key];
-                        return (
-                          <TableRow key={type.key} className="border-dashboard-border">
-                            <TableCell className="text-foreground text-sm">{type.label}</TableCell>
-                            <TableCell className="text-center"><Switch checked={perm?.ver ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "ver")} /></TableCell>
-                            <TableCell className="text-center">
-                              {type.hasCrud || type.key === "acesso_publico" ? <Switch checked={perm?.editar ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "editar")} /> : <span className="text-muted-foreground text-xs">-</span>}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {type.hasCrud ? <Switch checked={perm?.criar ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "criar")} /> : <span className="text-muted-foreground text-xs">-</span>}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {type.hasCrud ? <Switch checked={perm?.excluir ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "excluir")} /> : <span className="text-muted-foreground text-xs">-</span>}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+            {/* Page Permissions */}
+            <div>
+              <Label className="text-foreground mb-2 block">Permissões de Módulos</Label>
+              <div className="border border-dashboard-border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-dashboard-border">
+                      <TableHead className="text-muted-foreground min-w-[200px]">Módulo</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Visualizar</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Exportar</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Atualizar</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {systemPages.map(page => {
+                      const perm = profileForm.pagePermissions[page.id];
+                      return (
+                        <TableRow key={page.id} className="border-dashboard-border">
+                          <TableCell className="text-foreground text-sm">{page.nome}</TableCell>
+                          <TableCell className="text-center"><Switch checked={perm?.visualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "visualizar")} /></TableCell>
+                          <TableCell className="text-center"><Switch checked={perm?.exportar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "exportar")} /></TableCell>
+                          <TableCell className="text-center"><Switch checked={perm?.atualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "atualizar")} /></TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </div>
-          </ScrollArea>
+
+            {/* Admin Permissions */}
+            <div>
+              <Label className="text-foreground mb-2 block">Permissões de Administração</Label>
+              <div className="border border-dashboard-border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-dashboard-border">
+                      <TableHead className="text-muted-foreground min-w-[150px]">Seção</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Ver</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Editar</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Criar</TableHead>
+                      <TableHead className="text-muted-foreground text-center">Excluir</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ALL_ADMIN_TYPES.map(type => {
+                      const perm = profileForm.adminPermissions[type.key];
+                      return (
+                        <TableRow key={type.key} className="border-dashboard-border">
+                          <TableCell className="text-foreground text-sm">{type.label}</TableCell>
+                          <TableCell className="text-center"><Switch checked={perm?.ver ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "ver")} /></TableCell>
+                          <TableCell className="text-center">
+                            {type.hasCrud || type.key === "acesso_publico" ? <Switch checked={perm?.editar ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "editar")} /> : <span className="text-muted-foreground text-xs">-</span>}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {type.hasCrud ? <Switch checked={perm?.criar ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "criar")} /> : <span className="text-muted-foreground text-xs">-</span>}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {type.hasCrud ? <Switch checked={perm?.excluir ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "excluir")} /> : <span className="text-muted-foreground text-xs">-</span>}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsProfileDialogOpen(false)} className="border-dashboard-border">Cancelar</Button>
             <Button onClick={handleSaveProfile} className="bg-dashboard-accent text-dashboard-dark">Salvar</Button>

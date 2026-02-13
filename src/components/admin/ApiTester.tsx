@@ -12,33 +12,54 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
+interface Integration {
+  id: string;
+  name: string;
+  base_url: string | null;
+  auth_type: string;
+  auth_token: string | null;
+  headers_json: any;
+}
+
 const ApiTester = () => {
   const { user } = useAuth();
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [selectedIntegration, setSelectedIntegration] = useState<string>("");
   const [method, setMethod] = useState("POST");
   const [url, setUrl] = useState("");
   const [headers, setHeaders] = useState('{\n  "Content-Type": "application/json"\n}');
   const [body, setBody] = useState("{}");
   const [loading, setLoading] = useState(false);
+  const [loadingIntegrations, setLoadingIntegrations] = useState(true);
   const [response, setResponse] = useState<{ status: number; body: any; headers: any; time: number } | null>(null);
 
-  // Pre-configured templates
-  const templates = [
-    { label: "Followup", method: "POST", url: "https://nfe9.websiteseguro.com/api/FOLLOWUP", body: '{\n  "cod_cli": "099",\n  "dt_inicio": "01/01/2025",\n  "dt_fim": "31/01/2025"\n}' },
-    { label: "Saldo Base", method: "POST", url: "https://nfe9.websiteseguro.com/api/SALDOBASE", body: '{\n  "cod_cli": "099"\n}' },
-    { label: "Produtos Distribuidos", method: "POST", url: "https://nfe9.websiteseguro.com/api/PRODUTOSDISTRIBUIDOS", body: '{\n  "cod_cli": "099",\n  "dt_inicio": "01/01/2025",\n  "dt_fim": "31/01/2025"\n}' },
-    { label: "Recebimentos", method: "POST", url: "https://nfe9.websiteseguro.com/api/RECEBIMENTOS", body: '{\n  "cod_cli": "099",\n  "dt_inicio": "01/01/2025",\n  "dt_fim": "31/01/2025"\n}' },
-  ];
+  const fetchIntegrations = useCallback(async () => {
+    const { data } = await supabase.from("api_integrations").select("id, name, base_url, auth_type, auth_token, headers_json").order("name");
+    setIntegrations(data || []);
+    setLoadingIntegrations(false);
+  }, []);
 
-  const handleTemplate = (tpl: typeof templates[0]) => {
-    setMethod(tpl.method);
-    setUrl(tpl.url);
-    setBody(tpl.body);
+  useEffect(() => { fetchIntegrations(); }, [fetchIntegrations]);
+
+  const handleSelectIntegration = (integrationId: string) => {
+    setSelectedIntegration(integrationId);
+    const integration = integrations.find(i => i.id === integrationId);
+    if (integration) {
+      setUrl(integration.base_url || "");
+      const h: Record<string, string> = { ...(integration.headers_json || {}) };
+      if (integration.auth_type === "bearer" && integration.auth_token) {
+        h["Authorization"] = `Bearer ${integration.auth_token}`;
+      } else if (integration.auth_type === "api_key" && integration.auth_token) {
+        h["Authorization"] = integration.auth_token;
+      }
+      setHeaders(JSON.stringify(h, null, 2));
+    }
   };
 
   const handleSend = async () => {
     if (!url.trim()) { toast.error("URL é obrigatória"); return; }
 
-    let parsedHeaders = {};
+    let parsedHeaders: Record<string, string> = {};
     let parsedBody = undefined;
     try { parsedHeaders = JSON.parse(headers); } catch { toast.error("Headers JSON inválido"); return; }
     if (["POST", "PUT", "PATCH"].includes(method)) {
@@ -55,7 +76,6 @@ const ApiTester = () => {
       });
 
       const elapsed = Date.now() - startTime;
-
       if (error) throw error;
 
       const result = {
@@ -66,7 +86,6 @@ const ApiTester = () => {
       };
       setResponse(result);
 
-      // Save to logs
       await supabase.from("api_test_logs").insert({
         endpoint: url,
         method,
@@ -95,19 +114,31 @@ const ApiTester = () => {
 
   return (
     <div className="space-y-4">
-      {/* Templates */}
+      {/* Select Integration */}
       <Card className="bg-dashboard-card border-dashboard-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-foreground">Templates Rápidos</CardTitle>
+          <CardTitle className="text-sm text-foreground">Selecionar Integração Cadastrada</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {templates.map(tpl => (
-              <Button key={tpl.label} variant="outline" size="sm" className="border-dashboard-border text-sm" onClick={() => handleTemplate(tpl)}>
-                {tpl.label}
-              </Button>
-            ))}
-          </div>
+          {loadingIntegrations ? (
+            <Loader2 className="h-4 w-4 animate-spin text-dashboard-accent" />
+          ) : integrations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma integração cadastrada. Cadastre uma em "Integração" primeiro.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {integrations.map(integration => (
+                <Button
+                  key={integration.id}
+                  variant={selectedIntegration === integration.id ? "default" : "outline"}
+                  size="sm"
+                  className={selectedIntegration === integration.id ? "bg-dashboard-accent text-dashboard-dark" : "border-dashboard-border text-sm"}
+                  onClick={() => handleSelectIntegration(integration.id)}
+                >
+                  {integration.name}
+                </Button>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

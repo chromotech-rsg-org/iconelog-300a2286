@@ -58,7 +58,8 @@ const ApiTestLogs = () => {
     return "bg-red-500/20 text-red-400";
   };
 
-  const exportData = (fmt: "json" | "csv" | "xlsx" | "txt") => {
+  // Export all logs list
+  const exportLogsList = (fmt: "json" | "csv" | "xlsx" | "txt") => {
     const data = filteredLogs.map(l => ({
       data: format(new Date(l.created_at), "dd/MM/yyyy HH:mm:ss"),
       metodo: l.method,
@@ -90,6 +91,44 @@ const ApiTestLogs = () => {
     toast.success("Exportado!");
   };
 
+  // Export single log response data
+  const exportLogResponse = (log: LogEntry, fmt: "json" | "xlsx") => {
+    const responseData = log.response_body;
+
+    if (fmt === "json") {
+      const blob = new Blob([JSON.stringify(responseData, null, 2)], { type: "application/json" });
+      saveAs(blob, `response-${format(new Date(log.created_at), "yyyyMMdd-HHmmss")}.json`);
+      toast.success("Response exportada em JSON!");
+      return;
+    }
+
+    // Excel export - flatten response into columns
+    if (fmt === "xlsx") {
+      let sheetData: any[] = [];
+
+      if (Array.isArray(responseData)) {
+        sheetData = responseData;
+      } else if (responseData?.data && Array.isArray(responseData.data)) {
+        sheetData = responseData.data;
+      } else if (responseData?.results && Array.isArray(responseData.results)) {
+        sheetData = responseData.results;
+      } else if (typeof responseData === "object" && responseData !== null) {
+        sheetData = [responseData];
+      }
+
+      if (sheetData.length === 0) {
+        toast.error("Nenhum dado para exportar");
+        return;
+      }
+
+      const ws = XLSX.utils.json_to_sheet(sheetData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Response");
+      XLSX.writeFile(wb, `response-${format(new Date(log.created_at), "yyyyMMdd-HHmmss")}.xlsx`);
+      toast.success("Response exportada em Excel!");
+    }
+  };
+
   const handleClearLogs = async () => {
     const { error } = await supabase.from("api_test_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
     if (error) toast.error("Erro ao limpar logs");
@@ -106,7 +145,7 @@ const ApiTestLogs = () => {
           <div className="flex items-center gap-2">
             <div className="flex gap-1">
               {(["json", "csv", "xlsx", "txt"] as const).map(fmt => (
-                <Button key={fmt} variant="outline" size="sm" className="border-dashboard-border text-xs" onClick={() => exportData(fmt)} disabled={filteredLogs.length === 0}>
+                <Button key={fmt} variant="outline" size="sm" className="border-dashboard-border text-xs" onClick={() => exportLogsList(fmt)} disabled={filteredLogs.length === 0}>
                   <Download className="h-3 w-3 mr-1" />{fmt.toUpperCase()}
                 </Button>
               ))}
@@ -176,7 +215,17 @@ const ApiTestLogs = () => {
                   </pre>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Response Body:</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs text-muted-foreground">Response Body:</p>
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" className="border-dashboard-border text-xs h-6" onClick={() => exportLogResponse(selectedLog, "json")}>
+                        <Download className="h-3 w-3 mr-1" />JSON
+                      </Button>
+                      <Button variant="outline" size="sm" className="border-dashboard-border text-xs h-6" onClick={() => exportLogResponse(selectedLog, "xlsx")}>
+                        <Download className="h-3 w-3 mr-1" />Excel
+                      </Button>
+                    </div>
+                  </div>
                   <pre className="text-xs bg-dashboard-dark p-3 rounded border border-dashboard-border text-foreground overflow-auto max-h-[300px]">
                     {JSON.stringify(selectedLog.response_body, null, 2)}
                   </pre>
