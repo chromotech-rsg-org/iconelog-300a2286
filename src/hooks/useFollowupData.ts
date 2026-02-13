@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useApiProxy } from "./useApiProxy";
 import { supabase } from "@/integrations/supabase/client";
+import type { RefreshStage } from "@/components/dashboard/RefreshProgress";
 
 interface CityRegionalMapping {
   cidade: string;
@@ -24,14 +25,36 @@ const resolveRegional = (cidade: string, mappings: CityRegionalMapping[]): strin
   return found?.regional || "Sem Regional";
 };
 
+// Parse month/year from dt_inicio field (format "YYYY/MM/DD" or "YYYY-MM-DD")
+const parseDateField = (item: FollowupItem): { month: number; year: number } | null => {
+  const dt = item.dt_inicio || item.dt_expedicao || item.dt_baixa_minuta;
+  if (!dt) return null;
+  const str = typeof dt === "string" ? dt : String(dt);
+  const parts = str.split(/[\/\-]/);
+  if (parts.length < 2) return null;
+  return { year: parseInt(parts[0], 10), month: parseInt(parts[1], 10) };
+};
+
+const filterByMonthYear = (items: FollowupItem[], months: number[], years: number[]): FollowupItem[] => {
+  if (!months.length && !years.length) return items;
+  return items.filter(item => {
+    const parsed = parseDateField(item);
+    if (!parsed) return false;
+    return years.includes(parsed.year) && months.includes(parsed.month);
+  });
+};
+
 export const useFollowupData = (codCli: string) => {
   const { callMainApi, loading: apiLoading, error } = useApiProxy();
   const [followupData, setFollowupData] = useState<FollowupItem[]>([]);
   const [produtosData, setProdutosData] = useState<FollowupItem[]>([]);
   const [cityMappings, setCityMappings] = useState<CityRegionalMapping[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [lastUpdateAt, setLastUpdateAt] = useState<Date | null>(null);
   const [cacheLoaded, setCacheLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshStage, setRefreshStage] = useState<RefreshStage>(null);
+  const [refreshRecordCount, setRefreshRecordCount] = useState(0);
+  const [lastUpdateAt, setLastUpdateAt] = useState<Date | null>(null);
+  const doneTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Fetch city-regional mappings
   useEffect(() => {
@@ -55,11 +78,10 @@ export const useFollowupData = (codCli: string) => {
     fetchLastUpdate();
   }, []);
 
-  // Load cached data on mount
+  // Load cached data on mount (silent, no loading spinner)
   useEffect(() => {
     const loadCache = async () => {
       if (!codCli || cacheLoaded) return;
-      setLoading(true);
       const { data: followupCache } = await supabase
         .from("bi_data_cache")
         .select("data")
@@ -72,11 +94,10 @@ export const useFollowupData = (codCli: string) => {
         .eq("page_id", "minutas")
         .eq("cache_key", `produtos_${codCli}`)
         .maybeSingle();
-      
+
       if (followupCache?.data) setFollowupData(followupCache.data as FollowupItem[]);
       if (produtosCache?.data) setProdutosData(produtosCache.data as FollowupItem[]);
       setCacheLoaded(true);
-      setLoading(false);
     };
     loadCache();
   }, [codCli, cacheLoaded]);
@@ -129,40 +150,59 @@ export const useFollowupData = (codCli: string) => {
     };
   }, []);
 
+  // Refresh data from API with stage tracking
   const fetchFollowup = useCallback(async (months?: number[], years?: number[]) => {
     if (!codCli) return;
-    setLoading(true);
+    setRefreshing(true);
     const now = new Date();
     const m = months || [now.getMonth() + 1];
     const y = years || [now.getFullYear()];
     const dates = getDateRange(m, y);
-    const data = await callMainApi("FOLLOWUP", codCli, dates);
-    if (data) {
-      setFollowupData(data);
-      await saveToCache("followup", data);
+
+    // Stage 1: Request followup
+    setRefreshStage("requesting_followup");
+    const followupResult = await callMainApi("FOLLOWUP", codCli, dates);
+
+    if (followupResult) {
+      setRefreshStage("receiving_followup");
+      setRefreshRecordCount(followupResult.length);
+      setFollowupData(followupResult);
     }
+
+    // Stage 2: Request produtos
+    setRefreshStage("requesting_produtos");
+    const produtosResult = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, dates);
+
+    if (produtosResult) {
+      setRefreshStage("receiving_produtos");
+      setRefreshRecordCount(produtosResult.length);
+      setProdutosData(produtosResult);
+    }
+
+    // Stage 3: Save to cache
+    setRefreshStage("saving");
+    if (followupResult) await saveToCache("followup", followupResult);
+    if (produtosResult) await saveToCache("produtos", produtosResult);
     await saveLastUpdate();
-    setLoading(false);
+
+    // Stage 4: Done
+    setRefreshStage("done");
+    setRefreshRecordCount(0);
+
+    // Auto-dismiss after 3 seconds
+    if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
+    doneTimerRef.current = setTimeout(() => {
+      setRefreshStage(null);
+      setRefreshing(false);
+    }, 3000);
   }, [codCli, callMainApi, getDateRange, saveLastUpdate, saveToCache]);
 
-  const fetchProdutosDistribuidos = useCallback(async (months?: number[], years?: number[]) => {
-    if (!codCli) return;
-    const now = new Date();
-    const m = months || [now.getMonth() + 1];
-    const y = years || [now.getFullYear()];
-    const dates = getDateRange(m, y);
-    const data = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, dates);
-    if (data) {
-      setProdutosData(data);
-      await saveToCache("produtos", data);
-    }
-  }, [codCli, callMainApi, getDateRange, saveToCache]);
-
-  // Process Minutas data: group by regional, count expedidas vs baixadas
-  const getMinutasData = useCallback(() => {
+  // Process Minutas data with month/year filtering
+  const getMinutasData = useCallback((months: number[], years: number[]) => {
+    const filtered = filterByMonthYear(followupData, months, years);
     const regionMap = new Map<string, { expedidas: number; baixadas: number }>();
 
-    followupData.forEach(item => {
+    filtered.forEach(item => {
       const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
       const regional = resolveRegional(cidade, cityMappings);
 
@@ -181,15 +221,15 @@ export const useFollowupData = (codCli: string) => {
     }));
   }, [followupData, cityMappings]);
 
-  // Process daily Minutas data for line charts
-  const getMinutasDailyData = useCallback(() => {
+  // Process daily Minutas data with month/year filtering
+  const getMinutasDailyData = useCallback((months: number[], years: number[]) => {
+    const filtered = filterByMonthYear(followupData, months, years);
     const regionDayMap = new Map<string, Map<number, { expedidas: number; baixadas: number }>>();
 
-    followupData.forEach(item => {
+    filtered.forEach(item => {
       const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
       const regional = resolveRegional(cidade, cityMappings);
 
-      // Parse day from dt_expedicao
       const dtExp = item.dt_expedicao ? new Date(item.dt_expedicao) : null;
       const dtBaixa = item.dt_baixa_minuta ? new Date(item.dt_baixa_minuta) : null;
       const day = dtExp?.getDate() || dtBaixa?.getDate();
@@ -238,10 +278,8 @@ export const useFollowupData = (codCli: string) => {
       const campanha = (item.ds_campanha || item.campanha || "").toLowerCase();
       const statusReal = (item.fl_status_real || "").toLowerCase();
 
-      // Exclude "Reentrega"
       if (tipoServico.includes("reentrega")) return;
 
-      // Determine tipo
       let tipo: "entrega" | "reposicao" | null = null;
       if (campanha.includes("kit restaurante") || campanha.includes("positivação kit") || campanha.includes("positivacao kit")) {
         tipo = "entrega";
@@ -281,10 +319,13 @@ export const useFollowupData = (codCli: string) => {
   return {
     followupData,
     produtosData,
-    loading: loading || apiLoading,
+    loading: false, // never block UI
+    cacheLoaded,
+    refreshing,
+    refreshStage,
+    refreshRecordCount,
     error,
     fetchFollowup,
-    fetchProdutosDistribuidos,
     getMinutasData,
     getMinutasDailyData,
     getTotalValue,

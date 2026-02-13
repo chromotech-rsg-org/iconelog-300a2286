@@ -5,10 +5,11 @@ import { KPICards } from "@/components/dashboard/KPICards";
 import { RegionalBarChart } from "@/components/dashboard/RegionalBarChart";
 import { RegionalLineCharts } from "@/components/dashboard/RegionalLineCharts";
 import { ActiveFilters } from "@/components/dashboard/ActiveFilters";
+import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
 import { useFollowupData } from "@/hooks/useFollowupData";
 import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { months as allMonths } from "@/data/mockData";
-import { Loader2, AlertCircle } from "lucide-react";
+import { AlertCircle, InboxIcon } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -22,13 +23,15 @@ const Index = () => {
   const codCli = getCodCli("minutas");
 
   const {
-    loading: dataLoading,
+    followupData,
+    cacheLoaded,
+    refreshing,
+    refreshStage,
+    refreshRecordCount,
     error,
     fetchFollowup,
-    fetchProdutosDistribuidos,
     getMinutasData,
     getMinutasDailyData,
-    getTotalValue,
     lastUpdateAt,
   } = useFollowupData(codCli);
 
@@ -44,11 +47,9 @@ const Index = () => {
     if (lastUpdateAt) setLastUpdate(lastUpdateAt);
   }, [lastUpdateAt]);
 
-  // Only fetch from API when user explicitly refreshes (cache loads automatically in hook)
-
-  // Get real data from hooks
-  const barChartDataRaw = useMemo(() => getMinutasData(), [getMinutasData]);
-  const aggregatedDailyData = useMemo(() => getMinutasDailyData(), [getMinutasDailyData]);
+  // Get data filtered by selected months/years (client-side)
+  const barChartDataRaw = useMemo(() => getMinutasData(selectedMonths, selectedYears), [getMinutasData, selectedMonths, selectedYears]);
+  const aggregatedDailyData = useMemo(() => getMinutasDailyData(selectedMonths, selectedYears), [getMinutasDailyData, selectedMonths, selectedYears]);
 
   // Filter by selected regions
   const filteredBarChartData = useMemo(() => {
@@ -125,13 +126,11 @@ const Index = () => {
   }, [currentMonth, currentYear]);
 
   const handleRefreshData = useCallback(() => {
-    if (codCli) {
+    if (codCli && !refreshing) {
       fetchFollowup(selectedMonths, selectedYears);
-      fetchProdutosDistribuidos(selectedMonths, selectedYears);
       setLastUpdate(new Date());
-      toast.success("Dados atualizados!");
     }
-  }, [codCli, fetchFollowup, fetchProdutosDistribuidos, selectedMonths, selectedYears]);
+  }, [codCli, refreshing, fetchFollowup, selectedMonths, selectedYears]);
 
   const isDefaultMonthYear = selectedMonths.length === 1 && selectedMonths[0] === currentMonth &&
     selectedYears.length === 1 && selectedYears[0] === currentYear;
@@ -162,8 +161,6 @@ const Index = () => {
     saveAs(blob, `minutas_${monthNames}_${yearNames}.xlsx`);
   }, [barChartData, totals, selectedMonths, selectedYears]);
 
-  const loading = settingsLoading || dataLoading;
-
   // No cod_cli configured
   if (!settingsLoading && !codCli) {
     return (
@@ -176,6 +173,9 @@ const Index = () => {
       </div>
     );
   }
+
+  const hasData = followupData.length > 0;
+  const showEmptyState = cacheLoaded && !hasData && !refreshing;
 
   return (
     <div className="min-h-screen bg-background">
@@ -197,6 +197,8 @@ const Index = () => {
         hasActiveFilters={hasActiveFilters}
       />
 
+      <RefreshProgress stage={refreshStage} recordCount={refreshRecordCount} />
+
       <ActiveFilters
         selectedDay={selectedDay}
         selectedMetric={selectedMetric}
@@ -212,9 +214,13 @@ const Index = () => {
         </div>
       )}
 
-      {loading ? (
+      {showEmptyState ? (
         <div className="flex items-center justify-center h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="text-center space-y-3">
+            <InboxIcon className="h-12 w-12 mx-auto text-muted-foreground" />
+            <h2 className="text-lg font-semibold text-foreground">Nenhum dado disponível</h2>
+            <p className="text-sm text-muted-foreground">Clique no botão <strong>Atualizar</strong> no cabeçalho para buscar os dados.</p>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col md:flex-row gap-4 px-6 pb-6 md:h-[calc(100vh-180px)]">
