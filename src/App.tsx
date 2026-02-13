@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
  import { AuthProvider } from "@/contexts/AuthContext";
  import { BiSettingsProvider } from "@/contexts/BiSettingsContext";
 import { SmartRedirect } from "@/components/auth/SmartRedirect";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Estoque from "./pages/Estoque";
 import Entregas from "./pages/Entregas";
@@ -37,7 +38,7 @@ const queryClient = new QueryClient();
                <Route path="/estoque-consolidado" element={<EstoqueConsolidado />} />
                <Route path="/faturamento" element={<Faturamento />} />
                <Route path="/analitico" element={<Analitico />} />
-               <Route path="/admin" element={<Admin />} />
+               <Route path="/admin" element={<ProtectedRoute pageId="admin_panel" requireAuth={true}><Admin /></ProtectedRoute>} />
                
                <Route path="/auth" element={<Auth />} />
                <Route path="/no-access" element={<NoAccess />} />
