@@ -41,7 +41,7 @@ const filterByMonthYear = (items: FollowupItem[], months: number[], years: numbe
   });
 };
 
-export const useFollowupData = (codCli: string) => {
+export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   const { callMainApi, error } = useApiProxy();
   const [followupData, setFollowupData] = useState<FollowupItem[]>([]);
   const [produtosData, setProdutosData] = useState<FollowupItem[]>([]);
@@ -161,7 +161,7 @@ export const useFollowupData = (codCli: string) => {
     const dates = getDateRange(m, y);
 
     setRefreshStage("requesting_followup");
-    const followupResult = await callMainApi("FOLLOWUP", codCli, dates);
+    const followupResult = await callMainApi("FOLLOWUP", codCli, dates, pageId);
 
     if (followupResult) {
       setRefreshStage("receiving_followup");
@@ -170,7 +170,7 @@ export const useFollowupData = (codCli: string) => {
     }
 
     setRefreshStage("requesting_produtos");
-    const produtosResult = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, dates);
+    const produtosResult = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, dates, pageId);
 
     if (produtosResult) {
       setRefreshStage("receiving_produtos");
@@ -179,9 +179,16 @@ export const useFollowupData = (codCli: string) => {
     }
 
     setRefreshStage("saving");
-    if (followupResult) await saveToCache("followup", followupResult);
-    if (produtosResult) await saveToCache("produtos", produtosResult);
-    await saveLastUpdate();
+    // Only save to cache/DB if we have a valid supabase session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      if (followupResult) await saveToCache("followup", followupResult);
+      if (produtosResult) await saveToCache("produtos", produtosResult);
+      await saveLastUpdate();
+    } else {
+      // For unauthenticated users, just update local state
+      setLastUpdateAt(new Date());
+    }
 
     setRefreshStage("done");
     setRefreshRecordCount(0);

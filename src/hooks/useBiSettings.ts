@@ -1,17 +1,18 @@
  import { useState, useEffect, useCallback } from "react";
  import { supabase } from "@/integrations/supabase/client";
  
- export interface BiSetting {
-   id: string;
-   page_id: string;
-   display_name: string;
-   logo_url: string | null;
+export interface BiSetting {
+  id: string;
+  page_id: string;
+  display_name: string;
+  logo_url: string | null;
   display_order: number;
   cod_cli: string | null;
   company_name: string | null;
-   created_at: string;
-   updated_at: string;
- }
+  refresh_interval_minutes: number;
+  created_at: string;
+  updated_at: string;
+}
  
  export const useBiSettings = () => {
    const [settings, setSettings] = useState<BiSetting[]>([]);

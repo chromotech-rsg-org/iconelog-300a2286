@@ -7,6 +7,7 @@ interface ApiProxyRequest {
   headers?: Record<string, string>;
   body?: any;
   integration_id?: string;
+  public_page_id?: string;
 }
 
 interface ApiProxyResponse {
@@ -64,7 +65,8 @@ export const useApiProxy = () => {
   const callMainApi = useCallback(async (
     integrationName: string,
     codCli: string,
-    extraBody?: Record<string, any>
+    extraBody?: Record<string, any>,
+    publicPageId?: string
   ): Promise<any[] | null> => {
     await loadIntegrations();
 
@@ -81,6 +83,7 @@ export const useApiProxy = () => {
         cod_cli: codCli,
         ...extraBody,
       },
+      ...(publicPageId ? { public_page_id: publicPageId } : {}),
     });
 
     if (!response || response.status !== 200) {

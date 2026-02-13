@@ -249,6 +249,33 @@ export type Database = {
         }
         Relationships: []
       }
+      bi_scheduled_updates: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          page_id: string
+          update_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          page_id: string
+          update_time: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          page_id?: string
+          update_time?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bi_settings: {
         Row: {
           cod_cli: string | null
@@ -259,6 +286,7 @@ export type Database = {
           id: string
           logo_url: string | null
           page_id: string
+          refresh_interval_minutes: number
           updated_at: string
         }
         Insert: {
@@ -270,6 +298,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           page_id: string
+          refresh_interval_minutes?: number
           updated_at?: string
         }
         Update: {
@@ -281,6 +310,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           page_id?: string
+          refresh_interval_minutes?: number
           updated_at?: string
         }
         Relationships: []
@@ -418,6 +448,8 @@ export type Database = {
       }
       public_page_settings: {
         Row: {
+          allow_export: boolean
+          allow_refresh: boolean
           created_at: string
           id: string
           is_public: boolean
@@ -425,6 +457,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_export?: boolean
+          allow_refresh?: boolean
           created_at?: string
           id?: string
           is_public?: boolean
@@ -432,6 +466,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_export?: boolean
+          allow_refresh?: boolean
           created_at?: string
           id?: string
           is_public?: boolean
