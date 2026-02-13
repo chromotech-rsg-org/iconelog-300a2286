@@ -39,13 +39,20 @@ const Index = () => {
   const [showError, setShowError] = useState(true);
   const [showRefreshProgress, setShowRefreshProgress] = useState(true);
 
-  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
-  const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  // Start with today selected in calendar, no month/year filters
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
+  const [selectedYears, setSelectedYears] = useState<number[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<"expedidas" | "baixadas" | null>(null);
-  const [selectedDateRange, setSelectedDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
+  const [selectedDateRange, setSelectedDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: today, to: undefined });
   const [isFiltering, startFilterTransition] = useTransition();
 
   // Sync lastUpdate from DB
@@ -139,11 +146,11 @@ const Index = () => {
       setSelectedDay(null);
       setSelectedMetric(null);
       setSelectedRegions([]);
-      setSelectedMonths(allMonthValues);
-      setSelectedYears([currentYear]);
-      setSelectedDateRange({ from: undefined, to: undefined });
+      setSelectedMonths([]);
+      setSelectedYears([]);
+      setSelectedDateRange({ from: today, to: undefined });
     });
-  }, [currentMonth, currentYear]);
+  }, [today]);
 
   const handleRefreshData = useCallback(() => {
     if (codCli && !refreshing) {
@@ -154,9 +161,9 @@ const Index = () => {
     }
   }, [codCli, refreshing, fetchFollowup, selectedMonths, selectedYears]);
 
-  const isDefaultMonthYear = selectedMonths.length === 12 &&
-    selectedYears.length === 1 && selectedYears[0] === currentYear;
-  const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegions.length > 0 || !isDefaultMonthYear || !!selectedDateRange.from;
+  const isDefaultState = selectedMonths.length === 0 && selectedYears.length === 0 &&
+    selectedDateRange.from?.getTime() === today.getTime() && !selectedDateRange.to;
+  const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegions.length > 0 || !isDefaultState;
 
   const exportToExcel = useCallback(() => {
     const exportData = barChartData.map(region => ({
@@ -221,9 +228,10 @@ const Index = () => {
             setSelectedMonths([]);
             setSelectedYears([]);
           } else {
-            // Clearing calendar restores default month/year
-            setSelectedMonths(allMonthValues);
-            setSelectedYears([currentYear]);
+            // Clearing calendar restores default: today
+            setSelectedMonths([]);
+            setSelectedYears([]);
+            setSelectedDateRange({ from: today, to: undefined });
           }
         })}
         onClearAllFilters={clearAllFilters}
