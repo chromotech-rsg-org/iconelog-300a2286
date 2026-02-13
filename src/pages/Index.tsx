@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useTransition } from "react";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { KPICards } from "@/components/dashboard/KPICards";
@@ -45,6 +45,7 @@ const Index = () => {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<"expedidas" | "baixadas" | null>(null);
+  const [isFiltering, startFilterTransition] = useTransition();
 
   // Sync lastUpdate from DB
   useEffect(() => {
@@ -97,36 +98,48 @@ const Index = () => {
   }, [barChartData]);
 
   const handleRegionClick = useCallback((region: string) => {
-    setSelectedRegions(prev => prev.includes(region) ? prev.filter(r => r !== region) : [...prev, region]);
+    startFilterTransition(() => {
+      setSelectedRegions(prev => prev.includes(region) ? prev.filter(r => r !== region) : [...prev, region]);
+    });
   }, []);
 
   const handleDayClick = useCallback((day: number) => {
-    setSelectedDay(prev => prev === day ? null : day);
+    startFilterTransition(() => {
+      setSelectedDay(prev => prev === day ? null : day);
+    });
   }, []);
 
   const handleMetricClick = useCallback((metric: "expedidas" | "baixadas") => {
-    setSelectedMetric(prev => prev === metric ? null : metric);
+    startFilterTransition(() => {
+      setSelectedMetric(prev => prev === metric ? null : metric);
+    });
   }, []);
 
   const handleBarClick = useCallback((region: string, metric: "expedidas" | "baixadas") => {
-    setSelectedRegions(prev => prev.includes(region) ? prev.filter(r => r !== region) : [...prev, region]);
-    setSelectedMetric(prev => prev === metric ? null : metric);
+    startFilterTransition(() => {
+      setSelectedRegions(prev => prev.includes(region) ? prev.filter(r => r !== region) : [...prev, region]);
+      setSelectedMetric(prev => prev === metric ? null : metric);
+    });
   }, []);
 
   const handleLinePointClick = useCallback((region: string, day: number, metric: "expedidas" | "baixadas") => {
-    setSelectedRegions(prev => prev.includes(region) ? prev.filter(r => r !== region) : [...prev, region]);
-    setSelectedDay(prev => prev === day ? null : day);
-    setSelectedMetric(prev => prev === metric ? null : metric);
+    startFilterTransition(() => {
+      setSelectedRegions(prev => prev.includes(region) ? prev.filter(r => r !== region) : [...prev, region]);
+      setSelectedDay(prev => prev === day ? null : day);
+      setSelectedMetric(prev => prev === metric ? null : metric);
+    });
   }, []);
 
-  const clearDayFilter = useCallback(() => setSelectedDay(null), []);
-  const clearMetricFilter = useCallback(() => setSelectedMetric(null), []);
+  const clearDayFilter = useCallback(() => startFilterTransition(() => setSelectedDay(null)), []);
+  const clearMetricFilter = useCallback(() => startFilterTransition(() => setSelectedMetric(null)), []);
   const clearAllFilters = useCallback(() => {
-    setSelectedDay(null);
-    setSelectedMetric(null);
-    setSelectedRegions([]);
-    setSelectedMonths([currentMonth]);
-    setSelectedYears([currentYear]);
+    startFilterTransition(() => {
+      setSelectedDay(null);
+      setSelectedMetric(null);
+      setSelectedRegions([]);
+      setSelectedMonths([currentMonth]);
+      setSelectedYears([currentYear]);
+    });
   }, [currentMonth, currentYear]);
 
   const handleRefreshData = useCallback(() => {
@@ -194,9 +207,9 @@ const Index = () => {
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
         selectedRegions={selectedRegions}
-        onMonthsChange={setSelectedMonths}
-        onYearsChange={setSelectedYears}
-        onRegionsChange={setSelectedRegions}
+        onMonthsChange={(v) => startFilterTransition(() => setSelectedMonths(v))}
+        onYearsChange={(v) => startFilterTransition(() => setSelectedYears(v))}
+        onRegionsChange={(v) => startFilterTransition(() => setSelectedRegions(v))}
         onClearAllFilters={clearAllFilters}
         onExportExcel={exportToExcel}
         onRefreshData={handleRefreshData}
@@ -251,7 +264,15 @@ const Index = () => {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col md:flex-row gap-4 px-6 pb-6 md:h-[calc(100vh-180px)]">
+        <div className="relative flex flex-col md:flex-row gap-4 px-6 pb-6 md:h-[calc(100vh-180px)]">
+          {isFiltering && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px] rounded-lg">
+              <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-5 py-3 shadow-md">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-sm font-medium text-foreground">Processando filtros...</span>
+              </div>
+            </div>
+          )}
           <div className="w-full md:w-[30%] flex flex-col gap-4 md:h-full">
             <KPICards
               totalExpedidas={totals.totalExpedidas}
