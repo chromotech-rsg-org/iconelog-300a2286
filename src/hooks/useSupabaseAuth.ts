@@ -85,7 +85,7 @@ export const useSupabaseAuth = () => {
   const [userRoles, setUserRoles] = useState<Role[]>([]);
   const [pagePermissions, setPagePermissions] = useState<Record<string, PagePermission>>({});
   const [adminPermissions, setAdminPermissions] = useState<AdminPermissionsState>(defaultAdminPermissions());
-  const [publicAccess, setPublicAccessState] = useState<Record<string, boolean>>({});
+  const [publicAccess, setPublicAccessState] = useState<Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }>>({});
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -175,8 +175,8 @@ export const useSupabaseAuth = () => {
       console.error("Error fetching public access:", error);
       return {};
     }
-    const result: Record<string, boolean> = {};
-    data?.forEach((p) => { result[p.page_id] = p.is_public; });
+    const result: Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }> = {};
+    data?.forEach((p) => { result[p.page_id] = { is_public: p.is_public, allow_export: p.allow_export, allow_refresh: p.allow_refresh }; });
     return result;
   }, []);
 
@@ -275,10 +275,11 @@ export const useSupabaseAuth = () => {
     setPagePermissions({});
   }, []);
 
-  const updatePublicAccess = useCallback(async (pageId: string, isPublic: boolean) => {
+  const updatePublicAccess = useCallback(async (pageId: string, field: string, value: boolean) => {
+    const updateData: Record<string, boolean> = { [field]: value };
     const { error } = await supabase
       .from("public_page_settings")
-      .update({ is_public: isPublic })
+      .update(updateData)
       .eq("page_id", pageId);
 
     if (error) {
@@ -287,7 +288,10 @@ export const useSupabaseAuth = () => {
       return;
     }
 
-    setPublicAccessState((prev) => ({ ...prev, [pageId]: isPublic }));
+    setPublicAccessState((prev) => ({ 
+      ...prev, 
+      [pageId]: { ...(prev[pageId] || { is_public: false, allow_export: false, allow_refresh: false }), [field]: value } 
+    }));
     toast.success("Acesso público atualizado!");
   }, []);
 
@@ -295,7 +299,9 @@ export const useSupabaseAuth = () => {
   const canExport = useCallback((pageId: string) => pagePermissions[pageId]?.exportar ?? false, [pagePermissions]);
   const canRefresh = useCallback((pageId: string) => pagePermissions[pageId]?.atualizar ?? false, [pagePermissions]);
   const isDevOnly = useCallback((pageId: string) => pagePermissions[pageId]?.apenas_dev ?? false, [pagePermissions]);
-  const isPublicAccess = useCallback((pageId: string) => publicAccess[pageId] === true, [publicAccess]);
+  const isPublicAccess = useCallback((pageId: string) => publicAccess[pageId]?.is_public === true, [publicAccess]);
+  const isPublicExport = useCallback((pageId: string) => publicAccess[pageId]?.allow_export === true, [publicAccess]);
+  const isPublicRefresh = useCallback((pageId: string) => publicAccess[pageId]?.allow_refresh === true, [publicAccess]);
 
   const canViewAdmin = useCallback((section: AdminSectionType) => {
     return adminPermissions[section]?.ver ?? false;
@@ -338,6 +344,8 @@ export const useSupabaseAuth = () => {
     canRefresh,
     isDevOnly,
     isPublicAccess,
+    isPublicExport,
+    isPublicRefresh,
     canViewAdmin,
     canEditAdmin,
     canCreateAdmin,

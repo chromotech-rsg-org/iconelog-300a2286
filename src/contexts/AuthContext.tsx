@@ -25,13 +25,15 @@ interface AuthContextType {
   canRefresh: (pageId: string) => boolean;
   isDevOnly: (pageId: string) => boolean;
   isPublicAccess: (pageId: string) => boolean;
+  isPublicExport: (pageId: string) => boolean;
+  isPublicRefresh: (pageId: string) => boolean;
   canViewAdmin: (section: AdminSectionType) => boolean;
   canEditAdmin: (section: AdminSectionType) => boolean;
   canCreateAdmin: (section: AdminSectionType) => boolean;
   canDeleteAdmin: (section: AdminSectionType) => boolean;
   canViewAnyConfig: () => boolean;
-  publicAccess: Record<string, boolean>;
-  setPublicAccess: (pageId: string, enabled: boolean) => Promise<void>;
+  publicAccess: Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }>;
+  setPublicAccess: (pageId: string, field: string, value: boolean) => Promise<void>;
   refreshUserData: () => void;
 }
 
@@ -42,6 +44,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     user, profile, pagePermissions, publicAccess, loading,
     isAuthenticated, isDeveloper, signUp, signIn, signOut,
     canView, canExport, canRefresh, isDevOnly, isPublicAccess,
+    isPublicExport, isPublicRefresh,
     canViewAdmin, canEditAdmin, canCreateAdmin, canDeleteAdmin,
     canViewAnyConfig, updatePublicAccess, refreshUserData,
   } = useSupabaseAuth();
@@ -59,7 +62,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, senha: string) => signIn(email, senha);
   const logout = async () => { await signOut(); };
-  const setPublicAccess = async (pageId: string, enabled: boolean) => { await updatePublicAccess(pageId, enabled); };
+  const setPublicAccess = async (pageId: string, field: string, value: boolean) => { await updatePublicAccess(pageId, field, value); };
 
   return (
     <AuthContext.Provider
@@ -67,6 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         user, profile, isAuthenticated, isDeveloper, loading,
         login, logout, signUp, getPermission,
         canView, canExport, canRefresh, isDevOnly, isPublicAccess,
+        isPublicExport, isPublicRefresh,
         canViewAdmin, canEditAdmin, canCreateAdmin, canDeleteAdmin,
         canViewAnyConfig, publicAccess, setPublicAccess, refreshUserData,
       }}

@@ -3,16 +3,17 @@ import { useBiSettings, BiSetting, type BiSetting as BiSettingType } from "@/hoo
  import defaultLogo from "@/assets/logo.jpg";
  
 interface BiSettingsContextType {
-   settings: BiSetting[];
-   loading: boolean;
-   getPageTitle: (pageId: string) => string;
-   getPageLogo: (pageId: string) => string;
+  settings: BiSetting[];
+  loading: boolean;
+  getPageTitle: (pageId: string) => string;
+  getPageLogo: (pageId: string) => string;
   getSystemLogo: () => string;
   getSystemName: () => string;
   getOrderedBiSettings: () => BiSetting[];
   getCodCli: (pageId: string) => string;
-   refetch: () => void;
- }
+  getRefreshInterval: (pageId: string) => number;
+  refetch: () => void;
+}
  
  const BiSettingsContext = createContext<BiSettingsContextType | undefined>(undefined);
  
@@ -56,6 +57,11 @@ interface BiSettingsContextType {
     return setting?.cod_cli || "";
   };
 
+  const getRefreshInterval = (pageId: string): number => {
+    const setting = getSettingByPageId(pageId);
+    return setting?.refresh_interval_minutes ?? 30;
+  };
+
    return (
      <BiSettingsContext.Provider
         value={{
@@ -67,6 +73,7 @@ interface BiSettingsContextType {
          getSystemName,
          getOrderedBiSettings,
          getCodCli,
+         getRefreshInterval,
           refetch,
         }}
      >

@@ -206,7 +206,10 @@ const Admin = () => {
     }));
   };
 
-  const handleTogglePublicAccess = async (pageId: string) => { await setPublicAccess(pageId, !publicAccess[pageId]); };
+  const handleTogglePublicAccess = async (pageId: string, field: string = "is_public") => { 
+    const current = publicAccess[pageId]?.[field as keyof typeof publicAccess[string]] ?? false;
+    await setPublicAccess(pageId, field, !current); 
+  };
 
   const countEnabledPermissions = (role: RoleWithPermissions) => {
     let count = 0;
@@ -481,7 +484,7 @@ const Admin = () => {
       <CardHeader>
         <CardTitle className="text-base text-foreground">Configurar Acesso Público</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          Páginas com acesso público ficam visíveis para visitantes não logados.
+          Páginas com acesso público ficam visíveis para visitantes não logados. Você também pode liberar exportação e atualização para visitantes.
         </p>
       </CardHeader>
       <CardContent>
@@ -490,6 +493,8 @@ const Admin = () => {
             <TableRow className="border-dashboard-border">
               <TableHead className="text-muted-foreground">Página</TableHead>
               <TableHead className="text-muted-foreground text-center">Acesso Público</TableHead>
+              <TableHead className="text-muted-foreground text-center">Exportar</TableHead>
+              <TableHead className="text-muted-foreground text-center">Atualizar</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -497,7 +502,13 @@ const Admin = () => {
               <TableRow key={page.id} className="border-dashboard-border">
                 <TableCell className="text-foreground">{page.nome}</TableCell>
                 <TableCell className="text-center">
-                  <Switch checked={publicAccess[page.id] ?? false} onCheckedChange={() => handleTogglePublicAccess(page.id)} disabled={!canEditAdmin("acessoPublico")} />
+                  <Switch checked={publicAccess[page.id]?.is_public ?? false} onCheckedChange={() => handleTogglePublicAccess(page.id, "is_public")} disabled={!canEditAdmin("acessoPublico")} />
+                </TableCell>
+                <TableCell className="text-center">
+                  <Switch checked={publicAccess[page.id]?.allow_export ?? false} onCheckedChange={() => handleTogglePublicAccess(page.id, "allow_export")} disabled={!canEditAdmin("acessoPublico") || !(publicAccess[page.id]?.is_public)} />
+                </TableCell>
+                <TableCell className="text-center">
+                  <Switch checked={publicAccess[page.id]?.allow_refresh ?? false} onCheckedChange={() => handleTogglePublicAccess(page.id, "allow_refresh")} disabled={!canEditAdmin("acessoPublico") || !(publicAccess[page.id]?.is_public)} />
                 </TableCell>
               </TableRow>
             ))}

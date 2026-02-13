@@ -1,4 +1,5 @@
- import { Clock, RotateCcw, Download, RefreshCw, ChevronDown } from "lucide-react";
+import { useState, useRef } from "react";
+import { Clock, RotateCcw, Download, RefreshCw, ChevronDown } from "lucide-react";
  import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,16 +47,50 @@ import { useAuth } from "@/contexts/AuthContext";
    onRefreshData,
    hasActiveFilters = false,
  }: SharedHeaderProps) => {
-  const { canExport, canRefresh, isAuthenticated } = useAuth();
-   const { getPageTitle, getPageLogo } = useBiSettingsContext();
+  const { canExport, canRefresh, isAuthenticated, isPublicAccess, isPublicExport, isPublicRefresh } = useAuth();
+   const { getPageTitle, getPageLogo, getRefreshInterval } = useBiSettingsContext();
    
    // Use dynamic title from settings, fallback to prop
    const pageTitle = propPageTitle || getPageTitle(pageId);
    const pageLogo = getPageLogo(pageId);
+   const refreshIntervalMinutes = getRefreshInterval(pageId);
   
-  // Se não está autenticado, permite ações por padrão
-  const showExport = !isAuthenticated || canExport(pageId);
-  const showRefresh = !isAuthenticated || canRefresh(pageId);
+  // Allow actions for authenticated users with permission OR public pages with public permission
+  const isPublic = isPublicAccess(pageId);
+  const showExport = (isAuthenticated && canExport(pageId)) || (!isAuthenticated && isPublic && isPublicExport(pageId));
+  const showRefresh = (isAuthenticated && canRefresh(pageId)) || (!isAuthenticated && isPublic && isPublicRefresh(pageId));
+
+  // Cooldown state for refresh button
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval>>();
+
+  const startCooldown = () => {
+    const seconds = refreshIntervalMinutes * 60;
+    setCooldownRemaining(seconds);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setCooldownRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleRefresh = () => {
+    if (onRefreshData) {
+      onRefreshData();
+      if (refreshIntervalMinutes > 0) startCooldown();
+    }
+  };
+
+  const formatCooldown = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  };
 
   const formatLastUpdate = (date: Date) => {
     return date.toLocaleString('pt-BR', {
@@ -155,15 +190,21 @@ import { useAuth } from "@/contexts/AuthContext";
           <span className="hidden sm:inline">Última atualização: {formatLastUpdate(lastUpdate)}</span>
           <span className="sm:hidden">{formatLastUpdate(lastUpdate)}</span>
           {showRefresh && onRefreshData && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onRefreshData}
-              className="h-8 w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
-              title="Atualizar dados"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              {cooldownRemaining > 0 && (
+                <span className="text-xs text-muted-foreground">{formatCooldown(cooldownRemaining)}</span>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRefresh}
+                disabled={cooldownRemaining > 0}
+                className="h-8 w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border disabled:opacity-50"
+                title={cooldownRemaining > 0 ? `Aguarde ${formatCooldown(cooldownRemaining)}` : "Atualizar dados"}
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
 

@@ -9,7 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, ChevronDown, ChevronRight, Loader2, Plus, Trash2 } from "lucide-react";
 import { useBiSettings } from "@/hooks/useBiSettings";
 import { toast } from "sonner";
 import defaultLogo from "@/assets/logo.jpg";
@@ -36,11 +37,15 @@ const ConfigurarBI = () => {
   const [editingOrders, setEditingOrders] = useState<Record<string, number>>({});
   const [editingCodCli, setEditingCodCli] = useState<Record<string, string>>({});
   const [editingCompany, setEditingCompany] = useState<Record<string, string>>({});
+  const [editingRefreshInterval, setEditingRefreshInterval] = useState<Record<string, number>>({});
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState<string | null>(null);
   const [duplicating, setDuplicating] = useState<string | null>(null);
   const [expandedCharts, setExpandedCharts] = useState<Record<string, boolean>>({});
+  const [expandedSchedules, setExpandedSchedules] = useState<Record<string, boolean>>({});
+  const [schedules, setSchedules] = useState<Record<string, { id: string; update_time: string; is_active: boolean }[]>>({});
+  const [newScheduleTime, setNewScheduleTime] = useState<Record<string, string>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const systemFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -72,9 +77,19 @@ const ConfigurarBI = () => {
       });
       setBiApiLinks(links);
     };
+    const fetchSchedules = async () => {
+      const { data } = await supabase.from("bi_scheduled_updates").select("*").order("update_time");
+      const grouped: Record<string, { id: string; update_time: string; is_active: boolean }[]> = {};
+      (data || []).forEach((row: any) => {
+        if (!grouped[row.page_id]) grouped[row.page_id] = [];
+        grouped[row.page_id].push({ id: row.id, update_time: row.update_time, is_active: row.is_active });
+      });
+      setSchedules(grouped);
+    };
     fetchClients();
     fetchIntegrations();
     fetchBiApiLinks();
+    fetchSchedules();
   }, []);
 
   useEffect(() => {
@@ -82,16 +97,19 @@ const ConfigurarBI = () => {
     const orders: Record<string, number> = {};
     const codClis: Record<string, string> = {};
     const companies: Record<string, string> = {};
+    const intervals: Record<string, number> = {};
     settings.forEach((s: any) => {
       names[s.page_id] = s.display_name;
       orders[s.page_id] = s.display_order;
       codClis[s.page_id] = s.cod_cli || "";
       companies[s.page_id] = s.company_name || "";
+      intervals[s.page_id] = s.refresh_interval_minutes ?? 30;
     });
     setEditingNames(names);
     setEditingOrders(orders);
     setEditingCodCli(codClis);
     setEditingCompany(companies);
+    setEditingRefreshInterval(intervals);
   }, [settings]);
 
   const handleFileChange = async (pageId: string, file: File | null) => {
@@ -149,10 +167,41 @@ const ConfigurarBI = () => {
     const { error } = await supabase.from("bi_settings").update({
       cod_cli: editingCodCli[pageId] || null,
       company_name: editingCompany[pageId] || null,
+      refresh_interval_minutes: editingRefreshInterval[pageId] ?? 30,
     }).eq("page_id", pageId);
     setSaving(null);
     if (error) toast.error("Erro ao salvar: " + error.message);
-    else toast.success("Dados atualizados!");
+    else { toast.success("Dados atualizados!"); refetch(); }
+  };
+
+  const handleAddSchedule = async (pageId: string) => {
+    const time = newScheduleTime[pageId];
+    if (!time) { toast.error("Selecione um horário"); return; }
+    const { error } = await supabase.from("bi_scheduled_updates").insert({ page_id: pageId, update_time: time } as any);
+    if (error) {
+      if (error.message.includes("unique")) toast.error("Horário já cadastrado");
+      else toast.error("Erro: " + error.message);
+      return;
+    }
+    toast.success("Agendamento adicionado!");
+    setNewScheduleTime(prev => ({ ...prev, [pageId]: "" }));
+    // Refresh schedules
+    const { data } = await supabase.from("bi_scheduled_updates").select("*").eq("page_id", pageId).order("update_time");
+    setSchedules(prev => ({ ...prev, [pageId]: (data || []).map((r: any) => ({ id: r.id, update_time: r.update_time, is_active: r.is_active })) }));
+  };
+
+  const handleRemoveSchedule = async (pageId: string, scheduleId: string) => {
+    await supabase.from("bi_scheduled_updates").delete().eq("id", scheduleId);
+    setSchedules(prev => ({ ...prev, [pageId]: (prev[pageId] || []).filter(s => s.id !== scheduleId) }));
+    toast.success("Agendamento removido!");
+  };
+
+  const handleToggleSchedule = async (pageId: string, scheduleId: string, isActive: boolean) => {
+    await supabase.from("bi_scheduled_updates").update({ is_active: isActive } as any).eq("id", scheduleId);
+    setSchedules(prev => ({
+      ...prev,
+      [pageId]: (prev[pageId] || []).map(s => s.id === scheduleId ? { ...s, is_active: isActive } : s),
+    }));
   };
 
   const handleDuplicate = async (setting: any) => {
@@ -344,7 +393,7 @@ const ConfigurarBI = () => {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Cód. Cliente</Label>
                   <Input value={editingCodCli[setting.page_id] || ""} onChange={(e) => setEditingCodCli(prev => ({ ...prev, [setting.page_id]: e.target.value }))}
@@ -355,11 +404,17 @@ const ConfigurarBI = () => {
                   <Input value={editingCompany[setting.page_id] || ""} onChange={(e) => setEditingCompany(prev => ({ ...prev, [setting.page_id]: e.target.value }))}
                     className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="Nome da empresa" />
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Intervalo (min)</Label>
+                  <Input type="number" min={0} value={editingRefreshInterval[setting.page_id] ?? 30}
+                    onChange={(e) => setEditingRefreshInterval(prev => ({ ...prev, [setting.page_id]: parseInt(e.target.value) || 0 }))}
+                    className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="30" title="Intervalo mínimo entre atualizações manuais (minutos). 0 = sem limite." />
+                </div>
               </div>
 
               <Button variant="outline" size="sm" className="w-full h-7 text-xs border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
                 onClick={() => handleExtraSave(setting.page_id)}>
-                <Save className="h-3 w-3 mr-1" /> Salvar Empresa/Cód
+                <Save className="h-3 w-3 mr-1" /> Salvar Empresa/Cód/Intervalo
               </Button>
 
               {/* APIs usadas - multi-select via checkboxes */}
@@ -401,6 +456,41 @@ const ConfigurarBI = () => {
                         </div>
                       );
                     })
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Scheduled Updates */}
+              <Collapsible open={expandedSchedules[setting.page_id]} onOpenChange={(open) => setExpandedSchedules(prev => ({ ...prev, [setting.page_id]: open }))}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full h-7 text-xs text-muted-foreground hover:text-foreground">
+                    {expandedSchedules[setting.page_id] ? <ChevronDown className="h-3 w-3 mr-1" /> : <ChevronRight className="h-3 w-3 mr-1" />}
+                    Atualizações Agendadas
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2 space-y-2">
+                  <div className="flex gap-2">
+                    <Input type="time" value={newScheduleTime[setting.page_id] || ""}
+                      onChange={(e) => setNewScheduleTime(prev => ({ ...prev, [setting.page_id]: e.target.value }))}
+                      className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-8 flex-1" />
+                    <Button variant="outline" size="sm" className="h-8 text-xs border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
+                      onClick={() => handleAddSchedule(setting.page_id)}>
+                      <Plus className="h-3 w-3 mr-1" /> Adicionar
+                    </Button>
+                  </div>
+                  {(schedules[setting.page_id] || []).length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-1">Nenhum agendamento</p>
+                  ) : (
+                    (schedules[setting.page_id] || []).map(schedule => (
+                      <div key={schedule.id} className="flex items-center gap-2 px-2 py-1 rounded bg-dashboard-dark/30">
+                        <span className="text-sm text-foreground font-mono flex-1">{schedule.update_time.substring(0, 5)}</span>
+                        <Switch checked={schedule.is_active} onCheckedChange={(checked) => handleToggleSchedule(setting.page_id, schedule.id, checked)} />
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive"
+                          onClick={() => handleRemoveSchedule(setting.page_id, schedule.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))
                   )}
                 </CollapsibleContent>
               </Collapsible>

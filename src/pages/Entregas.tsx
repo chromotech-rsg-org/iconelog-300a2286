@@ -27,7 +27,7 @@ const Entregas = () => {
     error,
     fetchFollowup,
     getEntregasData,
-  } = useFollowupData(codCli);
+  } = useFollowupData(codCli, "entregas");
 
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);

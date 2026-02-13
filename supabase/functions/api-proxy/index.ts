@@ -12,42 +12,66 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      console.error("Missing or invalid authorization header");
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const authHeader = req.headers.get("Authorization");
+    let isAuthenticated = false;
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !user) {
-      console.error("Auth error:", userError?.message || "No user found");
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Try to authenticate if auth header is present
+    if (authHeader?.startsWith("Bearer ")) {
+      const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
       });
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
+      if (!userError && user) {
+        isAuthenticated = true;
+        console.log("User authenticated:", user.id);
+      }
     }
 
-    console.log("User authenticated:", user.id);
-
+    const requestData = await req.json();
     const {
       url,
       method = "POST",
       headers: customHeaders = {},
       body: requestBody,
       integration_id,
-    } = await req.json();
+      public_page_id,
+    } = requestData;
+
+    // If not authenticated, check if this is a public page request
+    if (!isAuthenticated) {
+      if (!public_page_id) {
+        console.error("Unauthenticated request without public_page_id");
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify the page is actually public using service role
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      const { data: publicSetting } = await adminClient
+        .from("public_page_settings")
+        .select("is_public, allow_refresh")
+        .eq("page_id", public_page_id)
+        .eq("is_public", true)
+        .eq("allow_refresh", true)
+        .maybeSingle();
+
+      if (!publicSetting) {
+        console.error("Page is not public or refresh not allowed:", public_page_id);
+        return new Response(JSON.stringify({ error: "Unauthorized - page not public" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log("Public access granted for page:", public_page_id);
+    }
 
     if (!url) {
       return new Response(JSON.stringify({ error: "URL is required" }), {
@@ -58,6 +82,9 @@ Deno.serve(async (req) => {
 
     console.log("Calling external URL:", url, "Method:", method);
 
+    // Use service role client for fetching integration data (works for both auth and public)
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
     let finalHeaders: Record<string, string> = {
       "Content-Type": "application/json",
       ...customHeaders,
@@ -65,7 +92,7 @@ Deno.serve(async (req) => {
 
     // Fetch auth from api_integrations if no Authorization provided
     if (!finalHeaders["Authorization"] && !finalHeaders["authorization"]) {
-      let query = supabase.from("api_integrations").select("auth_token, auth_type, headers_json");
+      let query = adminClient.from("api_integrations").select("auth_token, auth_type, headers_json");
       if (integration_id) {
         query = query.eq("id", integration_id);
       }

@@ -34,7 +34,7 @@ const Index = () => {
     getMinutasData,
     getMinutasDailyData,
     lastUpdateAt,
-  } = useFollowupData(codCli);
+  } = useFollowupData(codCli, "minutas");
 
   const [showError, setShowError] = useState(true);
   const [showRefreshProgress, setShowRefreshProgress] = useState(true);
