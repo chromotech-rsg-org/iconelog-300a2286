@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useCallback } from "react";
 import { Clock, RotateCcw, Download, RefreshCw, ChevronDown } from "lucide-react";
  import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,19 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { months, years, regions, allMonthValues } from "@/data/mockData";
 import { NavigationMenu } from "./NavigationMenu";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDynamicFilters } from "@/hooks/useDynamicFilters";
+import { supabase } from "@/integrations/supabase/client";
 
  interface SharedHeaderProps {
    pageTitle?: string;
@@ -69,36 +78,53 @@ import { useDynamicFilters } from "@/hooks/useDynamicFilters";
    const showExport = (isAuthenticated && canExport(pageId)) || (!isAuthenticated && isPublic && isPublicExport(pageId));
    const showRefresh = (isAuthenticated && canRefresh(pageId)) || (!isAuthenticated && isPublic && isPublicRefresh(pageId));
 
-  // Cooldown state for refresh button
-  const [cooldownRemaining, setCooldownRemaining] = useState(0);
-  const cooldownRef = useRef<ReturnType<typeof setInterval>>();
+  // Cooldown modal state
+  const [showCooldownModal, setShowCooldownModal] = useState(false);
+  const [cooldownRemainingMinutes, setCooldownRemainingMinutes] = useState(0);
 
-  const startCooldown = () => {
-    const seconds = refreshIntervalMinutes * 60;
-    setCooldownRemaining(seconds);
-    if (cooldownRef.current) clearInterval(cooldownRef.current);
-    cooldownRef.current = setInterval(() => {
-      setCooldownRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(cooldownRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
+  const checkServerCooldown = useCallback(async (): Promise<boolean> => {
+    if (refreshIntervalMinutes <= 0) return true; // No cooldown configured
 
-  const handleRefresh = () => {
-    if (onRefreshData) {
+    // Map pageId to the correct bi_last_update page_id
+    const updatePageId = pageId === "entregas" ? "minutas" : pageId;
+    
+    const { data } = await supabase
+      .from("bi_last_update")
+      .select("last_update_at")
+      .eq("page_id", updatePageId)
+      .maybeSingle();
+
+    if (!data) return true; // No previous update, allow
+
+    const lastUpdateTime = new Date(data.last_update_at).getTime();
+    const now = Date.now();
+    const elapsedMinutes = (now - lastUpdateTime) / (1000 * 60);
+    const remaining = refreshIntervalMinutes - elapsedMinutes;
+
+    if (remaining > 0) {
+      setCooldownRemainingMinutes(Math.ceil(remaining));
+      setShowCooldownModal(true);
+      return false;
+    }
+
+    return true;
+  }, [refreshIntervalMinutes, pageId]);
+
+  const handleRefresh = async () => {
+    if (!onRefreshData) return;
+    const canRefreshNow = await checkServerCooldown();
+    if (canRefreshNow) {
       onRefreshData();
-      if (refreshIntervalMinutes > 0) startCooldown();
     }
   };
 
-  const formatCooldown = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
+  const formatCooldown = (minutes: number) => {
+    if (minutes >= 60) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return m > 0 ? `${h}h ${m}min` : `${h}h`;
+    }
+    return `${minutes} min`;
   };
 
   const formatLastUpdate = (date: Date) => {
@@ -178,6 +204,7 @@ import { useDynamicFilters } from "@/hooks/useDynamicFilters";
   };
 
   return (
+    <>
      <header className="w-full border-b border-dashboard-border bg-dashboard-card sticky top-0 z-40">
       {/* Top bar with logo, page title, update time, and navigation */}
       <div className="flex items-center justify-between px-6 py-4">
@@ -199,21 +226,15 @@ import { useDynamicFilters } from "@/hooks/useDynamicFilters";
           <span className="hidden sm:inline">Última atualização: {formatLastUpdate(lastUpdate)}</span>
           <span className="sm:hidden">{formatLastUpdate(lastUpdate)}</span>
           {showRefresh && onRefreshData && (
-            <div className="flex items-center gap-1">
-              {cooldownRemaining > 0 && (
-                <span className="text-xs text-muted-foreground">{formatCooldown(cooldownRemaining)}</span>
-              )}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleRefresh}
-                disabled={cooldownRemaining > 0}
-                className="h-8 w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border disabled:opacity-50"
-                title={cooldownRemaining > 0 ? `Aguarde ${formatCooldown(cooldownRemaining)}` : "Atualizar dados"}
+                className="h-8 w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
+                title="Atualizar dados"
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
-            </div>
           )}
         </div>
 
@@ -402,5 +423,36 @@ import { useDynamicFilters } from "@/hooks/useDynamicFilters";
         </div>
       )}
     </header>
+
+    {/* Cooldown Modal */}
+    <Dialog open={showCooldownModal} onOpenChange={setShowCooldownModal}>
+      <DialogContent className="bg-dashboard-card border-dashboard-border text-foreground max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-dashboard-accent flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Atualização indisponível
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground pt-2 text-base">
+            Não é possível atualizar os dados agora. A última atualização foi realizada recentemente.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="bg-dashboard-dark rounded-lg p-4 border border-dashboard-border">
+          <p className="text-sm text-muted-foreground">Tempo restante para próxima atualização:</p>
+          <p className="text-2xl font-bold text-dashboard-accent mt-1">
+            {formatCooldown(cooldownRemainingMinutes)}
+          </p>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setShowCooldownModal(false)}
+            className="border-dashboard-border text-foreground hover:bg-dashboard-border"
+          >
+            Entendido
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
