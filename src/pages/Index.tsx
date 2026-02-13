@@ -9,7 +9,7 @@ import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
 import { useFollowupData } from "@/hooks/useFollowupData";
 import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { months as allMonths } from "@/data/mockData";
-import { AlertCircle, InboxIcon } from "lucide-react";
+import { AlertCircle, InboxIcon, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -25,6 +25,7 @@ const Index = () => {
   const {
     followupData,
     cacheLoaded,
+    cacheLoading,
     refreshing,
     refreshStage,
     refreshRecordCount,
@@ -34,6 +35,9 @@ const Index = () => {
     getMinutasDailyData,
     lastUpdateAt,
   } = useFollowupData(codCli);
+
+  const [showError, setShowError] = useState(true);
+  const [showRefreshProgress, setShowRefreshProgress] = useState(true);
 
   const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
@@ -127,6 +131,8 @@ const Index = () => {
 
   const handleRefreshData = useCallback(() => {
     if (codCli && !refreshing) {
+      setShowRefreshProgress(true);
+      setShowError(true);
       fetchFollowup(selectedMonths, selectedYears);
       setLastUpdate(new Date());
     }
@@ -197,7 +203,13 @@ const Index = () => {
         hasActiveFilters={hasActiveFilters}
       />
 
-      <RefreshProgress stage={refreshStage} recordCount={refreshRecordCount} />
+      {showRefreshProgress && (
+        <RefreshProgress
+          stage={refreshStage}
+          recordCount={refreshRecordCount}
+          onDismiss={() => setShowRefreshProgress(false)}
+        />
+      )}
 
       <ActiveFilters
         selectedDay={selectedDay}
@@ -207,10 +219,26 @@ const Index = () => {
         onClearAll={clearAllFilters}
       />
 
-      {error && (
+      {error && showError && (
         <div className="mx-6 mt-4 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {error}
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setShowError(false)} className="p-0.5 rounded hover:bg-destructive/10 transition-colors">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Loading modal while cache loads */}
+      {cacheLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="rounded-lg border border-border bg-card p-8 shadow-lg flex flex-col items-center gap-4 max-w-sm">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">Carregando dados</h3>
+            <p className="text-sm text-muted-foreground text-center">
+              Recuperando dados da última atualização...
+            </p>
+          </div>
         </div>
       )}
 

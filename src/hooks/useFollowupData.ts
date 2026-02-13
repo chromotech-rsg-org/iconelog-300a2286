@@ -13,11 +13,9 @@ interface FollowupItem {
   [key: string]: any;
 }
 
-// Normalize string: remove accents, trim, uppercase
 const normalize = (str: string): string =>
   str.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 
-// Resolve regional from city using the mapping table
 const resolveRegional = (cidade: string, mappings: CityRegionalMapping[]): string => {
   if (!cidade) return "Sem Regional";
   const normalized = normalize(cidade);
@@ -25,7 +23,6 @@ const resolveRegional = (cidade: string, mappings: CityRegionalMapping[]): strin
   return found?.regional || "Sem Regional";
 };
 
-// Parse month/year from dt_inicio field (format "YYYY/MM/DD" or "YYYY-MM-DD")
 const parseDateField = (item: FollowupItem): { month: number; year: number } | null => {
   const dt = item.dt_inicio || item.dt_expedicao || item.dt_baixa_minuta;
   if (!dt) return null;
@@ -45,18 +42,18 @@ const filterByMonthYear = (items: FollowupItem[], months: number[], years: numbe
 };
 
 export const useFollowupData = (codCli: string) => {
-  const { callMainApi, loading: apiLoading, error } = useApiProxy();
+  const { callMainApi, error } = useApiProxy();
   const [followupData, setFollowupData] = useState<FollowupItem[]>([]);
   const [produtosData, setProdutosData] = useState<FollowupItem[]>([]);
   const [cityMappings, setCityMappings] = useState<CityRegionalMapping[]>([]);
   const [cacheLoaded, setCacheLoaded] = useState(false);
+  const [cacheLoading, setCacheLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshStage, setRefreshStage] = useState<RefreshStage>(null);
   const [refreshRecordCount, setRefreshRecordCount] = useState(0);
   const [lastUpdateAt, setLastUpdateAt] = useState<Date | null>(null);
   const doneTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Fetch city-regional mappings
   useEffect(() => {
     const fetchMappings = async () => {
       const { data } = await supabase.from("city_regional_mapping").select("cidade, regional, uf");
@@ -65,7 +62,6 @@ export const useFollowupData = (codCli: string) => {
     fetchMappings();
   }, []);
 
-  // Fetch last update from DB
   useEffect(() => {
     const fetchLastUpdate = async () => {
       const { data } = await supabase
@@ -78,31 +74,35 @@ export const useFollowupData = (codCli: string) => {
     fetchLastUpdate();
   }, []);
 
-  // Load cached data on mount (silent, no loading spinner)
+  // Load cached data on mount - shows loading modal
   useEffect(() => {
     const loadCache = async () => {
-      if (!codCli || cacheLoaded) return;
-      const { data: followupCache } = await supabase
-        .from("bi_data_cache")
-        .select("data")
-        .eq("page_id", "minutas")
-        .eq("cache_key", `followup_${codCli}`)
-        .maybeSingle();
-      const { data: produtosCache } = await supabase
-        .from("bi_data_cache")
-        .select("data")
-        .eq("page_id", "minutas")
-        .eq("cache_key", `produtos_${codCli}`)
-        .maybeSingle();
+      if (!codCli || cacheLoaded || cacheLoading) return;
+      setCacheLoading(true);
+      try {
+        const { data: followupCache } = await supabase
+          .from("bi_data_cache")
+          .select("data")
+          .eq("page_id", "minutas")
+          .eq("cache_key", `followup_${codCli}`)
+          .maybeSingle();
+        const { data: produtosCache } = await supabase
+          .from("bi_data_cache")
+          .select("data")
+          .eq("page_id", "minutas")
+          .eq("cache_key", `produtos_${codCli}`)
+          .maybeSingle();
 
-      if (followupCache?.data) setFollowupData(followupCache.data as FollowupItem[]);
-      if (produtosCache?.data) setProdutosData(produtosCache.data as FollowupItem[]);
-      setCacheLoaded(true);
+        if (followupCache?.data) setFollowupData(followupCache.data as FollowupItem[]);
+        if (produtosCache?.data) setProdutosData(produtosCache.data as FollowupItem[]);
+      } finally {
+        setCacheLoaded(true);
+        setCacheLoading(false);
+      }
     };
     loadCache();
-  }, [codCli, cacheLoaded]);
+  }, [codCli, cacheLoaded, cacheLoading]);
 
-  // Save last update to DB
   const saveLastUpdate = useCallback(async () => {
     const now = new Date();
     setLastUpdateAt(now);
@@ -111,7 +111,6 @@ export const useFollowupData = (codCli: string) => {
       .upsert({ page_id: "minutas", last_update_at: now.toISOString() }, { onConflict: "page_id" });
   }, []);
 
-  // Save data to cache
   const saveToCache = useCallback(async (cacheKey: string, data: FollowupItem[]) => {
     await supabase
       .from("bi_data_cache")
@@ -121,7 +120,6 @@ export const useFollowupData = (codCli: string) => {
       );
   }, [codCli]);
 
-  // Build date range for given months/years
   const getDateRange = useCallback((months: number[], years: number[]) => {
     const fmt = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -150,7 +148,6 @@ export const useFollowupData = (codCli: string) => {
     };
   }, []);
 
-  // Refresh data from API with stage tracking
   const fetchFollowup = useCallback(async (months?: number[], years?: number[]) => {
     if (!codCli) return;
     setRefreshing(true);
@@ -159,7 +156,6 @@ export const useFollowupData = (codCli: string) => {
     const y = years || [now.getFullYear()];
     const dates = getDateRange(m, y);
 
-    // Stage 1: Request followup
     setRefreshStage("requesting_followup");
     const followupResult = await callMainApi("FOLLOWUP", codCli, dates);
 
@@ -169,7 +165,6 @@ export const useFollowupData = (codCli: string) => {
       setFollowupData(followupResult);
     }
 
-    // Stage 2: Request produtos
     setRefreshStage("requesting_produtos");
     const produtosResult = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, dates);
 
@@ -179,17 +174,14 @@ export const useFollowupData = (codCli: string) => {
       setProdutosData(produtosResult);
     }
 
-    // Stage 3: Save to cache
     setRefreshStage("saving");
     if (followupResult) await saveToCache("followup", followupResult);
     if (produtosResult) await saveToCache("produtos", produtosResult);
     await saveLastUpdate();
 
-    // Stage 4: Done
     setRefreshStage("done");
     setRefreshRecordCount(0);
 
-    // Auto-dismiss after 3 seconds
     if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
     doneTimerRef.current = setTimeout(() => {
       setRefreshStage(null);
@@ -197,7 +189,6 @@ export const useFollowupData = (codCli: string) => {
     }, 3000);
   }, [codCli, callMainApi, getDateRange, saveLastUpdate, saveToCache]);
 
-  // Process Minutas data with month/year filtering
   const getMinutasData = useCallback((months: number[], years: number[]) => {
     const filtered = filterByMonthYear(followupData, months, years);
     const regionMap = new Map<string, { expedidas: number; baixadas: number }>();
@@ -221,7 +212,6 @@ export const useFollowupData = (codCli: string) => {
     }));
   }, [followupData, cityMappings]);
 
-  // Process daily Minutas data with month/year filtering
   const getMinutasDailyData = useCallback((months: number[], years: number[]) => {
     const filtered = filterByMonthYear(followupData, months, years);
     const regionDayMap = new Map<string, Map<number, { expedidas: number; baixadas: number }>>();
@@ -256,7 +246,6 @@ export const useFollowupData = (codCli: string) => {
     }));
   }, [followupData, cityMappings]);
 
-  // Calculate total value from ProdutosDistribuidos
   const getTotalValue = useCallback(() => {
     return produtosData.reduce((sum, item) => {
       const val = parseFloat(item.vl_total || "0");
@@ -264,7 +253,6 @@ export const useFollowupData = (codCli: string) => {
     }, 0);
   }, [produtosData]);
 
-  // Process Entregas data from Followup
   const getEntregasData = useCallback(() => {
     const regionMap = new Map<string, {
       entregaFinalizado: number; entregaEmTransito: number;
@@ -319,8 +307,9 @@ export const useFollowupData = (codCli: string) => {
   return {
     followupData,
     produtosData,
-    loading: false, // never block UI
+    loading: false,
     cacheLoaded,
+    cacheLoading,
     refreshing,
     refreshStage,
     refreshRecordCount,

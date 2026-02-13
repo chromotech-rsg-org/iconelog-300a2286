@@ -1,4 +1,4 @@
-import { Loader2, CheckCircle2, Send, Download, Database } from "lucide-react";
+import { Loader2, CheckCircle2, Send, Download, Database, X } from "lucide-react";
 
 export type RefreshStage =
   | "requesting_followup"
@@ -21,9 +21,10 @@ const stageConfig: Record<string, { label: string; icon: React.ReactNode }> = {
 interface RefreshProgressProps {
   stage: RefreshStage;
   recordCount?: number;
+  onDismiss?: () => void;
 }
 
-export const RefreshProgress = ({ stage, recordCount }: RefreshProgressProps) => {
+export const RefreshProgress = ({ stage, recordCount, onDismiss }: RefreshProgressProps) => {
   if (!stage) return null;
 
   const config = stageConfig[stage];
@@ -45,7 +46,12 @@ export const RefreshProgress = ({ stage, recordCount }: RefreshProgressProps) =>
     }`}>
       {isDone ? config.icon : <Loader2 className="h-4 w-4 animate-spin" />}
       {config.icon !== undefined && !isDone && config.icon}
-      <span>{label}</span>
+      <span className="flex-1">{label}</span>
+      {onDismiss && (
+        <button onClick={onDismiss} className="p-0.5 rounded hover:bg-white/10 transition-colors">
+          <X className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 };
