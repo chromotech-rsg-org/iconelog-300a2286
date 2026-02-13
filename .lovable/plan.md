@@ -1,35 +1,46 @@
 
+## Correcoes
 
-## Problemas Identificados
+### 1. Eixo X dos graficos mostra "10/00" em vez de "10/02"
 
-### 1. Hoje mostra zero (bug de mutacao de data)
-A funcao `filterByDateRange` no arquivo `src/hooks/useFollowupData.ts` usa `from.setHours(0,0,0,0)` e `to.setHours(23,59,59,999)` que **mutam o objeto Date original**. Como o `today` e criado uma unica vez via `useMemo`, apos a primeira chamada de filtro ele e alterado permanentemente, quebrando comparacoes futuras.
+**Problema**: O `MiniLineChart` usa `selectedMonths?.[0]` para formatar o eixo X, mas quando o calendario esta ativo, `selectedMonths` esta vazio (`[]`), resultando em `undefined` que vira `00`.
 
-**Correcao**: Criar copias dos objetos Date antes de chamar `setHours`.
+**Correcao**: Passar o `selectedDateRange` para o `MiniLineChart` (via `RegionalLineCharts`) e usar o mes da data selecionada quando `selectedMonths` estiver vazio. Se houver dados com datas variadas, extrair o mes diretamente dos dados do grafico.
 
-### 2. Clicar no dia 12 inclui o dia 13 (modo range do calendario)
-O calendario esta em `mode="range"`, que faz com que o primeiro clique defina `from` e o segundo clique defina `to`, criando automaticamente um intervalo. Nao e possivel selecionar apenas um dia de forma confiavel nesse modo.
+Arquivo: `src/pages/Index.tsx`
+- Passar `selectedDateRange` para `RegionalLineCharts`
 
-**Correcao**: Melhorar a logica de `onSelect` para detectar quando o usuario quer filtrar um unico dia (clicou no mesmo dia ou clicou pela primeira vez) e passar `to` como o mesmo dia que `from` para garantir filtragem correta de um dia so.
+Arquivo: `src/components/dashboard/RegionalLineCharts.tsx`
+- Receber e repassar `selectedDateRange` para cada `MiniLineChart`
+
+Arquivo: `src/components/dashboard/MiniLineChart.tsx`
+- Receber `selectedDateRange` como prop
+- No `tickFormatter` do eixo X, derivar o mes: se `selectedMonths` tiver valor, usa ele; senao usa o mes de `selectedDateRange.from`; senao usa o mes atual
+- Formato: `dia/mes` (ex: `10/02`)
+
+### 2. Calendario: comportamento de selecao de dia unico vs periodo
+
+**Problema atual**: No modo "single", clicar em um dia funciona, mas o usuario quer um comportamento mais intuitivo sem precisar de toggle - primeiro clique filtra o dia, segundo clique em outro dia cria um periodo.
+
+**Correcao**: Remover o toggle de modo e implementar logica inteligente:
+- **1 clique**: seleciona aquele dia (from = to = dia clicado)
+- **Clicar em outro dia quando ja tem 1 dia selecionado**: cria periodo (from = primeiro dia, to = segundo dia)
+- **Clicar quando ja tem um periodo**: reseta e seleciona apenas o novo dia clicado
+- **Clicar no mesmo dia ja selecionado (dia unico)**: limpa a selecao
+
+Arquivo: `src/components/shared/CalendarFilter.tsx`
+- Usar `mode="range"` sempre, mas controlar a logica manualmente
+- Manter estado interno para saber se o usuario esta no "primeiro clique" ou "segundo clique"
+- Primeiro clique: definir `from` e `to` como o mesmo dia (filtra imediatamente)
+- Segundo clique em dia diferente: atualizar `to` para o novo dia (cria periodo)
+- Qualquer clique quando ja existe um periodo: resetar para o novo dia clicado como dia unico
+- Clique no mesmo dia unico: limpar selecao
 
 ---
 
-## Alteracoes Tecnicas
+## Resumo dos arquivos alterados
 
-### Arquivo: `src/hooks/useFollowupData.ts`
-- Na funcao `filterByDateRange` (linhas 44-53), criar copias dos objetos Date antes de mutar:
-```typescript
-const filterByDateRange = (items, from, to) => {
-  const fromDate = new Date(from);
-  fromDate.setHours(0, 0, 0, 0);
-  const toDate = new Date(to);
-  toDate.setHours(23, 59, 59, 999);
-  // ... filtrar usando fromDate e toDate
-};
-```
-
-### Arquivo: `src/components/shared/SharedHeader.tsx`
-- Ajustar a logica `onSelect` do calendario para tratar corretamente selecao de um unico dia vs periodo
-- Quando o usuario clica em um dia e `to` nao existe, enviar `from` e `to` como o mesmo dia
-- Quando o usuario clica no mesmo dia que ja esta selecionado, limpar a selecao
-
+1. **`src/components/shared/CalendarFilter.tsx`** - Reescrever logica de selecao sem toggle
+2. **`src/components/dashboard/MiniLineChart.tsx`** - Corrigir formatacao do eixo X usando dateRange
+3. **`src/components/dashboard/RegionalLineCharts.tsx`** - Passar dateRange como prop
+4. **`src/pages/Index.tsx`** - Passar selectedDateRange para RegionalLineCharts
