@@ -2,7 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -11,10 +12,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Validate auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = createClient(
@@ -23,30 +26,41 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const { url, method = "POST", headers: customHeaders = {}, body: requestBody } = await req.json();
+    const {
+      url,
+      method = "POST",
+      headers: customHeaders = {},
+      body: requestBody,
+      integration_id,
+    } = await req.json();
 
     if (!url) {
-      return new Response(JSON.stringify({ error: "URL is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "URL is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Optionally fetch auth token from api_integrations if not provided in headers
     let finalHeaders: Record<string, string> = {
       "Content-Type": "application/json",
       ...customHeaders,
     };
 
-    // If no Authorization in custom headers, try to get from api_integrations
+    // Fetch auth from api_integrations if no Authorization provided
     if (!finalHeaders["Authorization"] && !finalHeaders["authorization"]) {
-      const { data: integrations } = await supabase
-        .from("api_integrations")
-        .select("auth_token, auth_type, headers_json")
-        .limit(1);
+      let query = supabase.from("api_integrations").select("auth_token, auth_type, headers_json");
+      if (integration_id) {
+        query = query.eq("id", integration_id);
+      }
+      const { data: integrations } = await query.limit(1);
 
       if (integrations && integrations.length > 0) {
         const integration = integrations[0];
@@ -55,10 +69,12 @@ Deno.serve(async (req) => {
             finalHeaders["Authorization"] = `Bearer ${integration.auth_token}`;
           } else if (integration.auth_type === "basic") {
             finalHeaders["Authorization"] = `Basic ${integration.auth_token}`;
+          } else {
+            finalHeaders["Authorization"] = integration.auth_token;
           }
         }
         if (integration.headers_json && typeof integration.headers_json === "object") {
-          finalHeaders = { ...finalHeaders, ...integration.headers_json };
+          finalHeaders = { ...finalHeaders, ...(integration.headers_json as Record<string, string>) };
         }
       }
     }
@@ -72,8 +88,10 @@ Deno.serve(async (req) => {
       fetchOptions.body = JSON.stringify(requestBody);
     }
 
+    const startTime = Date.now();
     const apiResponse = await fetch(url, fetchOptions);
-    
+    const executionTime = Date.now() - startTime;
+
     let responseBody;
     const contentType = apiResponse.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
@@ -92,13 +110,22 @@ Deno.serve(async (req) => {
         status: apiResponse.status,
         headers: responseHeaders,
         body: responseBody,
+        execution_time_ms: executionTime,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: error.message, status: 500, body: null, headers: {} }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({
+        error: error.message,
+        status: 500,
+        body: null,
+        headers: {},
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   }
 });
