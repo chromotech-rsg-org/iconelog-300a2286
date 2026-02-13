@@ -40,29 +40,54 @@ export interface PainelControlePermission {
   ver: boolean;
 }
 
+export type AdminSectionType = 
+  | "usuarios" | "perfis" | "acessoPublico" | "painelControle" | "cadastroCidades"
+  | "configurarBi" | "empresasClientes" | "integracao" | "testesApi" | "logsApi";
+
+// Maps camelCase keys to snake_case DB values
+const adminSectionToDbType: Record<string, string> = {
+  usuarios: "usuarios",
+  perfis: "perfis",
+  acessoPublico: "acesso_publico",
+  painelControle: "painel_controle",
+  cadastroCidades: "cadastro_cidades",
+  configurarBi: "configurar_bi",
+  empresasClientes: "empresas_clientes",
+  integracao: "integracao",
+  testesApi: "testes_api",
+  logsApi: "logs_api",
+};
+
+const dbTypeToSection: Record<string, string> = Object.fromEntries(
+  Object.entries(adminSectionToDbType).map(([k, v]) => [v, k])
+);
+
+const allAdminSections = [
+  "usuarios", "perfis", "acesso_publico", "painel_controle", "cadastro_cidades",
+  "configurar_bi", "empresas_clientes", "integracao", "testes_api", "logs_api",
+];
+
+type AdminPermissionsState = Record<string, AdminPermission>;
+
+const defaultAdminPermissions = (): AdminPermissionsState => {
+  const result: AdminPermissionsState = {};
+  allAdminSections.forEach(section => {
+    const key = dbTypeToSection[section] || section;
+    result[key] = { ver: false, editar: false, criar: false, excluir: false };
+  });
+  return result;
+};
+
 export const useSupabaseAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userRoles, setUserRoles] = useState<Role[]>([]);
   const [pagePermissions, setPagePermissions] = useState<Record<string, PagePermission>>({});
-  const [adminPermissions, setAdminPermissions] = useState<{
-    usuarios: AdminPermission;
-    perfis: AdminPermission;
-    acesso_publico: PublicAccessPermission;
-    painel_controle: PainelControlePermission;
-    cadastro_cidades: AdminPermission;
-  }>({
-    usuarios: { ver: false, editar: false, criar: false, excluir: false },
-    perfis: { ver: false, editar: false, criar: false, excluir: false },
-    acesso_publico: { ver: false, editar: false },
-    painel_controle: { ver: false },
-    cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
-  });
+  const [adminPermissions, setAdminPermissions] = useState<AdminPermissionsState>(defaultAdminPermissions());
   const [publicAccess, setPublicAccessState] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
-  // Fetch user profile
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from("profiles")
@@ -77,14 +102,10 @@ export const useSupabaseAuth = () => {
     return data as Profile | null;
   }, []);
 
-  // Fetch user roles
   const fetchUserRoles = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from("user_roles")
-      .select(`
-        role_id,
-        roles (id, nome, descricao)
-      `)
+      .select(`role_id, roles (id, nome, descricao)`)
       .eq("user_id", userId);
 
     if (error) {
@@ -94,7 +115,6 @@ export const useSupabaseAuth = () => {
     return data?.map((ur: any) => ur.roles).filter(Boolean) as Role[] || [];
   }, []);
 
-  // Fetch page permissions for user's roles
   const fetchPagePermissions = useCallback(async (roleIds: string[]) => {
     if (roleIds.length === 0) return {};
 
@@ -108,16 +128,10 @@ export const useSupabaseAuth = () => {
       return {};
     }
 
-    // Aggregate permissions (OR logic - if any role has permission, user has it)
     const perms: Record<string, PagePermission> = {};
     data?.forEach((p) => {
       if (!perms[p.page_id]) {
-        perms[p.page_id] = {
-          visualizar: false,
-          exportar: false,
-          atualizar: false,
-          apenas_dev: false,
-        };
+        perms[p.page_id] = { visualizar: false, exportar: false, atualizar: false, apenas_dev: false };
       }
       perms[p.page_id].visualizar = perms[p.page_id].visualizar || p.visualizar;
       perms[p.page_id].exportar = perms[p.page_id].exportar || p.exportar;
@@ -127,17 +141,8 @@ export const useSupabaseAuth = () => {
     return perms;
   }, []);
 
-  // Fetch admin permissions for user's roles
   const fetchAdminPermissions = useCallback(async (roleIds: string[]) => {
-    if (roleIds.length === 0) {
-      return {
-        usuarios: { ver: false, editar: false, criar: false, excluir: false },
-        perfis: { ver: false, editar: false, criar: false, excluir: false },
-        acesso_publico: { ver: false, editar: false },
-        painel_controle: { ver: false },
-        cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
-      };
-    }
+    if (roleIds.length === 0) return defaultAdminPermissions();
 
     const { data, error } = await supabase
       .from("admin_permissions")
@@ -146,61 +151,35 @@ export const useSupabaseAuth = () => {
 
     if (error) {
       console.error("Error fetching admin permissions:", error);
-      return {
-        usuarios: { ver: false, editar: false, criar: false, excluir: false },
-        perfis: { ver: false, editar: false, criar: false, excluir: false },
-        acesso_publico: { ver: false, editar: false },
-        painel_controle: { ver: false },
-        cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
-      };
+      return defaultAdminPermissions();
     }
 
-    // Aggregate permissions
-    const result = {
-      usuarios: { ver: false, editar: false, criar: false, excluir: false },
-      perfis: { ver: false, editar: false, criar: false, excluir: false },
-      acesso_publico: { ver: false, editar: false } as PublicAccessPermission,
-      painel_controle: { ver: false },
-      cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
-    };
+    const result = defaultAdminPermissions();
 
     data?.forEach((p) => {
-      const section = p.permission_type as keyof typeof result;
-      if (section === "usuarios" || section === "perfis" || section === "cadastro_cidades") {
-        result[section].ver = result[section].ver || p.ver;
-        result[section].editar = result[section].editar || p.editar;
-        result[section].criar = result[section].criar || p.criar;
-        result[section].excluir = result[section].excluir || p.excluir;
-      } else if (section === "acesso_publico") {
-        result.acesso_publico.ver = result.acesso_publico.ver || p.ver;
-        result.acesso_publico.editar = result.acesso_publico.editar || p.editar;
-      } else if (section === "painel_controle") {
-        result.painel_controle.ver = result.painel_controle.ver || p.ver;
+      const sectionKey = dbTypeToSection[p.permission_type] || p.permission_type;
+      if (result[sectionKey]) {
+        result[sectionKey].ver = result[sectionKey].ver || p.ver;
+        result[sectionKey].editar = result[sectionKey].editar || p.editar;
+        result[sectionKey].criar = result[sectionKey].criar || p.criar;
+        result[sectionKey].excluir = result[sectionKey].excluir || p.excluir;
       }
     });
 
     return result;
   }, []);
 
-  // Fetch public access settings
   const fetchPublicAccess = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("public_page_settings")
-      .select("*");
-
+    const { data, error } = await supabase.from("public_page_settings").select("*");
     if (error) {
       console.error("Error fetching public access:", error);
       return {};
     }
-
     const result: Record<string, boolean> = {};
-    data?.forEach((p) => {
-      result[p.page_id] = p.is_public;
-    });
+    data?.forEach((p) => { result[p.page_id] = p.is_public; });
     return result;
   }, []);
 
-  // Load all user data
   const loadUserData = useCallback(async (userId: string) => {
     const [profileData, roles] = await Promise.all([
       fetchProfile(userId),
@@ -220,37 +199,25 @@ export const useSupabaseAuth = () => {
     setAdminPermissions(adminPerm);
   }, [fetchProfile, fetchUserRoles, fetchPagePermissions, fetchAdminPermissions]);
 
-  // Initial load and auth state listener
   useEffect(() => {
-    // Fetch public access on mount
     fetchPublicAccess().then(setPublicAccessState);
 
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          setTimeout(() => {
-            loadUserData(session.user.id);
-          }, 0);
+          setTimeout(() => { loadUserData(session.user.id); }, 0);
         } else {
           setProfile(null);
           setUserRoles([]);
           setPagePermissions({});
-          setAdminPermissions({
-            usuarios: { ver: false, editar: false, criar: false, excluir: false },
-            perfis: { ver: false, editar: false, criar: false, excluir: false },
-            acesso_publico: { ver: false, editar: false },
-            painel_controle: { ver: false },
-            cadastro_cidades: { ver: false, editar: false, criar: false, excluir: false },
-          });
+          setAdminPermissions(defaultAdminPermissions());
         }
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -264,23 +231,14 @@ export const useSupabaseAuth = () => {
     return () => subscription.unsubscribe();
   }, [loadUserData, fetchPublicAccess]);
 
-  // Sign up
   const signUp = useCallback(async (email: string, password: string, nome: string) => {
     const redirectUrl = `${window.location.origin}/`;
-
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: { nome },
-      },
+      email, password,
+      options: { emailRedirectTo: redirectUrl, data: { nome } },
     });
 
-    if (error) {
-      return { success: false, message: error.message };
-    }
-
+    if (error) return { success: false, message: error.message };
     return { 
       success: true, 
       message: "Cadastro realizado! Verifique seu email para confirmar.",
@@ -288,24 +246,15 @@ export const useSupabaseAuth = () => {
     };
   }, []);
 
-  // Sign in
   const signIn = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      if (error.message.includes("Invalid login credentials")) {
-        return { success: false, message: "Email ou senha inválidos." };
-      }
-      if (error.message.includes("Email not confirmed")) {
-        return { success: false, message: "Email não confirmado. Verifique sua caixa de entrada." };
-      }
+      if (error.message.includes("Invalid login credentials")) return { success: false, message: "Email ou senha inválidos." };
+      if (error.message.includes("Email not confirmed")) return { success: false, message: "Email não confirmado. Verifique sua caixa de entrada." };
       return { success: false, message: error.message };
     }
 
-    // Check if user is active
     if (data.user) {
       const profileData = await fetchProfile(data.user.id);
       if (profileData && !profileData.ativo) {
@@ -317,7 +266,6 @@ export const useSupabaseAuth = () => {
     return { success: true, message: "Login realizado com sucesso!" };
   }, [fetchProfile]);
 
-  // Sign out
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -327,7 +275,6 @@ export const useSupabaseAuth = () => {
     setPagePermissions({});
   }, []);
 
-  // Update public access
   const updatePublicAccess = useCallback(async (pageId: string, isPublic: boolean) => {
     const { error } = await supabase
       .from("public_page_settings")
@@ -344,65 +291,32 @@ export const useSupabaseAuth = () => {
     toast.success("Acesso público atualizado!");
   }, []);
 
-  // Permission helpers
-  const canView = useCallback((pageId: string) => {
-    return pagePermissions[pageId]?.visualizar ?? false;
-  }, [pagePermissions]);
+  const canView = useCallback((pageId: string) => pagePermissions[pageId]?.visualizar ?? false, [pagePermissions]);
+  const canExport = useCallback((pageId: string) => pagePermissions[pageId]?.exportar ?? false, [pagePermissions]);
+  const canRefresh = useCallback((pageId: string) => pagePermissions[pageId]?.atualizar ?? false, [pagePermissions]);
+  const isDevOnly = useCallback((pageId: string) => pagePermissions[pageId]?.apenas_dev ?? false, [pagePermissions]);
+  const isPublicAccess = useCallback((pageId: string) => publicAccess[pageId] === true, [publicAccess]);
 
-  const canExport = useCallback((pageId: string) => {
-    return pagePermissions[pageId]?.exportar ?? false;
-  }, [pagePermissions]);
-
-  const canRefresh = useCallback((pageId: string) => {
-    return pagePermissions[pageId]?.atualizar ?? false;
-  }, [pagePermissions]);
-
-  const isDevOnly = useCallback((pageId: string) => {
-    return pagePermissions[pageId]?.apenas_dev ?? false;
-  }, [pagePermissions]);
-
-  const isPublicAccess = useCallback((pageId: string) => {
-    return publicAccess[pageId] === true;
-  }, [publicAccess]);
-
-  const canViewAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico" | "painelControle" | "cadastroCidades") => {
-    if (section === "acessoPublico") {
-      return adminPermissions.acesso_publico.ver;
-    }
-    if (section === "painelControle") {
-      return adminPermissions.painel_controle.ver;
-    }
-    if (section === "cadastroCidades") {
-      return adminPermissions.cadastro_cidades.ver;
-    }
+  const canViewAdmin = useCallback((section: AdminSectionType) => {
     return adminPermissions[section]?.ver ?? false;
   }, [adminPermissions]);
 
-  const canEditAdmin = useCallback((section: "usuarios" | "perfis" | "acessoPublico" | "painelControle" | "cadastroCidades") => {
-    if (section === "acessoPublico") {
-      return adminPermissions.acesso_publico.editar;
-    }
-    if (section === "painelControle") {
-      return false;
-    }
-    if (section === "cadastroCidades") {
-      return adminPermissions.cadastro_cidades.editar;
-    }
+  const canEditAdmin = useCallback((section: AdminSectionType) => {
     return adminPermissions[section]?.editar ?? false;
   }, [adminPermissions]);
 
-  const canCreateAdmin = useCallback((section: "usuarios" | "perfis" | "cadastroCidades") => {
-    if (section === "cadastroCidades") {
-      return adminPermissions.cadastro_cidades.criar;
-    }
+  const canCreateAdmin = useCallback((section: AdminSectionType) => {
     return adminPermissions[section]?.criar ?? false;
   }, [adminPermissions]);
 
-  const canDeleteAdmin = useCallback((section: "usuarios" | "perfis" | "cadastroCidades") => {
-    if (section === "cadastroCidades") {
-      return adminPermissions.cadastro_cidades.excluir;
-    }
+  const canDeleteAdmin = useCallback((section: AdminSectionType) => {
     return adminPermissions[section]?.excluir ?? false;
+  }, [adminPermissions]);
+
+  // Check if user has any config sub-permission
+  const canViewAnyConfig = useCallback(() => {
+    const configSections: AdminSectionType[] = ["configurarBi", "empresasClientes", "integracao", "testesApi", "logsApi"];
+    return configSections.some(s => adminPermissions[s]?.ver);
   }, [adminPermissions]);
 
   return {
@@ -428,6 +342,7 @@ export const useSupabaseAuth = () => {
     canEditAdmin,
     canCreateAdmin,
     canDeleteAdmin,
+    canViewAnyConfig,
     updatePublicAccess,
     refreshUserData: () => user && loadUserData(user.id),
   };

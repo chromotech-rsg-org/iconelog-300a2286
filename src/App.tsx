@@ -17,7 +17,6 @@ import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NoAccess from "./pages/NoAccess";
  import NotFound from "./pages/NotFound";
- import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -39,7 +38,7 @@ const queryClient = new QueryClient();
                <Route path="/faturamento" element={<Faturamento />} />
                <Route path="/analitico" element={<Analitico />} />
                <Route path="/admin" element={<Admin />} />
-               <Route path="/settings" element={<Settings />} />
+               
                <Route path="/auth" element={<Auth />} />
                <Route path="/no-access" element={<NoAccess />} />
                <Route path="*" element={<NotFound />} />

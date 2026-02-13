@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
- import { Menu, Settings, LogOut, User, Cog } from "lucide-react";
+import { Menu, Settings, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,7 +25,7 @@ const pathMap: Record<string, string> = {
 export const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
-   const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin, isDeveloper } = useAuth();
+   const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin } = useAuth();
   const { getPageTitle, getOrderedBiSettings } = useBiSettingsContext();
 
   // Get ordered navigation items from settings
@@ -121,21 +121,6 @@ export const NavigationMenu = () => {
             Painel de Administração
           </DropdownMenuItem>
         )}
- 
-         {/* Settings link - só mostra para desenvolvedores */}
-         {isDeveloper && (
-           <DropdownMenuItem
-             onClick={() => navigate("/settings")}
-             className={`cursor-pointer ${
-               location.pathname === "/settings"
-                 ? "bg-dashboard-accent text-dashboard-dark font-medium"
-                 : "text-foreground hover:bg-dashboard-border hover:text-dashboard-accent"
-             }`}
-           >
-             <Cog className="mr-2 h-4 w-4" />
-             Configurações
-           </DropdownMenuItem>
-         )}
 
         <DropdownMenuSeparator className="bg-dashboard-border" />
 

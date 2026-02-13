@@ -1,0 +1,243 @@
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy } from "lucide-react";
+import { useBiSettings } from "@/hooks/useBiSettings";
+import { toast } from "sonner";
+import defaultLogo from "@/assets/logo.jpg";
+import { supabase } from "@/integrations/supabase/client";
+
+const ConfigurarBI = () => {
+  const { settings, loading, uploadLogo, updateSetting, updateDisplayOrder, getSystemSetting, getOrderedBiSettings, refetch } = useBiSettings();
+  const [editingNames, setEditingNames] = useState<Record<string, string>>({});
+  const [editingOrders, setEditingOrders] = useState<Record<string, number>>({});
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState<string | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const systemFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const systemSetting = useMemo(() => getSystemSetting(), [getSystemSetting]);
+  const orderedBiSettings = useMemo(() => getOrderedBiSettings(), [getOrderedBiSettings]);
+
+  useEffect(() => {
+    const names: Record<string, string> = {};
+    const orders: Record<string, number> = {};
+    settings.forEach((s) => {
+      names[s.page_id] = s.display_name;
+      orders[s.page_id] = s.display_order;
+    });
+    setEditingNames(names);
+    setEditingOrders(orders);
+  }, [settings]);
+
+  const handleFileChange = async (pageId: string, file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Por favor, selecione uma imagem"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("A imagem deve ter no máximo 2MB"); return; }
+
+    setUploading(pageId);
+    const result = await uploadLogo(pageId, file);
+    setUploading(null);
+    if (result.success) toast.success("Logo atualizado com sucesso!");
+    else toast.error("Erro ao enviar logo");
+  };
+
+  const handleNameSave = async (pageId: string) => {
+    const newName = editingNames[pageId];
+    if (!newName?.trim()) { toast.error("O nome não pode ser vazio"); return; }
+    setSaving(pageId);
+    const result = await updateSetting(pageId, { display_name: newName.trim() });
+    setSaving(null);
+    if (result.success) toast.success("Nome atualizado!");
+    else toast.error("Erro ao atualizar nome");
+  };
+
+  const handleOrderSave = async (pageId: string) => {
+    const order = editingOrders[pageId];
+    if (order === undefined || order < 0) { toast.error("A ordem deve ser um número positivo"); return; }
+    setSavingOrder(pageId);
+    const result = await updateDisplayOrder(pageId, order);
+    setSavingOrder(null);
+    if (result.success) toast.success("Ordem atualizada!");
+    else toast.error("Erro ao atualizar ordem");
+  };
+
+  const handleDuplicate = async (setting: any) => {
+    setDuplicating(setting.page_id);
+    try {
+      const newPageId = `${setting.page_id}-copy-${Date.now()}`;
+      const { error } = await supabase.from("bi_settings").insert({
+        page_id: newPageId,
+        display_name: `${setting.display_name} (Cópia)`,
+        logo_url: setting.logo_url,
+        display_order: (setting.display_order || 0) + 1,
+      });
+      if (error) throw error;
+      toast.success("BI duplicado com sucesso!");
+      await refetch();
+    } catch (err: any) {
+      toast.error("Erro ao duplicar: " + err.message);
+    } finally {
+      setDuplicating(null);
+    }
+  };
+
+  const getPageLabel = (pageId: string) => {
+    const labels: Record<string, string> = {
+      minutas: "Minutas", estoque: "Estoque", entregas: "Entregas", tracking: "Tracking",
+      "estoque-consolidado": "Est. Consolidado", faturamento: "Faturamento", analitico: "Analítico", system: "Sistema",
+    };
+    return labels[pageId] || pageId;
+  };
+
+  const getCurrentSetting = (pageId: string) => settings.find(s => s.page_id === pageId);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="bg-dashboard-card border-dashboard-border">
+            <CardContent className="p-4">
+              <Skeleton className="h-12 w-12 rounded-lg mb-4" />
+              <Skeleton className="h-4 w-3/4 mb-2" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* System Settings */}
+      <Card className="bg-dashboard-card border-dashboard-accent/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-dashboard-accent" />
+            <div>
+              <CardTitle className="text-lg text-foreground">Logo do Sistema</CardTitle>
+              <CardDescription className="text-muted-foreground">Logo usado nas telas de Login e Administração</CardDescription>
+            </div>
+            <Badge className="ml-auto bg-dashboard-accent/20 text-dashboard-accent border-dashboard-accent/30">Global</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-6 items-start">
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                <Avatar className="h-20 w-20 rounded-lg border-2 border-dashboard-accent/50">
+                  <AvatarImage src={systemSetting?.logo_url || defaultLogo} alt="Logo" className="object-cover" />
+                  <AvatarFallback className="rounded-lg bg-dashboard-border"><ImageIcon className="h-8 w-8 text-muted-foreground" /></AvatarFallback>
+                </Avatar>
+                <input type="file" accept="image/*" className="hidden" ref={systemFileInputRef}
+                  onChange={(e) => handleFileChange("system", e.target.files?.[0] || null)} />
+                <Button variant="ghost" size="icon"
+                  className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent/80"
+                  onClick={() => systemFileInputRef.current?.click()} disabled={uploading === "system"}>
+                  {uploading === "system" ? <div className="h-4 w-4 border-2 border-dashboard-dark border-t-transparent rounded-full animate-spin" /> : <Upload className="h-4 w-4" />}
+                </Button>
+              </div>
+              <div>
+                <p className="text-sm text-foreground font-medium">Logo Principal</p>
+                <p className="text-xs text-muted-foreground">PNG, JPG até 2MB</p>
+              </div>
+            </div>
+            <div className="flex-1 space-y-2">
+              <Label className="text-sm text-muted-foreground">Nome do Sistema</Label>
+              <div className="flex gap-2">
+                <Input value={editingNames["system"] || ""} onChange={(e) => setEditingNames((prev) => ({ ...prev, system: e.target.value }))}
+                  className="bg-dashboard-dark border-dashboard-border text-foreground" placeholder="Nome do sistema" />
+                <Button variant="outline" className="border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
+                  onClick={() => handleNameSave("system")} disabled={saving === "system" || editingNames["system"] === systemSetting?.display_name}>
+                  {saving === "system" ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* BI Settings */}
+      <div className="flex items-center gap-3">
+        <LayoutGrid className="h-5 w-5 text-dashboard-accent" />
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Configurações dos BIs</h2>
+          <p className="text-sm text-muted-foreground">Configure logos, nomes, ordem e duplique módulos</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {orderedBiSettings.map((setting) => (
+          <Card key={setting.id} className="bg-dashboard-card border-dashboard-border hover:border-dashboard-accent/50 transition-colors">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline" className="text-xs">{getPageLabel(setting.page_id)}</Badge>
+                <div className="flex items-center gap-1">
+                  <Badge variant="secondary" className="text-xs bg-dashboard-border">Ordem: {setting.display_order}</Badge>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar BI"
+                    onClick={() => handleDuplicate(setting)} disabled={duplicating === setting.page_id}>
+                    {duplicating === setting.page_id ? <div className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Copy className="h-3 w-3" />}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="relative group">
+                  <Avatar className="h-14 w-14 rounded-lg border-2 border-dashboard-border">
+                    <AvatarImage src={setting.logo_url || defaultLogo} alt={setting.display_name} className="object-cover" />
+                    <AvatarFallback className="rounded-lg bg-dashboard-border"><ImageIcon className="h-6 w-6 text-muted-foreground" /></AvatarFallback>
+                  </Avatar>
+                  <input type="file" accept="image/*" className="hidden" ref={(el) => (fileInputRefs.current[setting.page_id] = el)}
+                    onChange={(e) => handleFileChange(setting.page_id, e.target.files?.[0] || null)} />
+                  <Button variant="ghost" size="icon"
+                    className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent/80"
+                    onClick={() => fileInputRefs.current[setting.page_id]?.click()} disabled={uploading === setting.page_id}>
+                    {uploading === setting.page_id ? <div className="h-3 w-3 border-2 border-dashboard-dark border-t-transparent rounded-full animate-spin" /> : <Upload className="h-3 w-3" />}
+                  </Button>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground mb-1">Logo do BI</p>
+                  <p className="text-xs text-muted-foreground/60">PNG, JPG até 2MB</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Nome de exibição</Label>
+                <div className="flex gap-2">
+                  <Input value={editingNames[setting.page_id] || ""} onChange={(e) => setEditingNames((prev) => ({ ...prev, [setting.page_id]: e.target.value }))}
+                    className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="Nome do BI" />
+                  <Button variant="outline" size="icon" className="h-9 w-9 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
+                    onClick={() => handleNameSave(setting.page_id)} disabled={saving === setting.page_id || editingNames[setting.page_id] === getCurrentSetting(setting.page_id)?.display_name}>
+                    {saving === setting.page_id ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Ordem no menu</Label>
+                <div className="flex gap-2">
+                  <Input type="number" min={0} value={editingOrders[setting.page_id] ?? 0}
+                    onChange={(e) => setEditingOrders((prev) => ({ ...prev, [setting.page_id]: parseInt(e.target.value) || 0 }))}
+                    className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9 w-20" />
+                  <Button variant="outline" size="icon" className="h-9 w-9 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
+                    onClick={() => handleOrderSave(setting.page_id)} disabled={savingOrder === setting.page_id || editingOrders[setting.page_id] === getCurrentSetting(setting.page_id)?.display_order}>
+                    {savingOrder === setting.page_id ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default ConfigurarBI;
