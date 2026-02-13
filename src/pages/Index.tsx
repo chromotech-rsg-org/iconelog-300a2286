@@ -29,6 +29,7 @@ const Index = () => {
     getMinutasData,
     getMinutasDailyData,
     getTotalValue,
+    lastUpdateAt,
   } = useFollowupData(codCli);
 
   const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
@@ -38,13 +39,18 @@ const Index = () => {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<"expedidas" | "baixadas" | null>(null);
 
-  // Fetch data on mount when codCli is available
+  // Sync lastUpdate from DB
+  useEffect(() => {
+    if (lastUpdateAt) setLastUpdate(lastUpdateAt);
+  }, [lastUpdateAt]);
+
+  // Fetch data on mount and when filters change
   useEffect(() => {
     if (codCli) {
-      fetchFollowup();
-      fetchProdutosDistribuidos();
+      fetchFollowup(selectedMonths, selectedYears);
+      fetchProdutosDistribuidos(selectedMonths, selectedYears);
     }
-  }, [codCli, fetchFollowup, fetchProdutosDistribuidos]);
+  }, [codCli, selectedMonths, selectedYears, fetchFollowup, fetchProdutosDistribuidos]);
 
   // Get real data from hooks
   const barChartDataRaw = useMemo(() => getMinutasData(), [getMinutasData]);
@@ -117,12 +123,12 @@ const Index = () => {
 
   const handleRefreshData = useCallback(() => {
     if (codCli) {
-      fetchFollowup();
-      fetchProdutosDistribuidos();
+      fetchFollowup(selectedMonths, selectedYears);
+      fetchProdutosDistribuidos(selectedMonths, selectedYears);
       setLastUpdate(new Date());
       toast.success("Dados atualizados!");
     }
-  }, [codCli, fetchFollowup, fetchProdutosDistribuidos]);
+  }, [codCli, fetchFollowup, fetchProdutosDistribuidos, selectedMonths, selectedYears]);
 
   const isDefaultMonthYear = selectedMonths.length === 1 && selectedMonths[0] === currentMonth &&
     selectedYears.length === 1 && selectedYears[0] === currentYear;

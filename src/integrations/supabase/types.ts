@@ -204,6 +204,27 @@ export type Database = {
         }
         Relationships: []
       }
+      bi_last_update: {
+        Row: {
+          created_at: string
+          id: string
+          last_update_at: string
+          page_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_update_at?: string
+          page_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_update_at?: string
+          page_id?: string
+        }
+        Relationships: []
+      }
       bi_settings: {
         Row: {
           cod_cli: string | null
