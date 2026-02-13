@@ -321,6 +321,7 @@ const Index = () => {
               selectedDay={selectedDay}
               selectedMetric={selectedMetric}
               selectedMonths={selectedMonths}
+              selectedDateRange={selectedDateRange}
               selectedRegion={selectedRegions.length === 1 ? selectedRegions[0] : "all"}
               onDayClick={handleDayClick}
               onRegionClick={handleRegionClick}
