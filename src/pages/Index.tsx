@@ -52,7 +52,7 @@ const Index = () => {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<"expedidas" | "baixadas" | null>(null);
-  const [selectedDateRange, setSelectedDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: today, to: undefined });
+  const [selectedDateRange, setSelectedDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: today, to: today });
   const [isFiltering, startFilterTransition] = useTransition();
 
   // Sync lastUpdate from DB
@@ -148,7 +148,7 @@ const Index = () => {
       setSelectedRegions([]);
       setSelectedMonths([]);
       setSelectedYears([]);
-      setSelectedDateRange({ from: today, to: undefined });
+      setSelectedDateRange({ from: today, to: today });
     });
   }, [today]);
 
@@ -162,7 +162,7 @@ const Index = () => {
   }, [codCli, refreshing, fetchFollowup, selectedMonths, selectedYears]);
 
   const isDefaultState = selectedMonths.length === 0 && selectedYears.length === 0 &&
-    selectedDateRange.from?.getTime() === today.getTime() && !selectedDateRange.to;
+    selectedDateRange.from?.getTime() === today.getTime() && selectedDateRange.to?.getTime() === today.getTime();
   const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegions.length > 0 || !isDefaultState;
 
   const exportToExcel = useCallback(() => {
@@ -231,7 +231,7 @@ const Index = () => {
             // Clearing calendar restores default: today
             setSelectedMonths([]);
             setSelectedYears([]);
-            setSelectedDateRange({ from: today, to: undefined });
+            setSelectedDateRange({ from: today, to: today });
           }
         })}
         onClearAllFilters={clearAllFilters}

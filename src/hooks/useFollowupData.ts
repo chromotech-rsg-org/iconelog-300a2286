@@ -42,13 +42,15 @@ const filterByMonthYear = (items: FollowupItem[], months: number[], years: numbe
 };
 
 const filterByDateRange = (items: FollowupItem[], from: Date, to: Date): FollowupItem[] => {
-  const fromTime = from.setHours(0, 0, 0, 0);
-  const toTime = to.setHours(23, 59, 59, 999);
+  const fromDate = new Date(from);
+  fromDate.setHours(0, 0, 0, 0);
+  const toDate = new Date(to);
+  toDate.setHours(23, 59, 59, 999);
   return items.filter(item => {
     const dt = item.dt_inicio || item.dt_expedicao || item.dt_baixa_minuta;
     if (!dt) return false;
     const itemDate = new Date(dt).getTime();
-    return itemDate >= fromTime && itemDate <= toTime;
+    return itemDate >= fromDate.getTime() && itemDate <= toDate.getTime();
   });
 };
 

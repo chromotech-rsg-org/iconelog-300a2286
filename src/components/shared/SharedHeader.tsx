@@ -434,14 +434,14 @@ import { supabase } from "@/integrations/supabase/client";
                   mode="range"
                   selected={selectedDateRange?.from ? { from: selectedDateRange.from, to: selectedDateRange.to } : undefined}
                   onSelect={(range) => {
-                    if (range?.from && !range?.to) {
-                      // Single day click - filter just that day
-                      onDateRangeChange({ from: range.from, to: undefined });
-                    } else if (range?.from && range?.to) {
-                      // Range selected
-                      onDateRangeChange({ from: range.from, to: range.to });
+                    if (!range) {
+                      onDateRangeChange({ from: undefined, to: undefined });
+                    } else if (range.from && !range.to) {
+                      onDateRangeChange({ from: range.from, to: range.from });
+                    } else if (range.from && range.to) {
+                      const sameDay = range.from.toDateString() === range.to.toDateString();
+                      onDateRangeChange({ from: range.from, to: sameDay ? range.from : range.to });
                     } else {
-                      // Deselected
                       onDateRangeChange({ from: undefined, to: undefined });
                     }
                   }}
