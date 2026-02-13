@@ -44,13 +44,7 @@ const Index = () => {
     if (lastUpdateAt) setLastUpdate(lastUpdateAt);
   }, [lastUpdateAt]);
 
-  // Fetch data on mount and when filters change
-  useEffect(() => {
-    if (codCli) {
-      fetchFollowup(selectedMonths, selectedYears);
-      fetchProdutosDistribuidos(selectedMonths, selectedYears);
-    }
-  }, [codCli, selectedMonths, selectedYears, fetchFollowup, fetchProdutosDistribuidos]);
+  // Only fetch from API when user explicitly refreshes (cache loads automatically in hook)
 
   // Get real data from hooks
   const barChartDataRaw = useMemo(() => getMinutasData(), [getMinutasData]);
@@ -67,11 +61,9 @@ const Index = () => {
     return aggregatedDailyData.filter(item => selectedRegions.includes(item.region));
   }, [aggregatedDailyData, selectedRegions]);
 
-  // Apply day filter to bar chart
+  // Apply day filter to bar chart and sort by total descending
   const barChartData = useMemo(() => {
-    if (selectedDay === null) return filteredBarChartData;
-    // Recalculate from daily data with day filter
-    return filteredDailyData.map(rd => {
+    const raw = selectedDay === null ? filteredBarChartData : filteredDailyData.map(rd => {
       const dayData = rd.data.find(d => d.day === selectedDay);
       return {
         name: rd.region,
@@ -79,7 +71,18 @@ const Index = () => {
         baixadas: dayData?.baixadas || 0,
       };
     });
+    return [...raw].sort((a, b) => (b.expedidas + b.baixadas) - (a.expedidas + a.baixadas));
   }, [filteredBarChartData, filteredDailyData, selectedDay]);
+
+  // Sort line charts in the same order as bar chart
+  const sortedDailyData = useMemo(() => {
+    const order = barChartData.map(d => d.name);
+    return [...filteredDailyData].sort((a, b) => {
+      const ai = order.indexOf(a.region);
+      const bi = order.indexOf(b.region);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
+  }, [filteredDailyData, barChartData]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -235,7 +238,7 @@ const Index = () => {
           </div>
           <div className="w-full md:w-[70%] h-[500px] md:h-full">
             <RegionalLineCharts
-              data={filteredDailyData}
+              data={sortedDailyData}
               selectedDay={selectedDay}
               selectedMetric={selectedMetric}
               selectedRegion={selectedRegions.length === 1 ? selectedRegions[0] : "all"}

@@ -204,6 +204,30 @@ export type Database = {
         }
         Relationships: []
       }
+      bi_data_cache: {
+        Row: {
+          cache_key: string
+          cached_at: string
+          data: Json
+          id: string
+          page_id: string
+        }
+        Insert: {
+          cache_key: string
+          cached_at?: string
+          data?: Json
+          id?: string
+          page_id: string
+        }
+        Update: {
+          cache_key?: string
+          cached_at?: string
+          data?: Json
+          id?: string
+          page_id?: string
+        }
+        Relationships: []
+      }
       bi_last_update: {
         Row: {
           created_at: string

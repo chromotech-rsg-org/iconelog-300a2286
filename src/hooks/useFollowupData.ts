@@ -31,6 +31,7 @@ export const useFollowupData = (codCli: string) => {
   const [cityMappings, setCityMappings] = useState<CityRegionalMapping[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdateAt, setLastUpdateAt] = useState<Date | null>(null);
+  const [cacheLoaded, setCacheLoaded] = useState(false);
 
   // Fetch city-regional mappings
   useEffect(() => {
@@ -54,6 +55,32 @@ export const useFollowupData = (codCli: string) => {
     fetchLastUpdate();
   }, []);
 
+  // Load cached data on mount
+  useEffect(() => {
+    const loadCache = async () => {
+      if (!codCli || cacheLoaded) return;
+      setLoading(true);
+      const { data: followupCache } = await supabase
+        .from("bi_data_cache")
+        .select("data")
+        .eq("page_id", "minutas")
+        .eq("cache_key", `followup_${codCli}`)
+        .maybeSingle();
+      const { data: produtosCache } = await supabase
+        .from("bi_data_cache")
+        .select("data")
+        .eq("page_id", "minutas")
+        .eq("cache_key", `produtos_${codCli}`)
+        .maybeSingle();
+      
+      if (followupCache?.data) setFollowupData(followupCache.data as FollowupItem[]);
+      if (produtosCache?.data) setProdutosData(produtosCache.data as FollowupItem[]);
+      setCacheLoaded(true);
+      setLoading(false);
+    };
+    loadCache();
+  }, [codCli, cacheLoaded]);
+
   // Save last update to DB
   const saveLastUpdate = useCallback(async () => {
     const now = new Date();
@@ -63,12 +90,21 @@ export const useFollowupData = (codCli: string) => {
       .upsert({ page_id: "minutas", last_update_at: now.toISOString() }, { onConflict: "page_id" });
   }, []);
 
+  // Save data to cache
+  const saveToCache = useCallback(async (cacheKey: string, data: FollowupItem[]) => {
+    await supabase
+      .from("bi_data_cache")
+      .upsert(
+        { page_id: "minutas", cache_key: `${cacheKey}_${codCli}`, data: data as any, cached_at: new Date().toISOString() },
+        { onConflict: "page_id,cache_key" }
+      );
+  }, [codCli]);
+
   // Build date range for given months/years
   const getDateRange = useCallback((months: number[], years: number[]) => {
     const fmt = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-    // Find earliest first-day and latest last-day across all month/year combos
     let earliest: Date | null = null;
     let latest: Date | null = null;
 
@@ -101,10 +137,13 @@ export const useFollowupData = (codCli: string) => {
     const y = years || [now.getFullYear()];
     const dates = getDateRange(m, y);
     const data = await callMainApi("FOLLOWUP", codCli, dates);
-    if (data) setFollowupData(data);
+    if (data) {
+      setFollowupData(data);
+      await saveToCache("followup", data);
+    }
     await saveLastUpdate();
     setLoading(false);
-  }, [codCli, callMainApi, getDateRange, saveLastUpdate]);
+  }, [codCli, callMainApi, getDateRange, saveLastUpdate, saveToCache]);
 
   const fetchProdutosDistribuidos = useCallback(async (months?: number[], years?: number[]) => {
     if (!codCli) return;
@@ -113,8 +152,11 @@ export const useFollowupData = (codCli: string) => {
     const y = years || [now.getFullYear()];
     const dates = getDateRange(m, y);
     const data = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, dates);
-    if (data) setProdutosData(data);
-  }, [codCli, callMainApi, getDateRange]);
+    if (data) {
+      setProdutosData(data);
+      await saveToCache("produtos", data);
+    }
+  }, [codCli, callMainApi, getDateRange, saveToCache]);
 
   // Process Minutas data: group by regional, count expedidas vs baixadas
   const getMinutasData = useCallback(() => {
