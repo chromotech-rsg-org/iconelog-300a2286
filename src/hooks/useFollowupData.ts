@@ -169,38 +169,64 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     if (!codCli) return;
     setRefreshing(true);
     const now = new Date();
-    // Always fetch full range: previous year Jan to current date
-    const allMonthsRange = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-    const allYearsRange = [now.getFullYear() - 1, now.getFullYear()];
-    const dates = getDateRange(allMonthsRange, allYearsRange);
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-    setRefreshStage("requesting_followup");
-    const followupResult = await callMainApi("FOLLOWUP", codCli, dates, pageId);
+    // Build month-by-month chunks from Jan 2024 to current month
+    const chunks: { data_inicial: string; data_final: string }[] = [];
+    const startYear = 2024;
+    const endYear = now.getFullYear();
+    const endMonth = now.getMonth() + 1; // 1-indexed
 
-    if (followupResult) {
-      setRefreshStage("receiving_followup");
-      setRefreshRecordCount(followupResult.length);
-      setFollowupData(followupResult);
+    for (let y = startYear; y <= endYear; y++) {
+      const lastMonth = y === endYear ? endMonth : 12;
+      for (let m = 1; m <= lastMonth; m++) {
+        const firstDay = new Date(y, m - 1, 1);
+        const lastDay = y === endYear && m === endMonth ? now : new Date(y, m, 0);
+        chunks.push({
+          data_inicial: `${fmt(firstDay)} 00:00`,
+          data_final: `${fmt(lastDay)} 23:59`,
+        });
+      }
     }
 
-    setRefreshStage("requesting_produtos");
-    const produtosResult = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, dates, pageId);
+    // Fetch FOLLOWUP month by month and merge
+    setRefreshStage("requesting_followup");
+    let allFollowup: FollowupItem[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      setRefreshRecordCount(allFollowup.length);
+      const result = await callMainApi("FOLLOWUP", codCli, chunks[i], pageId);
+      if (result) allFollowup = allFollowup.concat(result);
+    }
 
-    if (produtosResult) {
+    if (allFollowup.length > 0) {
+      setRefreshStage("receiving_followup");
+      setRefreshRecordCount(allFollowup.length);
+      setFollowupData(allFollowup);
+    }
+
+    // Fetch PRODUTOSDISTRIBUIDOS month by month and merge
+    setRefreshStage("requesting_produtos");
+    let allProdutos: FollowupItem[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      setRefreshRecordCount(allProdutos.length);
+      const result = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, chunks[i], pageId);
+      if (result) allProdutos = allProdutos.concat(result);
+    }
+
+    if (allProdutos.length > 0) {
       setRefreshStage("receiving_produtos");
-      setRefreshRecordCount(produtosResult.length);
-      setProdutosData(produtosResult);
+      setRefreshRecordCount(allProdutos.length);
+      setProdutosData(allProdutos);
     }
 
     setRefreshStage("saving");
-    // Only save to cache/DB if we have a valid supabase session
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      if (followupResult) await saveToCache("followup", followupResult);
-      if (produtosResult) await saveToCache("produtos", produtosResult);
+      if (allFollowup.length > 0) await saveToCache("followup", allFollowup);
+      if (allProdutos.length > 0) await saveToCache("produtos", allProdutos);
       await saveLastUpdate();
     } else {
-      // For unauthenticated users, just update local state
       setLastUpdateAt(new Date());
     }
 
@@ -212,7 +238,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       setRefreshStage(null);
       setRefreshing(false);
     }, 3000);
-  }, [codCli, callMainApi, getDateRange, saveLastUpdate, saveToCache]);
+  }, [codCli, callMainApi, saveLastUpdate, saveToCache, pageId]);
 
   const getMinutasData = useCallback((months: number[], years: number[], dateRange?: { from?: Date; to?: Date }) => {
     const filtered = dateRange?.from
