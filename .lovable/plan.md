@@ -1,286 +1,164 @@
 
-# Plano de Implementacao
+# Plano de Reestruturação Completa da Plataforma
 
-Este plano aborda tres areas principais: (1) melhorias na tela de Configuracoes, (2) adicao de graficos e tabelas faltantes no B-Side Estoque, e (3) padronizacao dos filtros em todos os BIs.
+## Visao Geral
 
----
+Este plano transforma a plataforma de um sistema com dados mock para um sistema totalmente conectado a APIs reais, com painel administrativo reestruturado com sidebar lateral, gestao de integrações, testes de API, e BIs configuráveis.
 
-## Resumo das Alteracoes
-
-1. **Configuracoes - Sistema Administrativo**
-   - Adicionar secao para upload de logo unico para telas administrativas (Login, Admin, Settings)
-   - Adicionar campo de ordenacao (numero) para os BIs no menu
-
-2. **B-Side Estoque - Graficos e Tabelas Faltantes**
-   - Adicionar layout com duas colunas de KPIs (Estoque Matriz e Estoque Base)
-   - Adicionar grafico de pizza "Representacao do Estoque | Grupo"
-   - Adicionar grafico de barras "Valor Estoque | Grupo"
-   - Adicionar grafico de pizza "Tempo Parado | SKU" (por periodos de tempo)
-   - Adicionar grafico de barras "Tempo Parado Medio | Grupo"
-   - Adicionar tabelas "Estoque Matriz" e "Estoque Base"
-
-3. **Filtros Padronizados em Todos os BIs**
-   - Adicionar filtros de meses, anos e regionais em todas as paginas de BI
-   - Manter comportamento interativo existente (clique para filtrar)
+Devido à complexidade (estimo ~15-20 arquivos novos/modificados e ~5 migrações de banco), o trabalho será implementado em 4 blocos sequenciais dentro desta mesma entrega.
 
 ---
 
-## Alteracoes no Banco de Dados
+## Bloco 1: Reestruturação do Painel Administrativo
 
-### Nova Coluna e Tabela
+### 1.1 - Layout com Sidebar Lateral
+- Remover o item "Configurações" do menu suspenso (NavigationMenu)
+- Criar a rota `/admin` com sidebar fixa à esquerda, no estilo da imagem de referência (fundo escuro, menus colapsáveis)
+- Menus da sidebar:
+  - **Usuarios** (existente)
+  - **Perfis** (existente)
+  - **Acesso Publico** (existente)
+  - **Cadastro de Regionais** (renomear de "Cadastro de Cidades")
+  - **Configuracoes** (colapsável, com sub-itens):
+    - Configurar BI (atual Settings, renomeado)
+    - Empresas / Clientes
+    - Integracao (tokens, variáveis, senhas)
+    - Testes de API
+    - Logs
+- Remover a rota `/settings` separada; todo o conteúdo passa para dentro do painel admin
 
-```text
-Tabela: bi_settings
-  Nova coluna: display_order (integer, default 0)
-  - Controla a ordem de exibicao dos BIs no menu de navegacao
-
-Nova linha especial na tabela bi_settings:
-  - page_id: "system" (para logo e nome do sistema administrativo)
-  - display_name: "Relatorios Icone Log"
-  - logo_url: null (pode ser atualizado)
-```
-
----
-
-## Arquivos a Criar/Modificar
-
-### 1. Pagina de Configuracoes (src/pages/Settings.tsx)
-
-**Alteracoes:**
-- Adicionar secao separada no topo para "Logo do Sistema"
-  - Este logo sera usado na tela de Login, Admin e Settings
-  - Upload de imagem e campo de nome
-- Adicionar campo numerico de "Ordem" para cada BI
-- Reorganizar layout em duas areas: Sistema e BIs
-
-**Nova estrutura visual:**
-
-```text
-+------------------------------------------+
-|  CONFIGURACOES DO SISTEMA               |
-+------------------------------------------+
-| [Logo Sistema]  Nome: Relatorios ...    |
-|                 [Upload] [Salvar]        |
-+------------------------------------------+
-
-+------------------------------------------+
-|  CONFIGURACOES DOS BIs                   |
-+------------------------------------------+
-| Card BI 1:           | Card BI 2:        |
-| [Logo] Nome: ...     | [Logo] Nome: ...  |
-| Ordem: [1]           | Ordem: [2]        |
-+------------------------------------------+
-```
-
-### 2. B-Side Estoque (src/pages/Estoque.tsx)
-
-**Alteracoes Estruturais:**
-
-O layout atual mostra apenas KPIs simples, uma tabela e um grafico de categoria. Baseado na imagem de referencia, precisa incluir:
-
-```text
-+------------------------+------------------------+
-|   ESTOQUE MATRIZ       |   ESTOQUE BASE         |
-| Valor | M3 | Qtde SKUs | Valor | M3 | Qtde SKUs |
-+------------------------+------------------------+
-
-+-------------+-------------+-------------------+
-| Repr. Grupo | Valor Grupo | Estoque Matriz    |
-| (Pie Chart) | (Bar Chart) | (Tabela detalhes) |
-+-------------+-------------+-------------------+
-| Tempo SKU   | Tempo Grupo | Estoque Base      |
-| (Pie Chart) | (Bar Chart) | (Tabela detalhes) |
-+-------------+-------------+-------------------+
-```
-
-**Novos Componentes:**
-- `StockDualKPICards.tsx` - Cards duplos Matriz/Base
-- `StockGroupPieChart.tsx` - Pizza de representacao por grupo
-- `StockValueBarChart.tsx` - Barras de valor por grupo
-- `StockTimePieChart.tsx` - Pizza de tempo parado por periodo
-- `StockTimeBarChart.tsx` - Barras de tempo medio por grupo
-- `StockMatrizTable.tsx` - Tabela detalhada Matriz
-- `StockBaseTable.tsx` - Tabela detalhada Base
-
-**Novos Dados (src/data/stockData.ts):**
-- Adicionar campo `grupo` aos itens (FOOD D-SIDE, FOOD B-SIDE)
-- Adicionar campo `tempoParado` (dias parado)
-- Adicionar funcoes para calcular Matriz vs Base
-- Adicionar funcoes para agrupar por tempo parado
-
-### 3. Filtros Globais - SharedHeader e Paginas
-
-**SharedHeader (src/components/shared/SharedHeader.tsx):**
-- Ja possui suporte a filtros (showFilters=true)
-- Verificar se precisa ajustes para todos os BIs
-
-**Paginas que precisam adicionar filtros:**
-- `src/pages/Estoque.tsx` - adicionar showFilters=true
-- `src/pages/Entregas.tsx` - adicionar showFilters=true
-- `src/pages/Tracking.tsx` - adicionar showFilters=true
-- `src/pages/Faturamento.tsx` - adicionar showFilters=true
-- `src/pages/EstoqueConsolidado.tsx` - adicionar showFilters=true
-- `src/pages/Analitico.tsx` - adicionar showFilters=true
-
-**Para cada pagina, adicionar:**
-```typescript
-const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
-const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
-const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
-```
-
-E passar para o SharedHeader:
-```typescript
-<SharedHeader
-  showFilters={true}
-  selectedMonths={selectedMonths}
-  selectedYears={selectedYears}
-  selectedRegions={selectedRegions}
-  onMonthsChange={setSelectedMonths}
-  onYearsChange={setSelectedYears}
-  onRegionsChange={setSelectedRegions}
-  // ... outros props
-/>
-```
-
-### 4. Menu de Navegacao Ordenado
-
-**NavigationMenu (src/components/shared/NavigationMenu.tsx):**
-- Modificar para buscar BIs ordenados pelo campo `display_order`
-- Atualizar contexto BiSettingsContext para fornecer ordem
-
-**BiSettingsContext (src/contexts/BiSettingsContext.tsx):**
-- Adicionar funcao `getOrderedPages()` que retorna BIs ordenados
-- Usar essa funcao no NavigationMenu
-
-### 5. Logo do Sistema nas Telas Administrativas
-
-**Arquivos afetados:**
-- `src/pages/Auth.tsx` - usar logo do sistema
-- `src/pages/Admin.tsx` - usar logo do sistema (via SharedHeader)
-- `src/pages/Settings.tsx` - usar logo do sistema (via SharedHeader)
-
-**BiSettingsContext:**
-- Adicionar funcao `getSystemLogo()` que retorna logo para page_id="system"
-- Adicionar funcao `getSystemName()` que retorna nome do sistema
+### 1.2 - Permissoes para Novos Menus
+- Atualizar a constraint `admin_permissions_permission_type_check` para incluir novos tipos:
+  - `configurar_bi` (antigo settings)
+  - `empresas_clientes`
+  - `integracao`
+  - `testes_api`
+  - `logs_api`
+- Atualizar `useRolesManagement`, `useSupabaseAuth`, `AuthContext` para suportar os novos tipos
+- Na edição de perfis (modal), adicionar toggles para cada novo tipo
+- Lógica: se o usuário tem permissão em ao menos 1 sub-item de "Configurações", mostra o menu pai; senão, esconde
 
 ---
 
-## Secao Tecnica
+## Bloco 2: Novas Funcionalidades Administrativas
 
-### Migracao SQL
+### 2.1 - Configurar BI (renomear atual Settings)
+- Mover o conteúdo atual de `Settings.tsx` para um componente dentro do admin
+- Adicionar botao "Duplicar" em cada card de BI: ao duplicar, cria uma copia com novo page_id, permitindo editar imagem, titulo, nome da empresa, cod_cli
+- Adicionar campo `cod_cli` na tabela `bi_settings` para associar cada BI a um cliente
 
-```sql
--- Adicionar coluna de ordenacao
-ALTER TABLE bi_settings 
-ADD COLUMN display_order integer NOT NULL DEFAULT 0;
+### 2.2 - Cadastro de Empresas/Clientes
+- Nova tabela `clients` no banco: `id`, `cod_cli` (codigo), `nome`, `descricao`, `ativo`
+- Seed com os dados fornecidos (PAY/EPAY, 099/99 FOOD, ICO/ICONE LOG GERAL, etc.)
+- CRUD completo na sidebar
 
--- Inserir registro do sistema
-INSERT INTO bi_settings (page_id, display_name, logo_url, display_order)
-VALUES ('system', 'Relatorios Icone Log', NULL, -1);
+### 2.3 - Area de Integracao (Tokens/Variaveis)
+- Nova tabela `api_integrations`: `id`, `name`, `base_url`, `auth_type`, `auth_token`, `headers_json`, `created_at`
+- UI para cadastrar, editar e excluir variáveis de integração (tokens, URLs, senhas)
+- Os valores sensiveis são armazenados criptografados no banco
 
--- Definir ordem inicial dos BIs existentes
-UPDATE bi_settings SET display_order = 1 WHERE page_id = 'minutas';
-UPDATE bi_settings SET display_order = 2 WHERE page_id = 'entregas';
-UPDATE bi_settings SET display_order = 3 WHERE page_id = 'estoque';
-UPDATE bi_settings SET display_order = 4 WHERE page_id = 'tracking';
-UPDATE bi_settings SET display_order = 5 WHERE page_id = 'estoque-consolidado';
-UPDATE bi_settings SET display_order = 6 WHERE page_id = 'faturamento';
-UPDATE bi_settings SET display_order = 7 WHERE page_id = 'analitico';
-```
+### 2.4 - Testes de API (Postman interno)
+- Interface com: seletor de método (GET/POST/PUT/DELETE), campo URL, headers editáveis, body JSON editável
+- Botao "Enviar" que chama um edge function para proxiar a requisição (evitar CORS)
+- Exibir resposta: status code, headers, body formatado
+- Os endpoints da collection já vêm pré-cadastrados como templates
 
-### Hook useBiSettings - Novas Funcoes
-
-```typescript
-// Retorna configuracao do sistema (login/admin/settings)
-const getSystemSetting = (): BiSetting | undefined => {
-  return settings.find(s => s.page_id === 'system');
-};
-
-// Retorna BIs ordenados (exclui 'system')
-const getOrderedBiSettings = (): BiSetting[] => {
-  return settings
-    .filter(s => s.page_id !== 'system')
-    .sort((a, b) => a.display_order - b.display_order);
-};
-
-// Atualiza ordem de um BI
-const updateDisplayOrder = async (pageId: string, order: number) => {
-  // ... update no banco
-};
-```
-
-### Estrutura de Dados do Estoque Expandida
-
-```typescript
-export interface SKUItem {
-  id: string;
-  sku: string;
-  name: string;
-  description: string;
-  category: string;
-  grupo: 'FOOD D-SIDE' | 'FOOD B-SIDE';  // NOVO
-  stockQuantity: number;
-  kitsQuantity: number;
-  minStock: number;
-  maxStock: number;
-  unitPrice: number;
-  m3: number;  // NOVO - volume em metros cubicos
-  tempoParado: number;  // NOVO - dias parado
-  imageUrl: string;
-  lastUpdate: Date;
-  location: string;
-  locationType: 'matriz' | 'base';  // NOVO
-  base?: string;  // NOVO - nome da base (se locationType='base')
-  supplier: string;
-}
-
-// Funcao para categorizar tempo parado
-export const getTempoParadoCategory = (dias: number): string => {
-  if (dias <= 30) return 'Antes que 30 dias';
-  if (dias <= 60) return 'Entre 31 e 60 dias';
-  if (dias <= 90) return 'Entre 61 e 90 dias';
-  return 'Mais que 91 dias';
-};
-```
-
-### Fluxo de Filtros nas Paginas
-
-Cada pagina de BI tera:
-
-1. **Estados de filtro globais** (mes, ano, regional)
-2. **Estados de filtro interativos** (especificos de cada BI)
-3. **Dados filtrados via useMemo** combinando ambos
-4. **Barra de filtros ativos** mostrando todos os filtros aplicados
+### 2.5 - Logs de Testes
+- Nova tabela `api_test_logs`: `id`, `endpoint`, `method`, `request_body`, `response_status`, `response_body`, `created_at`, `user_id`
+- Cada teste salvo automaticamente
+- Listar logs com busca e filtros
+- Exportar em CSV, JSON, Excel e TXT
 
 ---
 
-## Ordem de Implementacao
+## Bloco 3: Conexao dos BIs com APIs Reais
 
-1. **Fase 1 - Banco de Dados**
-   - Criar migracao para adicionar coluna display_order
-   - Inserir registro 'system' na tabela bi_settings
+### 3.1 - Edge Function Proxy de API
+- Criar edge function `api-proxy` para fazer chamadas à API `nfe9.websiteseguro.com`
+- Recebe: endpoint, body, token (do banco de integrações)
+- Retorna: resposta da API
+- Isso resolve o problema de CORS
 
-2. **Fase 2 - Hook e Contexto**
-   - Atualizar useBiSettings com novas funcoes
-   - Atualizar BiSettingsContext para expor funcoes de sistema e ordenacao
+### 3.2 - Minutas (Followup + ProdutosDistribuidos)
+- Substituir dados mock por chamadas reais à API FOLLOWUP
+- Campos usados: `dt_expedicao`, `dt_baixa_minuta` para contabilizar expedidas x baixadas
+- Cruzar campo cidade da API com tabela `city_regional_mapping` para agrupar por regional
+- Gráfico esquerdo: totais por regional
+- Gráficos direita: evolução diária
+- Para valores em reais: chamar API PRODUTOSDISTRIBUIDOS, relacionar por numero do pedido, usar campo `vl_total`
 
-3. **Fase 3 - Pagina Settings**
-   - Adicionar secao de logo/nome do sistema
-   - Adicionar campo de ordem para cada BI
-   - Atualizar layout visual
+### 3.3 - B-Side Entregas (Followup)
+- Conectar à API FOLLOWUP
+- Usar campo `fl_status_real` para classificar Finalizado vs Em Trânsito
+- Filtrar campanhas:
+  - Entrega: "Kit restaurante" e "Positivação Kit"
+  - Reposição: "reposição Kit"
+  - Excluir `ds_tipo_servico = "Reentrega"` de tudo
+- Cruzar com `city_regional_mapping` para regionais
+- Manter layout atual
 
-4. **Fase 4 - B-Side Estoque**
-   - Expandir dados mockados com novos campos
-   - Criar novos componentes visuais
-   - Atualizar layout da pagina
+### 3.4 - B-Side Estoque (Saldo Base)
+- Conectar à API SALDOBASE
+- Apenas 1 tabela: Matriz (BARUERI), sem gráficos
+- Foto maior na tabela; ao passar mouse, abre preview grande
+- Novas colunas: QTD última entrada, Data última entrada
+- Nova tabela admin `stock_kit_config`: configurar quantidade por kit por SKU
+- Nova tabela admin `stock_product_whitelist`: quais produtos aparecem no dash (cadastrar por código)
+- Produtos com estoque zerado ficam ocultos
+- Conectar à API RECEBIMENTOS para dados de última entrada
 
-5. **Fase 5 - Filtros em Todas as Paginas**
-   - Adicionar estados de filtro em cada BI
-   - Habilitar showFilters=true no SharedHeader
-   - Integrar filtros com dados existentes
+---
 
-6. **Fase 6 - Menu Ordenado**
-   - Atualizar NavigationMenu para usar ordem do banco
-   - Usar logo do sistema nas telas administrativas
+## Bloco 4: Configuracao Dinamica dos BIs
 
+### 4.1 - Tabela de Configuracao de BI
+- Nova tabela `bi_chart_config`: `id`, `bi_page_id`, `chart_position`, `chart_type`, `api_endpoint`, `field_mappings_json`, `filters_json`, `aggregation_type`
+- Permitir que cada BI tenha seus gráficos configuráveis: qual API alimenta, quais campos usar, como agregar
+- UI na area "Configurar BI" para editar essas configurações
+
+---
+
+## Mudancas no Banco de Dados (Migracoes)
+
+1. Atualizar constraint de `admin_permissions` com novos tipos
+2. Adicionar campo `cod_cli` em `bi_settings`
+3. Criar tabela `clients`
+4. Criar tabela `api_integrations`
+5. Criar tabela `api_test_logs`
+6. Criar tabela `stock_kit_config`
+7. Criar tabela `stock_product_whitelist`
+8. Criar tabela `bi_chart_config`
+9. Renomear referências de "Cadastro de Cidades" para "Cadastro de Regionais"
+
+## Edge Functions
+
+1. `api-proxy`: proxy para chamadas à API externa (resolve CORS, centraliza autenticação)
+
+## Arquivos Principais Modificados/Criados
+
+- `src/pages/Admin.tsx` - reestruturar com sidebar
+- `src/pages/Settings.tsx` - remover (conteúdo migra para Admin)
+- `src/components/admin/AdminSidebar.tsx` - novo
+- `src/components/admin/ConfigurarBI.tsx` - novo (antigo Settings)
+- `src/components/admin/ClientsCRUD.tsx` - novo
+- `src/components/admin/IntegrationManager.tsx` - novo
+- `src/components/admin/ApiTester.tsx` - novo
+- `src/components/admin/ApiTestLogs.tsx` - novo
+- `src/components/admin/StockKitConfig.tsx` - novo
+- `src/components/admin/StockProductWhitelist.tsx` - novo
+- `src/components/shared/NavigationMenu.tsx` - remover link Settings
+- `src/App.tsx` - remover rota /settings
+- `src/hooks/useRolesManagement.ts` - novos tipos de permissão
+- `src/hooks/useSupabaseAuth.ts` - novos tipos de permissão
+- `src/contexts/AuthContext.tsx` - novos tipos de permissão
+- `src/pages/Index.tsx` - conectar à API real (Followup)
+- `src/pages/Estoque.tsx` - conectar à API real (Saldo Base)
+- `src/pages/Entregas.tsx` - conectar à API real (Followup)
+- `supabase/functions/api-proxy/index.ts` - novo
+
+## Observacoes Importantes
+
+- O token da API (`eyJ0eXA...`) será armazenado de forma segura na tabela `api_integrations`, acessível apenas via edge function
+- O `cod_cli` será configurável por empresa/BI
+- Todas as chamadas externas passam pelo edge function proxy para evitar expor tokens no frontend
+- O cadastro de cidades será renomeado para "Cadastro de Regionais" mantendo a mesma funcionalidade
