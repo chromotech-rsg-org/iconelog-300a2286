@@ -133,6 +133,35 @@ export type Database = {
         }
         Relationships: []
       }
+      bi_api_integrations: {
+        Row: {
+          api_integration_id: string
+          bi_page_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          api_integration_id: string
+          bi_page_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          api_integration_id?: string
+          bi_page_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bi_api_integrations_api_integration_id_fkey"
+            columns: ["api_integration_id"]
+            isOneToOne: false
+            referencedRelation: "api_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bi_chart_config: {
         Row: {
           aggregation_type: string | null

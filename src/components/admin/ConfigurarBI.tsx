@@ -44,6 +44,9 @@ const ConfigurarBI = () => {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const systemFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // API integrations linked to BIs
+  const [biApiLinks, setBiApiLinks] = useState<Record<string, Set<string>>>({});
+
   // Clients and integrations for selects
   const [clients, setClients] = useState<Client[]>([]);
   const [integrations, setIntegrations] = useState<ApiIntegration[]>([]);
@@ -60,8 +63,18 @@ const ConfigurarBI = () => {
       const { data } = await supabase.from("api_integrations").select("id, name, base_url").order("name");
       setIntegrations(data || []);
     };
+    const fetchBiApiLinks = async () => {
+      const { data } = await supabase.from("bi_api_integrations").select("bi_page_id, api_integration_id");
+      const links: Record<string, Set<string>> = {};
+      (data || []).forEach((row: any) => {
+        if (!links[row.bi_page_id]) links[row.bi_page_id] = new Set();
+        links[row.bi_page_id].add(row.api_integration_id);
+      });
+      setBiApiLinks(links);
+    };
     fetchClients();
     fetchIntegrations();
+    fetchBiApiLinks();
   }, []);
 
   useEffect(() => {
@@ -361,15 +374,33 @@ const ConfigurarBI = () => {
                   {integrations.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center">Cadastre integrações primeiro</p>
                   ) : (
-                    integrations.map(api => (
-                      <div key={api.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-dashboard-dark/50">
-                        <Checkbox id={`${setting.page_id}-${api.id}`} />
-                        <label htmlFor={`${setting.page_id}-${api.id}`} className="text-xs text-foreground cursor-pointer flex-1">
-                          {api.name}
-                        </label>
-                        <span className="text-xs text-muted-foreground font-mono truncate max-w-[120px]">{api.base_url || ""}</span>
-                      </div>
-                    ))
+                    integrations.map(api => {
+                      const isChecked = biApiLinks[setting.page_id]?.has(api.id) || false;
+                      const handleToggle = async (checked: boolean) => {
+                        if (checked) {
+                          await supabase.from("bi_api_integrations").insert({ bi_page_id: setting.page_id, api_integration_id: api.id } as any);
+                        } else {
+                          await supabase.from("bi_api_integrations").delete().eq("bi_page_id", setting.page_id).eq("api_integration_id", api.id);
+                        }
+                        setBiApiLinks(prev => {
+                          const next = { ...prev };
+                          if (!next[setting.page_id]) next[setting.page_id] = new Set();
+                          else next[setting.page_id] = new Set(next[setting.page_id]);
+                          if (checked) next[setting.page_id].add(api.id);
+                          else next[setting.page_id].delete(api.id);
+                          return next;
+                        });
+                      };
+                      return (
+                        <div key={api.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-dashboard-dark/50">
+                          <Checkbox id={`${setting.page_id}-${api.id}`} checked={isChecked} onCheckedChange={handleToggle} />
+                          <label htmlFor={`${setting.page_id}-${api.id}`} className="text-xs text-foreground cursor-pointer flex-1">
+                            {api.name}
+                          </label>
+                          <span className="text-xs text-muted-foreground font-mono truncate max-w-[120px]">{api.base_url || ""}</span>
+                        </div>
+                      );
+                    })
                   )}
                 </CollapsibleContent>
               </Collapsible>
