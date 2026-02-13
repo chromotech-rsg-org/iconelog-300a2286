@@ -77,6 +77,8 @@ export const MiniLineChart = ({
     }
   };
 
+  const isSinglePoint = data.length === 1;
+
   return (
     <div 
       className={`rounded-lg border bg-dashboard-card p-4 transition-all duration-300 animate-fade-in ${
@@ -95,6 +97,23 @@ export const MiniLineChart = ({
         {region}
         {isSelected && <span className="ml-2 text-xs">(selecionada)</span>}
       </h4>
+      {isSinglePoint ? (
+        <div className="flex items-center justify-center h-[120px] gap-8">
+          <div className="text-center">
+            <div className="text-xs text-muted-foreground mb-1">Dia {data[0].day}</div>
+            <div className="flex items-center gap-6">
+              <div className="flex flex-col items-center">
+                <span className="text-lg font-bold" style={{ color: "hsl(var(--dashboard-blue))" }}>{data[0].expedidas}</span>
+                <span className="text-xs text-muted-foreground">Expedidas</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-lg font-bold" style={{ color: "hsl(var(--dashboard-orange))" }}>{data[0].baixadas}</span>
+                <span className="text-xs text-muted-foreground">Baixadas</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
       <ResponsiveContainer width="100%" height={120}>
         <LineChart 
           data={data} 
@@ -175,6 +194,7 @@ export const MiniLineChart = ({
           />
         </LineChart>
       </ResponsiveContainer>
+      )}
     </div>
   );
 };
