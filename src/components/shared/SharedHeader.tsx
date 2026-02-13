@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { months, years, regions, allMonthValues } from "@/data/mockData";
 import { NavigationMenu } from "./NavigationMenu";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDynamicFilters } from "@/hooks/useDynamicFilters";
 
  interface SharedHeaderProps {
    pageTitle?: string;
@@ -24,6 +25,9 @@ import { useAuth } from "@/contexts/AuthContext";
   onMonthsChange?: (months: number[]) => void;
   onYearsChange?: (years: number[]) => void;
   onRegionsChange?: (regions: string[]) => void;
+  // Dados para filtros dinâmicos
+  followupData?: any[];
+  cityMappings?: any[];
   // Ações
   onClearAllFilters?: () => void;
   onExportExcel?: () => void;
@@ -33,32 +37,37 @@ import { useAuth } from "@/contexts/AuthContext";
 
  export const SharedHeader = ({
    pageTitle: propPageTitle,
-   pageId,
-   lastUpdate,
-   showFilters = false,
-   selectedMonths = [],
-   selectedYears = [],
-   selectedRegions = [],
-   onMonthsChange,
-   onYearsChange,
-   onRegionsChange,
-   onClearAllFilters,
-   onExportExcel,
-   onRefreshData,
-   hasActiveFilters = false,
- }: SharedHeaderProps) => {
-  const { canExport, canRefresh, isAuthenticated, isPublicAccess, isPublicExport, isPublicRefresh } = useAuth();
-   const { getPageTitle, getPageLogo, getRefreshInterval } = useBiSettingsContext();
+    pageId,
+    lastUpdate,
+    showFilters = false,
+    selectedMonths = [],
+    selectedYears = [],
+    selectedRegions = [],
+    onMonthsChange,
+    onYearsChange,
+    onRegionsChange,
+    onClearAllFilters,
+    onExportExcel,
+    onRefreshData,
+    hasActiveFilters = false,
+    followupData = [],
+    cityMappings = [],
+  }: SharedHeaderProps) => {
+   const { canExport, canRefresh, isAuthenticated, isPublicAccess, isPublicExport, isPublicRefresh } = useAuth();
+    const { getPageTitle, getPageLogo, getRefreshInterval } = useBiSettingsContext();
+    
+    // Use dynamic title from settings, fallback to prop
+    const pageTitle = propPageTitle || getPageTitle(pageId);
+    const pageLogo = getPageLogo(pageId);
+    const refreshIntervalMinutes = getRefreshInterval(pageId);
+
+    // Get dynamic filters from data
+    const { uniqueYears, uniqueRegions } = useDynamicFilters(followupData, cityMappings);
    
-   // Use dynamic title from settings, fallback to prop
-   const pageTitle = propPageTitle || getPageTitle(pageId);
-   const pageLogo = getPageLogo(pageId);
-   const refreshIntervalMinutes = getRefreshInterval(pageId);
-  
-  // Allow actions for authenticated users with permission OR public pages with public permission
-  const isPublic = isPublicAccess(pageId);
-  const showExport = (isAuthenticated && canExport(pageId)) || (!isAuthenticated && isPublic && isPublicExport(pageId));
-  const showRefresh = (isAuthenticated && canRefresh(pageId)) || (!isAuthenticated && isPublic && isPublicRefresh(pageId));
+   // Allow actions for authenticated users with permission OR public pages with public permission
+   const isPublic = isPublicAccess(pageId);
+   const showExport = (isAuthenticated && canExport(pageId)) || (!isAuthenticated && isPublic && isPublicExport(pageId));
+   const showRefresh = (isAuthenticated && canRefresh(pageId)) || (!isAuthenticated && isPublic && isPublicRefresh(pageId));
 
   // Cooldown state for refresh button
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
@@ -302,10 +311,10 @@ import { useAuth } from "@/contexts/AuthContext";
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-40 p-2 bg-dashboard-card border-dashboard-border z-50">
+            <PopoverContent className="w-40 p-2 bg-dashboard-card border-dashboard-border z-50 popover-dark-scroll max-h-64 overflow-y-auto">
               <div className="flex flex-col gap-2">
-                {years.map((year) => (
-                  <div key={year} className="flex items-center space-x-2">
+                {uniqueYears.map((year) => (
+                   <div key={year} className="flex items-center space-x-2">
                     <Checkbox
                       id={`year-${year}`}
                       checked={selectedYears.includes(year)}
@@ -335,7 +344,7 @@ import { useAuth } from "@/contexts/AuthContext";
                 <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-56 p-2 bg-dashboard-card border-dashboard-border z-50 max-h-64 overflow-y-auto">
+            <PopoverContent className="w-56 p-2 bg-dashboard-card border-dashboard-border z-50 popover-dark-scroll max-h-64 overflow-y-auto">
               <div className="flex flex-col gap-1">
                 <div 
                   className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-dashboard-border ${
@@ -345,8 +354,8 @@ import { useAuth } from "@/contexts/AuthContext";
                 >
                   <span className="text-sm text-foreground">Todas as Regionais</span>
                 </div>
-                {regions.map((region) => (
-                  <div key={region} className="flex items-center space-x-2 p-1">
+                {uniqueRegions.map((region) => (
+                   <div key={region} className="flex items-center space-x-2 p-1">
                     <Checkbox
                       id={`region-${region}`}
                       checked={selectedRegions.includes(region)}

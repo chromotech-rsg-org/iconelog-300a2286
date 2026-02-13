@@ -23,10 +23,12 @@ const Entregas = () => {
   const codCli = getCodCli("entregas");
 
   const {
+    followupData,
     loading: dataLoading,
     error,
     fetchFollowup,
     getEntregasData,
+    cityMappings,
   } = useFollowupData(codCli, "entregas");
 
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -148,6 +150,8 @@ const Entregas = () => {
         onYearsChange={setSelectedYears}
         onRegionsChange={setSelectedRegions}
         onRefreshData={handleRefreshData}
+        followupData={followupData}
+        cityMappings={cityMappings}
         onExportExcel={handleExportExcel}
         onClearAllFilters={clearGlobalFilters}
         hasActiveFilters={hasGlobalFilters || hasActiveFilters}
