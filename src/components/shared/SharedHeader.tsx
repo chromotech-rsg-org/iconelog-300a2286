@@ -430,17 +430,24 @@ import { supabase } from "@/integrations/supabase/client";
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0 bg-dashboard-card border-dashboard-border z-50" align="start">
-                <Calendar
+              <Calendar
                   mode="range"
                   selected={selectedDateRange?.from ? { from: selectedDateRange.from, to: selectedDateRange.to } : undefined}
                   onSelect={(range) => {
-                    onDateRangeChange({
-                      from: range?.from,
-                      to: range?.to,
-                    });
+                    if (range?.from && !range?.to) {
+                      // Single day click - filter just that day
+                      onDateRangeChange({ from: range.from, to: undefined });
+                    } else if (range?.from && range?.to) {
+                      // Range selected
+                      onDateRangeChange({ from: range.from, to: range.to });
+                    } else {
+                      // Deselected
+                      onDateRangeChange({ from: undefined, to: undefined });
+                    }
                   }}
                   numberOfMonths={2}
                   locale={ptBR}
+                  defaultMonth={new Date()}
                   className={cn("p-3 pointer-events-auto")}
                 />
                 {selectedDateRange?.from && (
