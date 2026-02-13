@@ -520,9 +520,9 @@ const Admin = () => {
       </header>
 
       {/* Layout with sidebar */}
-      <div className="flex" style={{ height: "calc(100vh - 65px)" }}>
+      <div className="flex">
         <AdminSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 p-6">
           <div className="mb-6">
             <h1 className="text-xl font-bold text-foreground">{systemName}</h1>
             <p className="text-sm text-muted-foreground">Gerencie usuários, perfis, acessos e configurações</p>
