@@ -4,11 +4,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Database, Search, Clock } from "lucide-react";
+import { Loader2, Database, Search, Clock, Download } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { saveAs } from "file-saver";
+import * as XLSX from "xlsx";
 
 interface CacheEntry {
   id: string;
@@ -24,7 +27,7 @@ const ApiDataViewer = () => {
   const [selectedKey, setSelectedKey] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 50;
+  const [rowsPerPage, setRowsPerPage] = useState<number | "all">(50);
 
   useEffect(() => {
     loadCacheEntries();
@@ -81,15 +84,21 @@ const ApiDataViewer = () => {
   }, [flatData, searchTerm]);
 
   const paginatedData = useMemo(() => {
+    if (rowsPerPage === "all") return filteredData;
     const start = (currentPage - 1) * rowsPerPage;
     return filteredData.slice(start, start + rowsPerPage);
-  }, [filteredData, currentPage]);
+  }, [filteredData, currentPage, rowsPerPage]);
 
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+  const totalPages = rowsPerPage === "all" ? 1 : Math.ceil(filteredData.length / rowsPerPage);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedKey, searchTerm]);
+  const exportToExcel = () => {
+    if (filteredData.length === 0 || !selectedEntry) return;
+    const ws = XLSX.utils.json_to_sheet(filteredData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Dados");
+    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(new Blob([buf]), `${selectedEntry.cache_key}.xlsx`);
+  };
 
   if (loading) {
     return (
@@ -136,6 +145,26 @@ const ApiDataViewer = () => {
                 />
               </div>
             )}
+
+            {selectedEntry && (
+              <div className="flex flex-wrap items-center gap-3">
+                <Select value={String(rowsPerPage)} onValueChange={v => { setRowsPerPage(v === "all" ? "all" : Number(v)); setCurrentPage(1); }}>
+                  <SelectTrigger className="bg-dashboard-dark border-dashboard-border text-foreground w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-dashboard-card border-dashboard-border">
+                    <SelectItem value="25">25 linhas</SelectItem>
+                    <SelectItem value="50">50 linhas</SelectItem>
+                    <SelectItem value="100">100 linhas</SelectItem>
+                    <SelectItem value="250">250 linhas</SelectItem>
+                    <SelectItem value="all">Todas</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={exportToExcel} className="gap-1.5 border-dashboard-border">
+                  <Download className="h-3.5 w-3.5" /> Exportar Excel
+                </Button>
+              </div>
+            )}
           </div>
 
           {selectedEntry && (
@@ -144,8 +173,6 @@ const ApiDataViewer = () => {
                 <Clock className="h-3 w-3" />
                 Atualizado: {format(new Date(selectedEntry.cached_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
               </span>
-              <span>Página: {selectedEntry.page_id}</span>
-              <span>{filteredData.length} registro(s)</span>
             </div>
           )}
         </CardContent>
@@ -171,7 +198,7 @@ const ApiDataViewer = () => {
                     {paginatedData.map((row, idx) => (
                       <TableRow key={idx} className="border-dashboard-border">
                         <TableCell className="text-muted-foreground text-xs">
-                          {(currentPage - 1) * rowsPerPage + idx + 1}
+                          {rowsPerPage === "all" ? idx + 1 : (currentPage - 1) * rowsPerPage + idx + 1}
                         </TableCell>
                         {columns.map(col => (
                           <TableCell key={col} className="text-foreground text-xs whitespace-nowrap max-w-[200px] truncate">
