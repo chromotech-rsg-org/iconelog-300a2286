@@ -45,14 +45,21 @@ const Index = () => {
     return d;
   }, []);
 
-  // Start with today selected in calendar, no month/year filters
+  const monthStart = useMemo(() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  // Start with current month selected in calendar
   const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
   const [selectedYears, setSelectedYears] = useState<number[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<"expedidas" | "baixadas" | null>(null);
-  const [selectedDateRange, setSelectedDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: today, to: today });
+  const [selectedDateRange, setSelectedDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: monthStart, to: today });
   const [isFiltering, startFilterTransition] = useTransition();
 
   // Sync lastUpdate from DB
@@ -148,9 +155,9 @@ const Index = () => {
       setSelectedRegions([]);
       setSelectedMonths([]);
       setSelectedYears([]);
-      setSelectedDateRange({ from: today, to: today });
+      setSelectedDateRange({ from: monthStart, to: today });
     });
-  }, [today]);
+  }, [today, monthStart]);
 
   const handleRefreshData = useCallback(() => {
     if (codCli && !refreshing) {
@@ -162,7 +169,7 @@ const Index = () => {
   }, [codCli, refreshing, fetchFollowup, selectedMonths, selectedYears]);
 
   const isDefaultState = selectedMonths.length === 0 && selectedYears.length === 0 &&
-    selectedDateRange.from?.getTime() === today.getTime() && selectedDateRange.to?.getTime() === today.getTime();
+    selectedDateRange.from?.getTime() === monthStart.getTime() && selectedDateRange.to?.getTime() === today.getTime();
   const hasActiveFilters = selectedDay !== null || selectedMetric !== null || selectedRegions.length > 0 || !isDefaultState;
 
   const exportToExcel = useCallback(() => {
@@ -228,10 +235,10 @@ const Index = () => {
             setSelectedMonths([]);
             setSelectedYears([]);
           } else {
-            // Clearing calendar restores default: today
+            // Clearing calendar restores default: current month
             setSelectedMonths([]);
             setSelectedYears([]);
-            setSelectedDateRange({ from: today, to: today });
+            setSelectedDateRange({ from: monthStart, to: today });
           }
         })}
         onClearAllFilters={clearAllFilters}

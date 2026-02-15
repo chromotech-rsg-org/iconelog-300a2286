@@ -41,6 +41,14 @@ const filterByMonthYear = (items: FollowupItem[], months: number[], years: numbe
   });
 };
 
+const safeParseDate = (dt: string): Date | null => {
+  if (!dt) return null;
+  // Convert "YYYY/MM/DD" to "YYYY-MM-DD" for reliable parsing
+  const normalized = dt.replace(/\//g, "-");
+  const d = new Date(normalized);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 const filterByDateRange = (items: FollowupItem[], from: Date, to: Date): FollowupItem[] => {
   const fromDate = new Date(from);
   fromDate.setHours(0, 0, 0, 0);
@@ -49,8 +57,9 @@ const filterByDateRange = (items: FollowupItem[], from: Date, to: Date): Followu
   return items.filter(item => {
     const dt = item.dt_inicio || item.dt_expedicao || item.dt_baixa_minuta;
     if (!dt) return false;
-    const itemDate = new Date(dt).getTime();
-    return itemDate >= fromDate.getTime() && itemDate <= toDate.getTime();
+    const parsed = safeParseDate(String(dt));
+    if (!parsed) return false;
+    return parsed.getTime() >= fromDate.getTime() && parsed.getTime() <= toDate.getTime();
   });
 };
 
@@ -299,8 +308,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
       const regional = resolveRegional(cidade, cityMappings);
 
-      const dtExp = item.dt_expedicao ? new Date(item.dt_expedicao) : null;
-      const dtBaixa = item.dt_baixa_minuta ? new Date(item.dt_baixa_minuta) : null;
+      const dtExp = item.dt_expedicao ? safeParseDate(String(item.dt_expedicao)) : null;
+      const dtBaixa = item.dt_baixa_minuta ? safeParseDate(String(item.dt_baixa_minuta)) : null;
 
       // Only count each date if it falls within the selected range
       if (dtExp && isDateInRange(dtExp)) {
