@@ -97,7 +97,11 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Calculate date range for current month
+      // Determine if this page needs date range params
+      const needsDateRange = ["minutas", "entregas"].includes(pageId) ||
+        integrations.some(i => ["FOLLOWUP", "PRODUTOSDISTRIBUIDOS"].includes(i.name.toUpperCase()));
+
+      // Calculate date range for current month (only used for followup-type APIs)
       const firstDay = new Date(brtTime.getFullYear(), brtTime.getMonth(), 1);
       const lastDay = new Date(brtTime.getFullYear(), brtTime.getMonth() + 1, 0);
       const fmt = (d: Date) =>
@@ -126,16 +130,24 @@ Deno.serve(async (req) => {
           Object.assign(headers, integration.headers_json);
         }
 
+        // Build request body - only include date range for APIs that need it
+        const apiName = integration.name.toUpperCase();
+        const apiNeedsDateRange = ["FOLLOWUP", "PRODUTOSDISTRIBUIDOS"].includes(apiName);
+        const body: Record<string, any> = { cod_cli: biSetting.cod_cli };
+        if (apiNeedsDateRange) {
+          Object.assign(body, dateRange);
+        }
+
+        // Determine cache key based on API name
+        const cacheKey = `${integration.name.toLowerCase()}_${biSetting.cod_cli}`;
+
         try {
           console.log(`Calling API: ${integration.name} for page ${pageId}`);
           const startTime = Date.now();
           const apiResponse = await fetch(url, {
             method: "POST",
             headers,
-            body: JSON.stringify({
-              cod_cli: biSetting.cod_cli,
-              ...dateRange,
-            }),
+            body: JSON.stringify(body),
           });
           const execTime = Date.now() - startTime;
 
@@ -152,7 +164,6 @@ Deno.serve(async (req) => {
           }
 
           // Save to cache
-          const cacheKey = `${integration.name.toLowerCase()}_${biSetting.cod_cli}`;
           await supabase.from("bi_data_cache").upsert(
             {
               page_id: pageId,

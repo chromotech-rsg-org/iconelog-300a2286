@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { allMonthValues } from "@/data/mockData";
 import { Expand } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,13 +8,15 @@ import { StockDualKPICards } from "@/components/stock/StockDualKPICards";
 import { StockLocationTables } from "@/components/stock/StockLocationTables";
 import { ProductDetailPanel } from "@/components/stock/ProductDetailPanel";
 import { ProductDetailModal } from "@/components/stock/ProductDetailModal";
+import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
 import { Badge } from "@/components/ui/badge";
 import { useEstoqueData } from "@/hooks/useEstoqueData";
 import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
-import { X, Loader2, AlertCircle } from "lucide-react";
+import { X, Loader2, AlertCircle, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import type { RefreshStage } from "@/components/dashboard/RefreshProgress";
 
 const Estoque = () => {
   const currentMonth = new Date().getMonth() + 1;
@@ -28,24 +30,20 @@ const Estoque = () => {
     totals,
     loading: dataLoading,
     error,
-    fetchSaldoBase,
-    fetchRecebimentos,
+    cacheLoaded,
+    cacheLoading,
+    refreshing,
+    refreshStage,
+    refreshRecordCount,
+    lastUpdateAt,
+    refreshData,
   } = useEstoqueData(codCli);
 
-  const [lastUpdate, setLastUpdate] = useState(new Date());
   const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Fetch data on mount
-  useEffect(() => {
-    if (codCli) {
-      fetchSaldoBase();
-      fetchRecebimentos();
-    }
-  }, [codCli, fetchSaldoBase, fetchRecebimentos]);
 
   // Find selected product
   const currentProduct = useMemo(() => {
@@ -55,13 +53,10 @@ const Estoque = () => {
 
   const handleRefreshData = useCallback(() => {
     if (codCli) {
-      fetchSaldoBase();
-      fetchRecebimentos();
-      setLastUpdate(new Date());
+      refreshData();
       setSelectedSKU(null);
-      toast.success("Dados atualizados!");
     }
-  }, [codCli, fetchSaldoBase, fetchRecebimentos]);
+  }, [codCli, refreshData]);
 
   const handleExportExcel = useCallback(() => {
     const exportData = stockItems.map(item => ({
@@ -97,11 +92,15 @@ const Estoque = () => {
     setSelectedYears([currentYear]);
     setSelectedRegions([]);
     clearAllFilters();
-  }, [currentMonth, currentYear, clearAllFilters]);
+  }, [currentYear, clearAllFilters]);
 
   const hasActiveFilters = selectedSKU !== null;
   const hasGlobalFilters = selectedMonths.length !== 1 || selectedMonths[0] !== currentMonth || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedRegions.length > 0;
   const loading = settingsLoading || dataLoading;
+
+  // Connection status
+  const hasData = stockItems.length > 0;
+  const dataFromCache = cacheLoaded && hasData && !refreshing;
 
   if (!settingsLoading && !codCli) {
     return (
@@ -120,7 +119,7 @@ const Estoque = () => {
       <DocumentHead pageId="estoque" />
       <SharedHeader
         pageId="estoque"
-        lastUpdate={lastUpdate}
+        lastUpdate={lastUpdateAt || new Date()}
         showFilters={true}
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
@@ -132,6 +131,29 @@ const Estoque = () => {
         onExportExcel={handleExportExcel}
         onClearAllFilters={clearGlobalFilters}
         hasActiveFilters={hasGlobalFilters || hasActiveFilters}
+      />
+
+      {/* Connection status indicator */}
+      {cacheLoaded && (
+        <div className="flex items-center gap-2 px-6 py-1.5 text-xs text-muted-foreground">
+          {hasData ? (
+            <>
+              <Wifi className="h-3 w-3 text-green-500" />
+              <span>Dados carregados do banco</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="h-3 w-3 text-yellow-500" />
+              <span>Sem dados no cache — clique em atualizar para buscar da API</span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Refresh progress */}
+      <RefreshProgress
+        stage={refreshStage as RefreshStage}
+        recordCount={refreshRecordCount}
       />
 
       {hasActiveFilters && (
@@ -160,7 +182,7 @@ const Estoque = () => {
         </div>
       )}
 
-      {loading ? (
+      {loading && !hasData ? (
         <div className="flex items-center justify-center h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
