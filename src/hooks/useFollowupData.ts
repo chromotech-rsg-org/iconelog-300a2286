@@ -55,11 +55,14 @@ const filterByDateRange = (items: FollowupItem[], from: Date, to: Date): Followu
   const toDate = new Date(to);
   toDate.setHours(23, 59, 59, 999);
   return items.filter(item => {
-    const dt = item.dt_inicio || item.dt_expedicao || item.dt_baixa_minuta;
-    if (!dt) return false;
-    const parsed = safeParseDate(String(dt));
-    if (!parsed) return false;
-    return parsed.getTime() >= fromDate.getTime() && parsed.getTime() <= toDate.getTime();
+    // Include item if ANY of its date fields fall within the range
+    const candidateDates = [item.dt_expedicao, item.dt_baixa_minuta, item.dt_inicio].filter(Boolean);
+    if (candidateDates.length === 0) return false;
+    return candidateDates.some(dt => {
+      const parsed = safeParseDate(String(dt));
+      if (!parsed) return false;
+      return parsed.getTime() >= fromDate.getTime() && parsed.getTime() <= toDate.getTime();
+    });
   });
 };
 

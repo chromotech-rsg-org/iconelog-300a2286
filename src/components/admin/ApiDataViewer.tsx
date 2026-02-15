@@ -181,43 +181,41 @@ const ApiDataViewer = () => {
       {selectedEntry && columns.length > 0 && (
         <Card className="bg-dashboard-card border-dashboard-border">
           <CardContent className="p-0">
-            <ScrollArea className="w-full" style={{ maxHeight: "60vh" }}>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-dashboard-border">
-                      <TableHead className="text-muted-foreground text-xs w-12">#</TableHead>
+            <div className="overflow-auto" style={{ maxHeight: "60vh", maxWidth: "100%" }}>
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-dashboard-border">
+                    <TableHead className="text-muted-foreground text-xs w-12 sticky left-0 bg-dashboard-card z-10">#</TableHead>
+                    {columns.map(col => (
+                      <TableHead key={col} className="text-muted-foreground text-xs whitespace-nowrap">
+                        {col}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedData.map((row, idx) => (
+                    <TableRow key={idx} className="border-dashboard-border">
+                      <TableCell className="text-muted-foreground text-xs sticky left-0 bg-dashboard-card z-10">
+                        {rowsPerPage === "all" ? idx + 1 : (currentPage - 1) * rowsPerPage + idx + 1}
+                      </TableCell>
                       {columns.map(col => (
-                        <TableHead key={col} className="text-muted-foreground text-xs whitespace-nowrap">
-                          {col}
-                        </TableHead>
+                        <TableCell key={col} className="text-foreground text-xs whitespace-nowrap max-w-[200px] truncate">
+                          {row?.[col] != null ? String(row[col]) : "—"}
+                        </TableCell>
                       ))}
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedData.map((row, idx) => (
-                      <TableRow key={idx} className="border-dashboard-border">
-                        <TableCell className="text-muted-foreground text-xs">
-                          {rowsPerPage === "all" ? idx + 1 : (currentPage - 1) * rowsPerPage + idx + 1}
-                        </TableCell>
-                        {columns.map(col => (
-                          <TableCell key={col} className="text-foreground text-xs whitespace-nowrap max-w-[200px] truncate">
-                            {row?.[col] != null ? String(row[col]) : "—"}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                    {paginatedData.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={columns.length + 1} className="text-center text-muted-foreground py-8">
-                          Nenhum registro encontrado
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </ScrollArea>
+                  ))}
+                  {paginatedData.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={columns.length + 1} className="text-center text-muted-foreground py-8">
+                        Nenhum registro encontrado
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-dashboard-border">
