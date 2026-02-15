@@ -1,6 +1,15 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useApiProxy } from "./useApiProxy";
 import { supabase } from "@/integrations/supabase/client";
+
+export type EstoqueRefreshStage =
+  | "requesting_saldo"
+  | "receiving_saldo"
+  | "requesting_recebimentos"
+  | "receiving_recebimentos"
+  | "saving"
+  | "done"
+  | null;
 
 interface StockItem {
   sku: string;
@@ -36,6 +45,15 @@ export const useEstoqueData = (codCli: string) => {
   const [whitelist, setWhitelist] = useState<ProductWhitelist[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Cache & refresh states
+  const [cacheLoaded, setCacheLoaded] = useState(false);
+  const [cacheLoading, setCacheLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshStage, setRefreshStage] = useState<EstoqueRefreshStage>(null);
+  const [refreshRecordCount, setRefreshRecordCount] = useState(0);
+  const [lastUpdateAt, setLastUpdateAt] = useState<Date | null>(null);
+  const doneTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
   // Fetch kit configs and whitelist from DB
   useEffect(() => {
     const fetchConfigs = async () => {
@@ -49,19 +67,116 @@ export const useEstoqueData = (codCli: string) => {
     fetchConfigs();
   }, []);
 
-  const fetchSaldoBase = useCallback(async () => {
-    if (!codCli) return;
-    setLoading(true);
-    const data = await callMainApi("SaldoBase", codCli);
-    if (data) setSaldoData(data);
-    setLoading(false);
-  }, [codCli, callMainApi]);
+  // Fetch last update timestamp
+  useEffect(() => {
+    const fetchLastUpdate = async () => {
+      const { data } = await supabase
+        .from("bi_last_update")
+        .select("last_update_at")
+        .eq("page_id", "estoque")
+        .maybeSingle();
+      if (data) setLastUpdateAt(new Date(data.last_update_at));
+    };
+    fetchLastUpdate();
+  }, []);
 
-  const fetchRecebimentos = useCallback(async () => {
-    if (!codCli) return;
-    const data = await callMainApi("Recebimentos", codCli);
-    if (data) setRecebimentosData(data);
-  }, [codCli, callMainApi]);
+  // Load cached data on mount (cache-first)
+  useEffect(() => {
+    const loadCache = async () => {
+      if (!codCli || cacheLoaded || cacheLoading) return;
+      setCacheLoading(true);
+      try {
+        const [saldoCache, recebCache] = await Promise.all([
+          supabase
+            .from("bi_data_cache")
+            .select("data")
+            .eq("page_id", "estoque")
+            .eq("cache_key", `saldobase_${codCli}`)
+            .maybeSingle(),
+          supabase
+            .from("bi_data_cache")
+            .select("data")
+            .eq("page_id", "estoque")
+            .eq("cache_key", `recebimentos_${codCli}`)
+            .maybeSingle(),
+        ]);
+
+        if (saldoCache.data?.data) setSaldoData(saldoCache.data.data as any[]);
+        if (recebCache.data?.data) setRecebimentosData(recebCache.data.data as any[]);
+      } finally {
+        setCacheLoaded(true);
+        setCacheLoading(false);
+      }
+    };
+    loadCache();
+  }, [codCli, cacheLoaded, cacheLoading]);
+
+  const saveToCache = useCallback(async (cacheKey: string, data: any[]) => {
+    await supabase
+      .from("bi_data_cache")
+      .upsert(
+        { page_id: "estoque", cache_key: `${cacheKey}_${codCli}`, data: data as any, cached_at: new Date().toISOString() },
+        { onConflict: "page_id,cache_key" }
+      );
+  }, [codCli]);
+
+  const saveLastUpdate = useCallback(async () => {
+    const now = new Date();
+    const { error: upsertError } = await supabase
+      .from("bi_last_update")
+      .upsert({ page_id: "estoque", last_update_at: now.toISOString() }, { onConflict: "page_id" });
+    if (!upsertError) {
+      setLastUpdateAt(now);
+    }
+  }, []);
+
+  // Manual refresh - calls APIs and saves to cache
+  const refreshData = useCallback(async () => {
+    if (!codCli || refreshing) return;
+    setRefreshing(true);
+
+    // Fetch SaldoBase
+    setRefreshStage("requesting_saldo");
+    setRefreshRecordCount(0);
+    const saldoResult = await callMainApi("SALDOBASE", codCli);
+
+    if (saldoResult) {
+      setRefreshStage("receiving_saldo");
+      setRefreshRecordCount(saldoResult.length);
+      setSaldoData(saldoResult);
+    }
+
+    // Fetch Recebimentos
+    setRefreshStage("requesting_recebimentos");
+    setRefreshRecordCount(0);
+    const recebResult = await callMainApi("RECEBIMENTOS", codCli);
+
+    if (recebResult) {
+      setRefreshStage("receiving_recebimentos");
+      setRefreshRecordCount(recebResult.length);
+      setRecebimentosData(recebResult);
+    }
+
+    // Save to cache
+    setRefreshStage("saving");
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      if (saldoResult && saldoResult.length > 0) await saveToCache("saldobase", saldoResult);
+      if (recebResult && recebResult.length > 0) await saveToCache("recebimentos", recebResult);
+      await saveLastUpdate();
+    } else {
+      setLastUpdateAt(new Date());
+    }
+
+    setRefreshStage("done");
+    setRefreshRecordCount(0);
+
+    if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
+    doneTimerRef.current = setTimeout(() => {
+      setRefreshStage(null);
+      setRefreshing(false);
+    }, 3000);
+  }, [codCli, refreshing, callMainApi, saveToCache, saveLastUpdate]);
 
   // Process stock items: filter by whitelist, calculate kits, hide zero stock
   const stockItems = useMemo((): StockItem[] => {
@@ -83,9 +198,7 @@ export const useEstoqueData = (codCli: string) => {
     return saldoData
       .filter(item => {
         const code = item.cd_produto || item.sku || "";
-        // If whitelist exists, only show whitelisted products
         if (whitelistCodes.size > 0 && !whitelistCodes.has(code)) return false;
-        // Hide zero stock
         const qty = parseInt(item.qt_saldo || item.quantidade || "0");
         return qty > 0;
       })
@@ -121,10 +234,15 @@ export const useEstoqueData = (codCli: string) => {
   return {
     stockItems,
     totals,
-    loading: loading || apiLoading,
+    loading: loading || apiLoading || cacheLoading,
     error,
-    fetchSaldoBase,
-    fetchRecebimentos,
+    cacheLoaded,
+    cacheLoading,
+    refreshing,
+    refreshStage,
+    refreshRecordCount,
+    lastUpdateAt,
+    refreshData,
     kitConfigs,
     whitelist,
   };

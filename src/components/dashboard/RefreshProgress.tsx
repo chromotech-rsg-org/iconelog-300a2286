@@ -5,6 +5,10 @@ export type RefreshStage =
   | "receiving_followup"
   | "requesting_produtos"
   | "receiving_produtos"
+  | "requesting_saldo"
+  | "receiving_saldo"
+  | "requesting_recebimentos"
+  | "receiving_recebimentos"
   | "saving"
   | "done"
   | null;
@@ -14,6 +18,10 @@ const stageConfig: Record<string, { label: string; icon: React.ReactNode }> = {
   receiving_followup: { label: "Recebendo dados do Followup...", icon: <Download className="h-4 w-4" /> },
   requesting_produtos: { label: "Solicitando dados de Produtos à API...", icon: <Send className="h-4 w-4" /> },
   receiving_produtos: { label: "Recebendo dados de Produtos...", icon: <Download className="h-4 w-4" /> },
+  requesting_saldo: { label: "Solicitando Saldo Base à API...", icon: <Send className="h-4 w-4" /> },
+  receiving_saldo: { label: "Recebendo dados do Saldo Base...", icon: <Download className="h-4 w-4" /> },
+  requesting_recebimentos: { label: "Solicitando Recebimentos à API...", icon: <Send className="h-4 w-4" /> },
+  receiving_recebimentos: { label: "Recebendo dados de Recebimentos...", icon: <Download className="h-4 w-4" /> },
   saving: { label: "Salvando dados no banco...", icon: <Database className="h-4 w-4" /> },
   done: { label: "Atualização concluída!", icon: <CheckCircle2 className="h-4 w-4 text-green-500" /> },
 };
@@ -31,12 +39,11 @@ export const RefreshProgress = ({ stage, recordCount, onDismiss }: RefreshProgre
   if (!config) return null;
 
   const isDone = stage === "done";
+  const receivingStages = ["receiving_followup", "receiving_produtos", "receiving_saldo", "receiving_recebimentos"];
   const label =
-    stage === "receiving_followup" && recordCount
-      ? `Recebendo dados do Followup... (${recordCount.toLocaleString()} registros)`
-      : stage === "receiving_produtos" && recordCount
-        ? `Recebendo dados de Produtos... (${recordCount.toLocaleString()} registros)`
-        : config.label;
+    receivingStages.includes(stage) && recordCount
+      ? `${config.label.replace("...", "")} (${recordCount.toLocaleString()} registros)`
+      : config.label;
 
   return (
     <div className={`mx-6 mt-2 p-3 rounded-md border text-sm flex items-center gap-3 transition-all ${
