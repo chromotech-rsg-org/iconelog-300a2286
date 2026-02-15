@@ -94,6 +94,12 @@ export const NavigationMenu = () => {
               <DropdownMenuItem
                 key={item.id}
                 onClick={() => handleNavClick(item)}
+                onAuxClick={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    window.open(item.path, '_blank');
+                  }
+                }}
                 className={`cursor-pointer ${
                   isActive 
                     ? "bg-dashboard-accent text-dashboard-dark font-medium" 
@@ -111,6 +117,12 @@ export const NavigationMenu = () => {
         {canAccessAdmin && (
           <DropdownMenuItem
             onClick={handleAdminClick}
+            onAuxClick={(e) => {
+              if (e.button === 1) {
+                e.preventDefault();
+                window.open('/admin', '_blank');
+              }
+            }}
             className={`cursor-pointer ${
               location.pathname === "/admin"
                 ? "bg-dashboard-accent text-dashboard-dark font-medium"
