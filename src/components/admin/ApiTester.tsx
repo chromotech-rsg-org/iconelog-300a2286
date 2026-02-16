@@ -19,6 +19,7 @@ interface Integration {
   auth_type: string;
   auth_token: string | null;
   headers_json: any;
+  default_body: any;
 }
 
 const ApiTester = () => {
@@ -34,14 +35,14 @@ const ApiTester = () => {
   const [response, setResponse] = useState<{ status: number; body: any; headers: any; time: number } | null>(null);
 
   const fetchIntegrations = useCallback(async () => {
-    const { data } = await supabase.from("api_integrations").select("id, name, base_url, auth_type, auth_token, headers_json").order("name");
+    const { data } = await supabase.from("api_integrations").select("id, name, base_url, auth_type, auth_token, headers_json, default_body").order("name");
     setIntegrations(data || []);
     setLoadingIntegrations(false);
   }, []);
 
   useEffect(() => { fetchIntegrations(); }, [fetchIntegrations]);
 
-  const handleSelectIntegration = (integrationId: string) => {
+const handleSelectIntegration = (integrationId: string) => {
     setSelectedIntegration(integrationId);
     const integration = integrations.find(i => i.id === integrationId);
     if (integration) {
@@ -53,6 +54,10 @@ const ApiTester = () => {
         h["Authorization"] = integration.auth_token;
       }
       setHeaders(JSON.stringify(h, null, 2));
+      // Load saved default_body
+      if (integration.default_body && typeof integration.default_body === "object" && Object.keys(integration.default_body).length > 0) {
+        setBody(JSON.stringify(integration.default_body, null, 2));
+      }
     }
   };
 
