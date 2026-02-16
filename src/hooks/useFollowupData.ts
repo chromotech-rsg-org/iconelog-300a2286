@@ -280,29 +280,36 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       ? filterByDateRange(followupData, dateRange.from, dateRange.to || dateRange.from)
       : filterByMonthYear(followupData, months, years);
     
-    // Build date boundaries for constraining which days appear in the chart
     const hasDateRange = dateRange?.from;
     const rangeFrom = hasDateRange ? new Date(dateRange.from!) : null;
     const rangeTo = hasDateRange ? new Date(dateRange.to || dateRange.from!) : null;
     if (rangeFrom) rangeFrom.setHours(0, 0, 0, 0);
     if (rangeTo) rangeTo.setHours(23, 59, 59, 999);
 
-    const regionDayMap = new Map<string, Map<number, { expedidas: number; baixadas: number }>>();
+    // Use full date string "YYYY-MM-DD" as key for multi-month support
+    const regionDayMap = new Map<string, Map<string, { expedidas: number; baixadas: number }>>();
 
-    const addToDay = (regional: string, day: number) => {
+    const addToDay = (regional: string, dateKey: string) => {
       if (!regionDayMap.has(regional)) {
         regionDayMap.set(regional, new Map());
       }
       const dayMap = regionDayMap.get(regional)!;
-      if (!dayMap.has(day)) {
-        dayMap.set(day, { expedidas: 0, baixadas: 0 });
+      if (!dayMap.has(dateKey)) {
+        dayMap.set(dateKey, { expedidas: 0, baixadas: 0 });
       }
-      return dayMap.get(day)!;
+      return dayMap.get(dateKey)!;
     };
 
     const isDateInRange = (d: Date): boolean => {
       if (!rangeFrom || !rangeTo) return true;
       return d.getTime() >= rangeFrom.getTime() && d.getTime() <= rangeTo.getTime();
+    };
+
+    const toDateKey = (d: Date): string => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
     };
 
     filtered.forEach(item => {
@@ -312,22 +319,42 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       const dtExp = item.dt_expedicao ? safeParseDate(String(item.dt_expedicao)) : null;
       const dtBaixa = item.dt_baixa_minuta ? safeParseDate(String(item.dt_baixa_minuta)) : null;
 
-      // Only count each date if it falls within the selected range
       if (dtExp && isDateInRange(dtExp)) {
-        const totals = addToDay(regional, dtExp.getDate());
+        const totals = addToDay(regional, toDateKey(dtExp));
         totals.expedidas++;
       }
       if (dtBaixa && isDateInRange(dtBaixa)) {
-        const totals = addToDay(regional, dtBaixa.getDate());
+        const totals = addToDay(regional, toDateKey(dtBaixa));
         totals.baixadas++;
       }
     });
 
+    // Generate all dates in range to ensure continuous x-axis
+    const allDateKeys = new Set<string>();
+    if (rangeFrom && rangeTo) {
+      const cur = new Date(rangeFrom);
+      while (cur <= rangeTo) {
+        allDateKeys.add(toDateKey(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else {
+      // Collect all existing date keys
+      regionDayMap.forEach(dayMap => dayMap.forEach((_, key) => allDateKeys.add(key)));
+    }
+
+    const sortedKeys = Array.from(allDateKeys).sort();
+
     return Array.from(regionDayMap.entries()).map(([region, dayMap]) => ({
       region,
-      data: Array.from(dayMap.entries())
-        .map(([day, totals]) => ({ day, ...totals }))
-        .sort((a, b) => a.day - b.day),
+      data: sortedKeys.map(dateKey => {
+        const totals = dayMap.get(dateKey) || { expedidas: 0, baixadas: 0 };
+        const parts = dateKey.split("-");
+        return {
+          day: parseInt(parts[2], 10),
+          dateStr: dateKey,
+          ...totals,
+        };
+      }),
     }));
   }, [followupData, cityMappings]);
 

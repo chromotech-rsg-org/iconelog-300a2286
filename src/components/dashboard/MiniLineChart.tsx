@@ -11,6 +11,7 @@ import { formatNumber } from "@/data/mockData";
 
 interface DayData {
   day: number;
+  dateStr?: string;
   expedidas: number;
   baixadas: number;
 }
@@ -31,9 +32,16 @@ interface MiniLineChartProps {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
+    const firstPayload = payload[0]?.payload;
+    const dateStr = firstPayload?.dateStr;
+    let displayLabel = `Dia ${label}`;
+    if (dateStr) {
+      const parts = dateStr.split("-");
+      displayLabel = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
     return (
       <div className="rounded-lg border border-dashboard-border bg-dashboard-card p-2 shadow-lg z-50">
-        <p className="mb-1 text-xs font-semibold text-foreground">Dia {label}</p>
+        <p className="mb-1 text-xs font-semibold text-foreground">{displayLabel}</p>
         {payload.map((entry: any, index: number) => (
           <p key={index} className="text-xs" style={{ color: entry.color }}>
             {entry.name}: {formatNumber(entry.value)}
@@ -95,86 +103,109 @@ export const MiniLineChart = ({
         {region}
         {isSelected && <span className="ml-2 text-xs">(selecionada)</span>}
       </h4>
-      <ResponsiveContainer width="100%" height={120}>
-        <LineChart 
-          data={data} 
-          margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
-        >
-          <XAxis
-            dataKey="day"
-            stroke="#4a5568"
-            tick={{ fill: '#a0aec0', fontSize: 9 }}
-            tickFormatter={(value) => {
-              let month = '';
-              if (selectedMonths && selectedMonths.length > 0) {
-                month = String(selectedMonths[0]).padStart(2, '0');
-              } else if (selectedDateRange?.from) {
-                month = String(selectedDateRange.from.getMonth() + 1).padStart(2, '0');
-              } else {
-                month = String(new Date().getMonth() + 1).padStart(2, '0');
-              }
-              return `${value}/${month}`;
-            }}
-            interval={data.length > 20 ? 4 : data.length > 10 ? 2 : 0}
-          />
-          <YAxis
-            stroke="#4a5568"
-            tick={{ fill: '#a0aec0', fontSize: 9 }}
-            tickFormatter={(value) => {
-              if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-              if (value >= 10000) return `${(value / 1000).toFixed(0)}k`;
-              if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
-              return String(value);
-            }}
-            width={45}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          {selectedDay !== null && (
-            <ReferenceLine 
-              x={selectedDay} 
-              stroke="hsl(var(--dashboard-accent))" 
-              strokeWidth={2}
-              strokeDasharray="3 3"
-            />
-          )}
-          <Line
-            type="monotone"
-            dataKey="expedidas"
-            name="Expedidas"
-            stroke="hsl(var(--dashboard-blue))"
-            strokeWidth={getLineStrokeWidth("expedidas")}
-            dot={{ r: 4, fill: "hsl(var(--dashboard-blue))", strokeWidth: 0, cursor: 'pointer' }}
-            activeDot={{ 
-              r: 7, 
-              cursor: 'pointer', 
-              strokeWidth: 2, 
-              stroke: "hsl(var(--dashboard-accent))",
-              onClick: handleDotClick("expedidas")
-            }}
-            animationDuration={1000}
-            animationBegin={index * 100}
-            opacity={getLineOpacity("expedidas")}
-          />
-          <Line
-            type="monotone"
-            dataKey="baixadas"
-            name="Baixadas"
-            stroke="hsl(var(--dashboard-orange))"
-            strokeWidth={getLineStrokeWidth("baixadas")}
-            dot={{ r: 4, fill: "hsl(var(--dashboard-orange))", strokeWidth: 0, cursor: 'pointer' }}
-            activeDot={{ 
-              r: 7, 
-              cursor: 'pointer', 
-              strokeWidth: 2, 
-              stroke: "hsl(var(--dashboard-accent))",
-              onClick: handleDotClick("baixadas")
-            }}
-            animationDuration={1000}
-            animationBegin={index * 100 + 200}
-            opacity={getLineOpacity("baixadas")}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      {(() => {
+        const needsScroll = data.length > 31;
+        const chartWidthPx = needsScroll ? Math.max(data.length * 28, 800) : undefined;
+        const dotRadius = data.length > 60 ? 2 : 4;
+
+        const chart = (
+          <div style={{ width: chartWidthPx || "100%", height: 120 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart 
+                data={data} 
+                margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+              >
+                <XAxis
+                  dataKey="dateStr"
+                  stroke="#4a5568"
+                  tick={{ fill: '#a0aec0', fontSize: 9 }}
+                  tickFormatter={(value) => {
+                    if (value && typeof value === "string" && value.includes("-")) {
+                      const parts = value.split("-");
+                      return `${parts[2]}/${parts[1]}`;
+                    }
+                    let month = '';
+                    if (selectedMonths && selectedMonths.length > 0) {
+                      month = String(selectedMonths[0]).padStart(2, '0');
+                    } else if (selectedDateRange?.from) {
+                      month = String(selectedDateRange.from.getMonth() + 1).padStart(2, '0');
+                    } else {
+                      month = String(new Date().getMonth() + 1).padStart(2, '0');
+                    }
+                    return `${value}/${month}`;
+                  }}
+                  interval={data.length > 60 ? Math.floor(data.length / 20) : data.length > 20 ? 4 : data.length > 10 ? 2 : 0}
+                />
+                <YAxis
+                  stroke="#4a5568"
+                  tick={{ fill: '#a0aec0', fontSize: 9 }}
+                  tickFormatter={(value) => {
+                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                    if (value >= 10000) return `${(value / 1000).toFixed(0)}k`;
+                    if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+                    return String(value);
+                  }}
+                  width={45}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                {selectedDay !== null && (
+                  <ReferenceLine 
+                    x={selectedDay} 
+                    stroke="hsl(var(--dashboard-accent))" 
+                    strokeWidth={2}
+                    strokeDasharray="3 3"
+                  />
+                )}
+                <Line
+                  type="monotone"
+                  dataKey="expedidas"
+                  name="Expedidas"
+                  stroke="hsl(var(--dashboard-blue))"
+                  strokeWidth={getLineStrokeWidth("expedidas")}
+                  dot={{ r: dotRadius, fill: "hsl(var(--dashboard-blue))", strokeWidth: 0, cursor: 'pointer' }}
+                  activeDot={{ 
+                    r: 7, 
+                    cursor: 'pointer', 
+                    strokeWidth: 2, 
+                    stroke: "hsl(var(--dashboard-accent))",
+                    onClick: handleDotClick("expedidas")
+                  }}
+                  animationDuration={1000}
+                  animationBegin={index * 100}
+                  opacity={getLineOpacity("expedidas")}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="baixadas"
+                  name="Baixadas"
+                  stroke="hsl(var(--dashboard-orange))"
+                  strokeWidth={getLineStrokeWidth("baixadas")}
+                  dot={{ r: dotRadius, fill: "hsl(var(--dashboard-orange))", strokeWidth: 0, cursor: 'pointer' }}
+                  activeDot={{ 
+                    r: 7, 
+                    cursor: 'pointer', 
+                    strokeWidth: 2, 
+                    stroke: "hsl(var(--dashboard-accent))",
+                    onClick: handleDotClick("baixadas")
+                  }}
+                  animationDuration={1000}
+                  animationBegin={index * 100 + 200}
+                  opacity={getLineOpacity("baixadas")}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        );
+
+        if (needsScroll) {
+          return (
+            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+              {chart}
+            </div>
+          );
+        }
+        return chart;
+      })()}
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { MiniLineChart } from "./MiniLineChart";
 
 interface DayData {
   day: number;
+  dateStr?: string;
   expedidas: number;
   baixadas: number;
 }
