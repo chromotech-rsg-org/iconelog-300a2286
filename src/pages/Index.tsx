@@ -224,7 +224,7 @@ const Index = () => {
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
         selectedRegions={selectedRegions}
-        onMonthsChange={(v) => startFilterTransition(() => { setSelectedMonths(v); setSelectedDateRange({ from: undefined, to: undefined }); })}
+        onMonthsChange={(v) => startFilterTransition(() => { setSelectedMonths(v); setSelectedDateRange({ from: undefined, to: undefined }); if (v.length > 0 && selectedYears.length === 0) setSelectedYears([currentYear]); })}
         onYearsChange={(v) => startFilterTransition(() => { setSelectedYears(v); setSelectedDateRange({ from: undefined, to: undefined }); })}
         onRegionsChange={(v) => startFilterTransition(() => setSelectedRegions(v))}
         selectedDateRange={selectedDateRange}

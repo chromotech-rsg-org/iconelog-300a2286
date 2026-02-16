@@ -1,0 +1,1 @@
+ALTER TABLE public.api_integrations ADD COLUMN default_body jsonb DEFAULT NULL;

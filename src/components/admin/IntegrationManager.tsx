@@ -20,6 +20,7 @@ interface Integration {
   auth_type: string;
   auth_token: string | null;
   headers_json: any;
+  default_body: any;
   description: string | null;
   created_at: string;
 }
@@ -37,7 +38,7 @@ const IntegrationManager = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Integration | null>(null);
   const [showToken, setShowToken] = useState(false);
-  const [form, setForm] = useState({ name: "", base_url: "", auth_type: "bearer", auth_token: "", description: "", method: "POST", test_body: "{}" });
+  const [form, setForm] = useState({ name: "", base_url: "", auth_type: "bearer", auth_token: "", description: "", method: "POST", test_body: "{}", default_body: "" });
   const [headerRows, setHeaderRows] = useState<HeaderRow[]>([
     { key: "Authorization", value: "", enabled: true },
     { key: "Content-Type", value: "application/json", enabled: true },
@@ -77,11 +78,12 @@ const IntegrationManager = () => {
         name: item.name, base_url: item.base_url || "", auth_type: item.auth_type,
         auth_token: item.auth_token || "", description: item.description || "",
         method: "POST", test_body: "{}",
+        default_body: item.default_body ? JSON.stringify(item.default_body, null, 2) : "",
       });
       setHeaderRows(headersToRows(item.headers_json));
     } else {
       setEditing(null);
-      setForm({ name: "", base_url: "", auth_type: "bearer", auth_token: "", description: "", method: "POST", test_body: "{}" });
+      setForm({ name: "", base_url: "", auth_type: "bearer", auth_token: "", description: "", method: "POST", test_body: "{}", default_body: "" });
       setHeaderRows([
         { key: "Authorization", value: "", enabled: true },
         { key: "Content-Type", value: "application/json", enabled: true },
@@ -100,10 +102,21 @@ const IntegrationManager = () => {
     if (!form.name.trim()) { toast.error("Nome é obrigatório"); return; }
     const headersJson = rowsToHeaders(headerRows);
 
+    let parsedDefaultBody = null;
+    if (form.default_body.trim()) {
+      try {
+        parsedDefaultBody = JSON.parse(form.default_body);
+      } catch {
+        toast.error("Body padrão contém JSON inválido");
+        return;
+      }
+    }
+
     const payload = {
       name: form.name.trim(), base_url: form.base_url.trim() || null,
       auth_type: form.auth_type, auth_token: form.auth_token.trim() || null,
       headers_json: headersJson, description: form.description.trim() || null,
+      default_body: parsedDefaultBody,
     };
 
     if (editing) {
@@ -240,6 +253,11 @@ const IntegrationManager = () => {
                 </Table>
               </div>
             </div>
+
+            <div><Label className="text-foreground">Body Padrão (JSON)</Label>
+              <Textarea value={form.default_body} onChange={e => setForm({...form, default_body: e.target.value})}
+                className="bg-dashboard-dark border-dashboard-border text-foreground font-mono text-sm min-h-[120px]"
+                placeholder='{"data_inicial":"2026-01-01 00:00","data_final":"2026-02-12 23:59","cod_cli":"099"}' /></div>
 
             <div><Label className="text-foreground">Descrição</Label>
               <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" placeholder="Descrição opcional" /></div>
