@@ -108,6 +108,8 @@ const ApiTestLogs = () => {
 
       if (Array.isArray(responseData)) {
         sheetData = responseData;
+      } else if (responseData?.ocorrencias && Array.isArray(responseData.ocorrencias)) {
+        sheetData = responseData.ocorrencias;
       } else if (responseData?.data && Array.isArray(responseData.data)) {
         sheetData = responseData.data;
       } else if (responseData?.results && Array.isArray(responseData.results)) {
