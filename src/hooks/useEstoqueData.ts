@@ -183,13 +183,19 @@ export const useEstoqueData = (codCli: string) => {
     const whitelistCodes = new Set(whitelist.map(w => w.product_code));
     const kitMap = new Map(kitConfigs.map(k => [k.sku_code, k.kit_quantity]));
 
-    // Build recebimentos lookup by SKU
+    // Build recebimentos lookup by SKU - handle nested {pedidos: [...]} structure
     const recebimentoMap = new Map<string, { qty: number; date: string }>();
-    recebimentosData.forEach(r => {
-      const sku = r.cd_produto || r.sku || "";
+    const recebList = Array.isArray(recebimentosData) 
+      ? recebimentosData.flatMap(r => {
+          if (r.pedidos && Array.isArray(r.pedidos)) return r.pedidos;
+          return [r];
+        })
+      : [];
+    recebList.forEach(r => {
+      const sku = r.produto || r.cd_produto || r.sku || "";
       const existing = recebimentoMap.get(sku);
       const date = r.dt_recebimento || r.data || "";
-      const qty = parseInt(r.qt_recebida || r.quantidade || "0");
+      const qty = parseInt(r.nr_qtde || r.qt_recebida || r.quantidade || "0");
       if (!existing || date > existing.date) {
         recebimentoMap.set(sku, { qty, date });
       }
@@ -197,25 +203,27 @@ export const useEstoqueData = (codCli: string) => {
 
     return saldoData
       .filter(item => {
-        const code = item.cd_produto || item.sku || "";
+        const code = item.produto || item.cd_produto || item.sku || "";
         if (whitelistCodes.size > 0 && !whitelistCodes.has(code)) return false;
-        const qty = parseInt(item.qt_saldo || item.quantidade || "0");
+        const qty = parseInt(item.nr_qtde_saldo || item.qt_saldo || item.quantidade || "0");
         return qty > 0;
       })
       .map(item => {
-        const sku = item.cd_produto || item.sku || "";
-        const qty = parseInt(item.qt_saldo || item.quantidade || "0");
+        const sku = item.produto || item.cd_produto || item.sku || "";
+        const qty = parseInt(item.nr_qtde_saldo || item.qt_saldo || item.quantidade || "0");
         const kitQty = kitMap.get(sku) || 1;
         const recebimento = recebimentoMap.get(sku);
+        const totalValue = parseFloat(item.vl_total || "0");
+        const unitPrice = qty > 0 ? totalValue / qty : 0;
 
         return {
           sku,
-          name: item.ds_produto || item.nome || sku,
-          description: item.ds_produto_completo || item.descricao || "",
+          name: item.nm_produto || item.ds_produto || item.nome || sku,
+          description: item.nm_produto || item.ds_produto_completo || item.descricao || "",
           stockQuantity: qty,
           kitsQuantity: Math.floor(qty / kitQty),
-          unitPrice: parseFloat(item.vl_unitario || "0"),
-          m3: parseFloat(item.vl_m3 || item.m3 || "0"),
+          unitPrice,
+          m3: parseFloat(item.M3 || item.vl_m3 || item.m3 || "0"),
           imageUrl: item.url_imagem || item.imagem || undefined,
           lastEntryQty: recebimento?.qty,
           lastEntryDate: recebimento?.date,
