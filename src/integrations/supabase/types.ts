@@ -61,6 +61,7 @@ export type Database = {
           auth_type: string
           base_url: string | null
           created_at: string
+          default_body: Json | null
           description: string | null
           headers_json: Json | null
           id: string
@@ -72,6 +73,7 @@ export type Database = {
           auth_type?: string
           base_url?: string | null
           created_at?: string
+          default_body?: Json | null
           description?: string | null
           headers_json?: Json | null
           id?: string
@@ -83,6 +85,7 @@ export type Database = {
           auth_type?: string
           base_url?: string | null
           created_at?: string
+          default_body?: Json | null
           description?: string | null
           headers_json?: Json | null
           id?: string

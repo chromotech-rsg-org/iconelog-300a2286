@@ -20,6 +20,7 @@ interface ApiProxyResponse {
 interface IntegrationCache {
   name: string;
   base_url: string;
+  default_body: any;
 }
 
 export const useApiProxy = () => {
@@ -31,7 +32,7 @@ export const useApiProxy = () => {
     if (integrationsCache.current.length > 0) return;
     const { data } = await supabase
       .from("api_integrations")
-      .select("name, base_url");
+      .select("name, base_url, default_body");
     if (data) {
       integrationsCache.current = data.filter(d => d.base_url) as IntegrationCache[];
     }
@@ -76,10 +77,13 @@ export const useApiProxy = () => {
 
     const url = integration?.base_url || `https://nfe9.websiteseguro.com/iconelog/public/v2/${integrationName}`;
 
+    const defaultBody = integration?.default_body && typeof integration.default_body === "object" ? integration.default_body : {};
+
     const response = await callApi({
       url,
       method: "POST",
       body: {
+        ...defaultBody,
         cod_cli: codCli,
         ...extraBody,
       },
