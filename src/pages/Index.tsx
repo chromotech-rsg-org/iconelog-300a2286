@@ -231,11 +231,9 @@ const Index = () => {
         onDateRangeChange={(range) => startFilterTransition(() => {
           setSelectedDateRange(range);
           if (range.from) {
-            // Calendar overrides month/year
             setSelectedMonths([]);
             setSelectedYears([]);
           } else {
-            // Clearing calendar restores default: current month
             setSelectedMonths([]);
             setSelectedYears([]);
             setSelectedDateRange({ from: monthStart, to: today });
@@ -245,6 +243,7 @@ const Index = () => {
         onExportExcel={exportToExcel}
         onRefreshData={handleRefreshData}
         hasActiveFilters={hasActiveFilters}
+        followupData={followupData}
       />
 
       {showRefreshProgress && (
