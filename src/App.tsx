@@ -30,7 +30,7 @@ const queryClient = new QueryClient();
            <Sonner />
            <BrowserRouter>
              <Routes>
-               <Route path="/" element={<SmartRedirect />} />
+                <Route path="/" element={<SmartRedirect />} />
                <Route path="/minutas" element={<Index />} />
                <Route path="/estoque" element={<Estoque />} />
                <Route path="/entregas" element={<Entregas />} />

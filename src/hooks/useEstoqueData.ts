@@ -3,25 +3,34 @@ import { useApiProxy } from "./useApiProxy";
 import { supabase } from "@/integrations/supabase/client";
 
 export type EstoqueRefreshStage =
-  | "requesting_saldo"
-  | "receiving_saldo"
-  | "requesting_recebimentos"
-  | "receiving_recebimentos"
+  | "requesting_mapalogistico"
+  | "receiving_mapalogistico"
   | "saving"
   | "done"
   | null;
 
-interface StockItem {
+export interface StockItem {
   sku: string;
   name: string;
   description: string;
+  category: string;
+  group: string;
+  subGroup: string;
   stockQuantity: number;
   kitsQuantity: number;
   unitPrice: number;
   m3: number;
+  m3Total: number;
+  totalValue: number;
   imageUrl?: string;
   lastEntryQty?: number;
   lastEntryDate?: string;
+  lastExitQty?: number;
+  lastExitDate?: string;
+  totalEntryQty?: number;
+  totalExitQty?: number;
+  daysSinceLastMovement?: number;
+  condition?: string;
   [key: string]: any;
 }
 
@@ -39,8 +48,7 @@ interface ProductWhitelist {
 
 export const useEstoqueData = (codCli: string) => {
   const { callMainApi, loading: apiLoading, error } = useApiProxy();
-  const [saldoData, setSaldoData] = useState<any[]>([]);
-  const [recebimentosData, setRecebimentosData] = useState<any[]>([]);
+  const [mapaData, setMapaData] = useState<any[]>([]);
   const [kitConfigs, setKitConfigs] = useState<KitConfig[]>([]);
   const [whitelist, setWhitelist] = useState<ProductWhitelist[]>([]);
   const [loading, setLoading] = useState(false);
@@ -86,23 +94,14 @@ export const useEstoqueData = (codCli: string) => {
       if (!codCli || cacheLoaded || cacheLoading) return;
       setCacheLoading(true);
       try {
-        const [saldoCache, recebCache] = await Promise.all([
-          supabase
-            .from("bi_data_cache")
-            .select("data")
-            .eq("page_id", "estoque")
-            .eq("cache_key", `saldobase_${codCli}`)
-            .maybeSingle(),
-          supabase
-            .from("bi_data_cache")
-            .select("data")
-            .eq("page_id", "estoque")
-            .eq("cache_key", `recebimentos_${codCli}`)
-            .maybeSingle(),
-        ]);
+        const mapaCache = await supabase
+          .from("bi_data_cache")
+          .select("data")
+          .eq("page_id", "estoque")
+          .eq("cache_key", `mapalogistico_${codCli}`)
+          .maybeSingle();
 
-        if (saldoCache.data?.data) setSaldoData(saldoCache.data.data as any[]);
-        if (recebCache.data?.data) setRecebimentosData(recebCache.data.data as any[]);
+        if (mapaCache.data?.data) setMapaData(mapaCache.data.data as any[]);
       } finally {
         setCacheLoaded(true);
         setCacheLoading(false);
@@ -130,39 +129,27 @@ export const useEstoqueData = (codCli: string) => {
     }
   }, []);
 
-  // Manual refresh - calls APIs and saves to cache
+  // Manual refresh - calls MAPALOGISTICO API and saves to cache
   const refreshData = useCallback(async () => {
     if (!codCli || refreshing) return;
     setRefreshing(true);
 
-    // Fetch SaldoBase
-    setRefreshStage("requesting_saldo");
+    // Fetch MAPALOGISTICO
+    setRefreshStage("requesting_mapalogistico");
     setRefreshRecordCount(0);
-    const saldoResult = await callMainApi("SALDOBASE", codCli);
+    const mapaResult = await callMainApi("MAPALOGISTICO", codCli);
 
-    if (saldoResult) {
-      setRefreshStage("receiving_saldo");
-      setRefreshRecordCount(saldoResult.length);
-      setSaldoData(saldoResult);
-    }
-
-    // Fetch Recebimentos
-    setRefreshStage("requesting_recebimentos");
-    setRefreshRecordCount(0);
-    const recebResult = await callMainApi("RECEBIMENTOS", codCli);
-
-    if (recebResult) {
-      setRefreshStage("receiving_recebimentos");
-      setRefreshRecordCount(recebResult.length);
-      setRecebimentosData(recebResult);
+    if (mapaResult) {
+      setRefreshStage("receiving_mapalogistico");
+      setRefreshRecordCount(mapaResult.length);
+      setMapaData(mapaResult);
     }
 
     // Save to cache
     setRefreshStage("saving");
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      if (saldoResult && saldoResult.length > 0) await saveToCache("saldobase", saldoResult);
-      if (recebResult && recebResult.length > 0) await saveToCache("recebimentos", recebResult);
+      if (mapaResult && mapaResult.length > 0) await saveToCache("mapalogistico", mapaResult);
       await saveLastUpdate();
     } else {
       setLastUpdateAt(new Date());
@@ -178,63 +165,55 @@ export const useEstoqueData = (codCli: string) => {
     }, 3000);
   }, [codCli, refreshing, callMainApi, saveToCache, saveLastUpdate]);
 
-  // Process stock items: filter by whitelist, calculate kits, hide zero stock
+  // Process stock items from MAPALOGISTICO: filter by whitelist, calculate kits, hide zero stock
   const stockItems = useMemo((): StockItem[] => {
     const whitelistCodes = new Set(whitelist.map(w => w.product_code));
     const kitMap = new Map(kitConfigs.map(k => [k.sku_code, k.kit_quantity]));
 
-    // Build recebimentos lookup by SKU - handle nested {pedidos: [...]} structure
-    const recebimentoMap = new Map<string, { qty: number; date: string }>();
-    const recebList = Array.isArray(recebimentosData) 
-      ? recebimentosData.flatMap(r => {
-          if (r.pedidos && Array.isArray(r.pedidos)) return r.pedidos;
-          return [r];
-        })
-      : [];
-    recebList.forEach(r => {
-      const sku = r.produto || r.cd_produto || r.sku || "";
-      const existing = recebimentoMap.get(sku);
-      const date = r.dt_recebimento || r.data || "";
-      const qty = parseInt(r.nr_qtde || r.qt_recebida || r.quantidade || "0");
-      if (!existing || date > existing.date) {
-        recebimentoMap.set(sku, { qty, date });
-      }
-    });
-
-    return saldoData
+    return mapaData
       .filter(item => {
-        const code = item.produto || item.cd_produto || item.sku || "";
+        const code = item.produto || "";
         if (whitelistCodes.size > 0 && !whitelistCodes.has(code)) return false;
-        const qty = parseInt(item.nr_qtde_saldo || item.qt_saldo || item.quantidade || "0");
+        const qty = parseInt(item.nr_qtde_saldo || "0");
         return qty > 0;
       })
       .map(item => {
-        const sku = item.produto || item.cd_produto || item.sku || "";
-        const qty = parseInt(item.nr_qtde_saldo || item.qt_saldo || item.quantidade || "0");
+        const sku = item.produto || "";
+        const qty = parseInt(item.nr_qtde_saldo || "0");
         const kitQty = kitMap.get(sku) || 1;
-        const recebimento = recebimentoMap.get(sku);
         const totalValue = parseFloat(item.vl_total || "0");
         const unitPrice = qty > 0 ? totalValue / qty : 0;
 
         return {
           sku,
-          name: item.nm_produto || item.ds_produto || item.nome || sku,
-          description: item.nm_produto || item.ds_produto_completo || item.descricao || "",
+          name: item.Descricao || item.nm_produto || sku,
+          description: item.Descricao || "",
+          category: item.Categoria || "",
+          group: item.Grupo || "",
+          subGroup: item.SubGrupo || "",
           stockQuantity: qty,
           kitsQuantity: Math.floor(qty / kitQty),
           unitPrice,
-          m3: parseFloat(item.M3 || item.vl_m3 || item.m3 || "0"),
-          imageUrl: item.url_imagem || item.imagem || undefined,
-          lastEntryQty: recebimento?.qty,
-          lastEntryDate: recebimento?.date,
+          m3: parseFloat(item.m3 || "0"),
+          m3Total: parseFloat(item.m3_total || "0"),
+          totalValue,
+          imageUrl: item.foto_produto || undefined,
+          lastEntryQty: item.nr_qtde_Ultima_entrada ? parseInt(item.nr_qtde_Ultima_entrada) : undefined,
+          lastEntryDate: item.dt_ultima_entrada || undefined,
+          lastExitQty: item.nr_qrde_ultima_saida ? parseInt(item.nr_qrde_ultima_saida) : undefined,
+          lastExitDate: item.dt_ultima_saida || undefined,
+          totalEntryQty: item.nr_qtde_total_entrada ? parseInt(item.nr_qtde_total_entrada) : undefined,
+          totalExitQty: item.nr_qtde_saida ? parseInt(item.nr_qtde_saida) : undefined,
+          daysSinceLastMovement: item.nr_qtde_dias_ultima_mov ? parseInt(item.nr_qtde_dias_ultima_mov) : undefined,
+          condition: item.fl_condicao || undefined,
         };
       });
-  }, [saldoData, recebimentosData, kitConfigs, whitelist]);
+  }, [mapaData, kitConfigs, whitelist]);
 
   // Calculate totals
   const totals = useMemo(() => {
-    const valor = stockItems.reduce((sum, i) => sum + i.stockQuantity * i.unitPrice, 0);
-    const m3 = stockItems.reduce((sum, i) => sum + i.m3, 0);
+    const valor = stockItems.reduce((sum, i) => sum + i.totalValue, 0);
+    const m3 = stockItems.reduce((sum, i) => sum + i.m3Total, 0);
     const kits = stockItems.reduce((sum, i) => sum + i.kitsQuantity, 0);
     return { valor, m3, qtdeSKUs: stockItems.length, kits };
   }, [stockItems]);
