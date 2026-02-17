@@ -1,15 +1,12 @@
 import { useState, useMemo, useCallback } from "react";
 import { allMonthValues } from "@/data/mockData";
-import { Expand } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { StockDualKPICards } from "@/components/stock/StockDualKPICards";
 import { StockLocationTables } from "@/components/stock/StockLocationTables";
-import { ProductDetailPanel } from "@/components/stock/ProductDetailPanel";
-import { ProductDetailModal } from "@/components/stock/ProductDetailModal";
 import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useEstoqueData } from "@/hooks/useEstoqueData";
 import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { X, Loader2, AlertCircle, Wifi, WifiOff } from "lucide-react";
@@ -43,30 +40,34 @@ const Estoque = () => {
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filterByName, setFilterByName] = useState<string | null>(null);
+  const [filterByDate, setFilterByDate] = useState<string | null>(null);
 
-  // Find selected product
-  const currentProduct = useMemo(() => {
-    if (!selectedSKU) return null;
-    return stockItems.find(item => item.sku === selectedSKU) || null;
-  }, [selectedSKU, stockItems]);
+  // Filtered items based on active filters
+  const displayItems = useMemo(() => {
+    let items = stockItems;
+    if (selectedSKU) items = items.filter(i => i.sku === selectedSKU);
+    if (filterByName) items = items.filter(i => i.name === filterByName);
+    if (filterByDate) items = items.filter(i => i.lastEntryDate === filterByDate);
+    return items;
+  }, [stockItems, selectedSKU, filterByName, filterByDate]);
 
   const handleRefreshData = useCallback(() => {
     if (codCli) {
       refreshData();
-      setSelectedSKU(null);
+      clearAllFilters();
     }
   }, [codCli, refreshData]);
 
   const handleExportExcel = useCallback(() => {
-    const exportData = stockItems.map(item => ({
-      SKU: item.sku,
+    const exportData = displayItems.map(item => ({
+      Código: item.sku,
       Nome: item.name,
-      Descrição: item.description,
+      Categoria: item.category,
       Estoque: item.stockQuantity,
       Kits: item.kitsQuantity,
-      "Preço Unitário": item.unitPrice,
-      "M³": item.m3,
+      "Valor Total": item.totalValue,
+      "M³": item.m3Total,
       "Ult. Entrada Qtd": item.lastEntryQty || "-",
       "Ult. Entrada Data": item.lastEntryDate || "-",
     }));
@@ -77,14 +78,30 @@ const Estoque = () => {
     const data = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     saveAs(data, `estoque_${new Date().toISOString().split("T")[0]}.xlsx`);
     toast.success("Arquivo Excel exportado!");
-  }, [stockItems]);
+  }, [displayItems]);
 
   const handleSKUClick = useCallback((sku: string) => {
     setSelectedSKU(prev => (prev === sku ? null : sku));
+    setFilterByName(null);
+    setFilterByDate(null);
+  }, []);
+
+  const handleNameClick = useCallback((name: string) => {
+    setFilterByName(prev => (prev === name ? null : name));
+    setSelectedSKU(null);
+    setFilterByDate(null);
+  }, []);
+
+  const handleDateClick = useCallback((date: string) => {
+    setFilterByDate(prev => (prev === date ? null : date));
+    setSelectedSKU(null);
+    setFilterByName(null);
   }, []);
 
   const clearAllFilters = useCallback(() => {
     setSelectedSKU(null);
+    setFilterByName(null);
+    setFilterByDate(null);
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
@@ -94,13 +111,9 @@ const Estoque = () => {
     clearAllFilters();
   }, [currentYear, clearAllFilters]);
 
-  const hasActiveFilters = selectedSKU !== null;
-  const hasGlobalFilters = selectedMonths.length !== 1 || selectedMonths[0] !== currentMonth || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedRegions.length > 0;
+  const hasActiveFilters = selectedSKU !== null || filterByName !== null || filterByDate !== null;
   const loading = settingsLoading || dataLoading;
-
-  // Connection status
-  const hasData = stockItems.length > 0;
-  const dataFromCache = cacheLoaded && hasData && !refreshing;
+  const hasData = displayItems.length > 0 || stockItems.length > 0;
 
   if (!settingsLoading && !codCli) {
     return (
@@ -130,13 +143,12 @@ const Estoque = () => {
         onRefreshData={handleRefreshData}
         onExportExcel={handleExportExcel}
         onClearAllFilters={clearGlobalFilters}
-        hasActiveFilters={hasGlobalFilters || hasActiveFilters}
+        hasActiveFilters={hasActiveFilters}
       />
 
-      {/* Connection status indicator */}
       {cacheLoaded && (
         <div className="flex items-center gap-2 px-6 py-1.5 text-xs text-muted-foreground">
-          {hasData ? (
+          {stockItems.length > 0 ? (
             <>
               <Wifi className="h-3 w-3 text-green-500" />
               <span>Dados carregados do banco</span>
@@ -150,7 +162,6 @@ const Estoque = () => {
         </div>
       )}
 
-      {/* Refresh progress */}
       <RefreshProgress
         stage={refreshStage as RefreshStage}
         recordCount={refreshRecordCount}
@@ -160,13 +171,18 @@ const Estoque = () => {
         <div className="flex items-center gap-2 px-6 py-2 border-b border-dashboard-border bg-dashboard-card/50 animate-fade-in">
           <span className="text-xs text-muted-foreground">Filtros:</span>
           {selectedSKU && (
-            <Badge
-              variant="outline"
-              className="border-dashboard-blue bg-dashboard-blue/10 text-dashboard-blue cursor-pointer hover:bg-dashboard-blue/20"
-              onClick={() => setSelectedSKU(null)}
-            >
-              SKU: {selectedSKU}
-              <X className="ml-1 h-3 w-3" />
+            <Badge variant="outline" className="border-dashboard-blue bg-dashboard-blue/10 text-dashboard-blue cursor-pointer hover:bg-dashboard-blue/20" onClick={() => setSelectedSKU(null)}>
+              Código: {selectedSKU} <X className="ml-1 h-3 w-3" />
+            </Badge>
+          )}
+          {filterByName && (
+            <Badge variant="outline" className="border-dashboard-accent bg-dashboard-accent/10 text-dashboard-accent cursor-pointer hover:bg-dashboard-accent/20" onClick={() => setFilterByName(null)}>
+              Nome: {filterByName} <X className="ml-1 h-3 w-3" />
+            </Badge>
+          )}
+          {filterByDate && (
+            <Badge variant="outline" className="border-dashboard-orange bg-dashboard-orange/10 text-dashboard-orange cursor-pointer hover:bg-dashboard-orange/20" onClick={() => setFilterByDate(null)}>
+              Data: {filterByDate} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
@@ -195,35 +211,12 @@ const Estoque = () => {
             matrizKits={totals.kits}
           />
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <div className="lg:col-span-3">
-              <StockLocationTables
-                matrizItems={stockItems}
-                selectedSKU={selectedSKU}
-                onSKUClick={handleSKUClick}
-              />
-            </div>
-
-            <div className="lg:col-span-1 relative">
-              <ProductDetailPanel product={currentProduct as any} />
-              {currentProduct && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="absolute top-4 right-4 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
-                  onClick={() => setIsModalOpen(true)}
-                >
-                  <Expand className="h-4 w-4 mr-1" />
-                  Expandir
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <ProductDetailModal
-            product={currentProduct as any}
-            open={isModalOpen}
-            onOpenChange={setIsModalOpen}
+          <StockLocationTables
+            matrizItems={displayItems}
+            selectedSKU={selectedSKU}
+            onSKUClick={handleSKUClick}
+            onNameClick={handleNameClick}
+            onDateClick={handleDateClick}
           />
         </div>
       )}
