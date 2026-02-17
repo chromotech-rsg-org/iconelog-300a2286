@@ -358,6 +358,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       const campanha = (item.nm_campanha || item.ds_campanha || item.campanha || "").toUpperCase();
       const statusReal = (item.fl_status_real || "").toLowerCase();
 
+      if (tipoServico.includes("reentrega")) return;
+
       let tipo: "entrega" | "reposicao" | null = null;
       if (campanha.includes("KIT RESTAURANTE") || campanha.includes("POSITIVACAO KIT") || campanha.includes("POSITIVACAO_KIT")) {
         tipo = "entrega";
