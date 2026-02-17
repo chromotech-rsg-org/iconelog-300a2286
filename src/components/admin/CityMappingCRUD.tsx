@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useCityMapping, CityMapping } from "@/hooks/useCityMapping";
-import { Plus, Pencil, Trash2, Search, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2, Upload, Download, FileDown } from "lucide-react";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 interface CityMappingCRUDProps {
   canEdit: boolean;
@@ -17,11 +20,13 @@ interface CityMappingCRUDProps {
 }
 
 export const CityMappingCRUD = ({ canEdit, canCreate, canDelete }: CityMappingCRUDProps) => {
-  const { cities, loading, createCity, updateCity, deleteCity } = useCityMapping();
+  const { cities, loading, createCity, updateCity, deleteCity, bulkCreate, deleteAll } = useCityMapping();
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCity, setEditingCity] = useState<CityMapping | null>(null);
   const [form, setForm] = useState({ cidade: "", regional: "", uf: "" });
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const filteredCities = useMemo(() => {
     if (!search) return cities;
@@ -31,7 +36,6 @@ export const CityMappingCRUD = ({ canEdit, canCreate, canDelete }: CityMappingCR
     );
   }, [cities, search]);
 
-  // Stats
   const stats = useMemo(() => {
     const ufs = new Set(cities.map(c => c.uf));
     const regionais = new Set(cities.map(c => c.regional));
@@ -51,9 +55,7 @@ export const CityMappingCRUD = ({ canEdit, canCreate, canDelete }: CityMappingCR
   };
 
   const handleSave = async () => {
-    if (!form.cidade.trim() || !form.regional.trim() || !form.uf.trim()) {
-      return;
-    }
+    if (!form.cidade.trim() || !form.regional.trim() || !form.uf.trim()) return;
     if (editingCity) {
       await updateCity(editingCity.id, form.cidade.trim(), form.regional.trim(), form.uf.trim());
     } else {
@@ -65,6 +67,66 @@ export const CityMappingCRUD = ({ canEdit, canCreate, canDelete }: CityMappingCR
 
   const handleDelete = async (id: string) => {
     await deleteCity(id);
+  };
+
+  const handleDownloadTemplate = () => {
+    const template = [
+      { CIDADE: "São Paulo", REGIONAL: "Sao Paulo", UF: "SP" },
+      { CIDADE: "Rio de Janeiro", REGIONAL: "Rio de Janeiro", UF: "RJ" },
+      { CIDADE: "Curitiba", REGIONAL: "Curitiba", UF: "PR" },
+    ];
+    const ws = XLSX.utils.json_to_sheet(template);
+    ws["!cols"] = [{ wch: 30 }, { wch: 25 }, { wch: 5 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Modelo");
+    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "modelo_cidades.xlsx");
+    toast.success("Modelo baixado!");
+  };
+
+  const handleExport = () => {
+    const exportData = cities.map(c => ({ CIDADE: c.cidade, REGIONAL: c.regional, UF: c.uf }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    ws["!cols"] = [{ wch: 30 }, { wch: 25 }, { wch: 5 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cidades");
+    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `cidades_regionais_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Arquivo exportado!");
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(new Uint8Array(data), { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws);
+      const entries = rows
+        .map(r => ({
+          cidade: (r.CIDADE || r.cidade || r.Cidade || "").toString().trim(),
+          regional: (r.REGIONAL || r.regional || r.Regional || "").toString().trim(),
+          uf: (r.UF || r.uf || r.Uf || "").toString().trim(),
+        }))
+        .filter(e => e.cidade && e.regional && e.uf);
+      if (entries.length === 0) {
+        toast.error("Nenhuma cidade válida encontrada no arquivo");
+        return;
+      }
+      const replace = window.confirm(
+        `Encontradas ${entries.length} cidades.\n\nDeseja SUBSTITUIR todos os registros existentes?\n\nOK = Substituir tudo\nCancelar = Adicionar aos existentes`
+      );
+      if (replace) await deleteAll();
+      await bulkCreate(entries);
+    } catch (err) {
+      toast.error("Erro ao processar arquivo");
+      console.error(err);
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   };
 
   if (loading) {
@@ -93,7 +155,7 @@ export const CityMappingCRUD = ({ canEdit, canCreate, canDelete }: CityMappingCR
               </Badge>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -103,11 +165,22 @@ export const CityMappingCRUD = ({ canEdit, canCreate, canDelete }: CityMappingCR
                 className="pl-9 bg-dashboard-dark border-dashboard-border text-foreground w-64"
               />
             </div>
+            <Button size="sm" variant="outline" onClick={handleDownloadTemplate} className="border-dashboard-border text-foreground">
+              <FileDown className="h-4 w-4 mr-1" /> Modelo
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} className="border-dashboard-border text-foreground" disabled={importing}>
+              {importing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+              Importar
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleExport} className="border-dashboard-border text-foreground">
+              <Download className="h-4 w-4 mr-1" /> Exportar
+            </Button>
             {canCreate && (
               <Button size="sm" className="bg-dashboard-accent text-dashboard-dark" onClick={handleOpenNew}>
                 <Plus className="h-4 w-4 mr-1" /> Nova Cidade
               </Button>
             )}
+            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
           </div>
         </CardHeader>
         <CardContent>
