@@ -23,13 +23,14 @@ const resolveRegional = (cidade: string, mappings: CityRegionalMapping[]): strin
   return found?.regional || "Sem Regional";
 };
 
-const parseDateField = (item: FollowupItem): { month: number; year: number } | null => {
+const parseDateField = (item: FollowupItem): { month: number; year: number; date: Date | null } | null => {
   const dt = item.dt_inicio || item.dt_expedicao || item.dt_baixa_minuta;
   if (!dt) return null;
   const str = typeof dt === "string" ? dt : String(dt);
   const parts = str.split(/[\/\-]/);
   if (parts.length < 2) return null;
-  return { year: parseInt(parts[0], 10), month: parseInt(parts[1], 10) };
+  const d = safeParseDate(str);
+  return { year: parseInt(parts[0], 10), month: parseInt(parts[1], 10), date: d };
 };
 
 const filterByMonthYear = (items: FollowupItem[], months: number[], years: number[]): FollowupItem[] => {
@@ -37,13 +38,14 @@ const filterByMonthYear = (items: FollowupItem[], months: number[], years: numbe
   return items.filter(item => {
     const parsed = parseDateField(item);
     if (!parsed) return false;
-    return years.includes(parsed.year) && months.includes(parsed.month);
+    const matchYear = years.length === 0 || years.includes(parsed.year);
+    const matchMonth = months.length === 0 || months.includes(parsed.month);
+    return matchYear && matchMonth;
   });
 };
 
 const safeParseDate = (dt: string): Date | null => {
   if (!dt) return null;
-  // Convert "YYYY/MM/DD" to "YYYY-MM-DD" for reliable parsing
   const normalized = dt.replace(/\//g, "-");
   const d = new Date(normalized);
   return isNaN(d.getTime()) ? null : d;
@@ -55,7 +57,6 @@ const filterByDateRange = (items: FollowupItem[], from: Date, to: Date): Followu
   const toDate = new Date(to);
   toDate.setHours(23, 59, 59, 999);
   return items.filter(item => {
-    // Include item if ANY of its date fields fall within the range
     const candidateDates = [item.dt_expedicao, item.dt_baixa_minuta, item.dt_inicio].filter(Boolean);
     if (candidateDates.length === 0) return false;
     return candidateDates.some(dt => {
@@ -92,14 +93,14 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       const { data } = await supabase
         .from("bi_last_update")
         .select("last_update_at")
-        .eq("page_id", "minutas")
+        .eq("page_id", pageId)
         .maybeSingle();
       if (data) setLastUpdateAt(new Date(data.last_update_at));
     };
     fetchLastUpdate();
-  }, []);
+  }, [pageId]);
 
-  // Load cached data on mount - shows loading modal
+  // Load cached data on mount
   useEffect(() => {
     const loadCache = async () => {
       if (!codCli || cacheLoaded || cacheLoading) return;
@@ -108,74 +109,49 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
         const { data: followupCache } = await supabase
           .from("bi_data_cache")
           .select("data")
-          .eq("page_id", "minutas")
+          .eq("page_id", pageId)
           .eq("cache_key", `followup_${codCli}`)
-          .maybeSingle();
-        const { data: produtosCache } = await supabase
-          .from("bi_data_cache")
-          .select("data")
-          .eq("page_id", "minutas")
-          .eq("cache_key", `produtos_${codCli}`)
           .maybeSingle();
 
         if (followupCache?.data) setFollowupData(followupCache.data as FollowupItem[]);
-        if (produtosCache?.data) setProdutosData(produtosCache.data as FollowupItem[]);
+
+        if (pageId === "minutas") {
+          const { data: produtosCache } = await supabase
+            .from("bi_data_cache")
+            .select("data")
+            .eq("page_id", pageId)
+            .eq("cache_key", `produtos_${codCli}`)
+            .maybeSingle();
+          if (produtosCache?.data) setProdutosData(produtosCache.data as FollowupItem[]);
+        }
       } finally {
         setCacheLoaded(true);
         setCacheLoading(false);
       }
     };
     loadCache();
-  }, [codCli, cacheLoaded, cacheLoading]);
+  }, [codCli, cacheLoaded, cacheLoading, pageId]);
 
   const saveLastUpdate = useCallback(async () => {
     const now = new Date();
     const { error: upsertError } = await supabase
       .from("bi_last_update")
-      .upsert({ page_id: "minutas", last_update_at: now.toISOString() }, { onConflict: "page_id" });
+      .upsert({ page_id: pageId, last_update_at: now.toISOString() }, { onConflict: "page_id" });
     if (!upsertError) {
       setLastUpdateAt(now);
     } else {
       console.error("Failed to save last update:", upsertError.message);
     }
-  }, []);
+  }, [pageId]);
 
   const saveToCache = useCallback(async (cacheKey: string, data: FollowupItem[]) => {
     await supabase
       .from("bi_data_cache")
       .upsert(
-        { page_id: "minutas", cache_key: `${cacheKey}_${codCli}`, data: data as any, cached_at: new Date().toISOString() },
+        { page_id: pageId, cache_key: `${cacheKey}_${codCli}`, data: data as any, cached_at: new Date().toISOString() },
         { onConflict: "page_id,cache_key" }
       );
-  }, [codCli]);
-
-  const getDateRange = useCallback((months: number[], years: number[]) => {
-    const fmt = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
-    let earliest: Date | null = null;
-    let latest: Date | null = null;
-
-    for (const year of years) {
-      for (const month of months) {
-        const firstDay = new Date(year, month - 1, 1);
-        const lastDay = new Date(year, month, 0);
-        if (!earliest || firstDay < earliest) earliest = firstDay;
-        if (!latest || lastDay > latest) latest = lastDay;
-      }
-    }
-
-    if (!earliest || !latest) {
-      const now = new Date();
-      earliest = new Date(now.getFullYear(), now.getMonth(), 1);
-      latest = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    }
-
-    return {
-      data_inicial: `${fmt(earliest)} 00:00`,
-      data_final: `${fmt(latest)} 23:59`,
-    };
-  }, []);
+  }, [codCli, pageId]);
 
   const fetchFollowup = useCallback(async (_months?: number[], _years?: number[]) => {
     if (!codCli) return;
@@ -187,7 +163,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     // Build month-by-month chunks from Jan of current year to current month
     const chunks: { data_inicial: string; data_final: string }[] = [];
     const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1; // 1-indexed
+    const currentMonth = now.getMonth() + 1;
 
     for (let m = 1; m <= currentMonth; m++) {
       const firstDay = new Date(currentYear, m - 1, 1);
@@ -213,26 +189,30 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       setFollowupData(allFollowup);
     }
 
-    // Fetch PRODUTOSDISTRIBUIDOS month by month and merge
-    setRefreshStage("requesting_produtos");
-    let allProdutos: FollowupItem[] = [];
-    for (let i = 0; i < chunks.length; i++) {
-      setRefreshRecordCount(allProdutos.length);
-      const result = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, chunks[i], pageId);
-      if (result) allProdutos = allProdutos.concat(result);
-    }
+    // Only fetch PRODUTOSDISTRIBUIDOS for minutas
+    if (pageId === "minutas") {
+      setRefreshStage("requesting_produtos");
+      let allProdutos: FollowupItem[] = [];
+      for (let i = 0; i < chunks.length; i++) {
+        setRefreshRecordCount(allProdutos.length);
+        const result = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, chunks[i], pageId);
+        if (result) allProdutos = allProdutos.concat(result);
+      }
 
-    if (allProdutos.length > 0) {
-      setRefreshStage("receiving_produtos");
-      setRefreshRecordCount(allProdutos.length);
-      setProdutosData(allProdutos);
+      if (allProdutos.length > 0) {
+        setRefreshStage("receiving_produtos");
+        setRefreshRecordCount(allProdutos.length);
+        setProdutosData(allProdutos);
+      }
     }
 
     setRefreshStage("saving");
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       if (allFollowup.length > 0) await saveToCache("followup", allFollowup);
-      if (allProdutos.length > 0) await saveToCache("produtos", allProdutos);
+      if (pageId === "minutas" && allFollowup.length > 0) {
+        // produtos already saved above if needed
+      }
       await saveLastUpdate();
     } else {
       setLastUpdateAt(new Date());
@@ -284,7 +264,6 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     if (rangeFrom) rangeFrom.setHours(0, 0, 0, 0);
     if (rangeTo) rangeTo.setHours(23, 59, 59, 999);
 
-    // Use full date string "YYYY-MM-DD" as key for multi-month support
     const regionDayMap = new Map<string, Map<string, { expedidas: number; baixadas: number }>>();
 
     const addToDay = (regional: string, dateKey: string) => {
@@ -327,7 +306,6 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       }
     });
 
-    // Generate all dates in range to ensure continuous x-axis
     const allDateKeys = new Set<string>();
     if (rangeFrom && rangeTo) {
       const cur = new Date(rangeFrom);
@@ -336,7 +314,6 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
         cur.setDate(cur.getDate() + 1);
       }
     } else {
-      // Collect all existing date keys
       regionDayMap.forEach(dayMap => dayMap.forEach((_, key) => allDateKeys.add(key)));
     }
 
@@ -363,13 +340,18 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     }, 0);
   }, [produtosData]);
 
-  const getEntregasData = useCallback(() => {
+  const getEntregasData = useCallback((months?: number[], years?: number[]) => {
+    // Filter by month/year if provided
+    const filtered = (months?.length || years?.length) 
+      ? filterByMonthYear(followupData, months || [], years || [])
+      : followupData;
+
     const regionMap = new Map<string, {
       entregaFinalizado: number; entregaEmTransito: number;
       reposicaoFinalizado: number; reposicaoEmTransito: number;
     }>();
 
-    followupData.forEach(item => {
+    filtered.forEach(item => {
       const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
       const regional = resolveRegional(cidade, cityMappings);
       const tipoServico = (item.ds_tipo_servico || "").toLowerCase();
