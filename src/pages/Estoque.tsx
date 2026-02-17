@@ -129,6 +129,14 @@ const Estoque = () => {
     clearAllFilters();
   }, [currentYear, clearAllFilters]);
 
+  // Recalculate totals based on filtered/displayed items
+  const filteredTotals = useMemo(() => {
+    const valor = displayItems.reduce((sum, i) => sum + i.totalValue, 0);
+    const m3 = displayItems.reduce((sum, i) => sum + i.m3Total, 0);
+    const kits = displayItems.reduce((sum, i) => sum + i.kitsQuantity, 0);
+    return { valor, m3, qtdeSKUs: displayItems.length, kits };
+  }, [displayItems]);
+
   const hasActiveFilters = selectedSKU !== null || filterByName !== null || filterByDate !== null;
   const loading = settingsLoading || dataLoading;
   const hasData = displayItems.length > 0 || stockItems.length > 0;
@@ -223,10 +231,10 @@ const Estoque = () => {
       ) : (
         <div className="p-6 space-y-4">
           <StockDualKPICards
-            matrizValor={totals.valor}
-            matrizM3={totals.m3}
-            matrizQtdeSKUs={totals.qtdeSKUs}
-            matrizKits={totals.kits}
+            matrizValor={filteredTotals.valor}
+            matrizM3={filteredTotals.m3}
+            matrizQtdeSKUs={filteredTotals.qtdeSKUs}
+            matrizKits={filteredTotals.kits}
           />
 
           <StockLocationTables

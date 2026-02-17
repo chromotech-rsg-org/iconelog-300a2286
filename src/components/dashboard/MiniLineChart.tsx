@@ -104,7 +104,7 @@ export const MiniLineChart = ({
         {isSelected && <span className="ml-2 text-xs">(selecionada)</span>}
       </h4>
       {(() => {
-        const needsScroll = data.length > 31;
+        const needsScroll = data.length > 0;
         const chartWidthPx = needsScroll ? Math.max(data.length * 28, 800) : undefined;
         const dotRadius = data.length > 60 ? 2 : 4;
 
@@ -197,14 +197,11 @@ export const MiniLineChart = ({
           </div>
         );
 
-        if (needsScroll) {
-          return (
-            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
-              {chart}
-            </div>
-          );
-        }
-        return chart;
+        return (
+          <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+            {chart}
+          </div>
+        );
       })()}
     </div>
   );
