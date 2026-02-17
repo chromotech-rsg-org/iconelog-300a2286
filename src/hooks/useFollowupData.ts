@@ -355,15 +355,13 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
       const regional = resolveRegional(cidade, cityMappings);
       const tipoServico = (item.ds_tipo_servico || "").toLowerCase();
-      const campanha = (item.ds_campanha || item.campanha || "").toLowerCase();
+      const campanha = (item.nm_campanha || item.ds_campanha || item.campanha || "").toUpperCase();
       const statusReal = (item.fl_status_real || "").toLowerCase();
 
-      if (tipoServico.includes("reentrega")) return;
-
       let tipo: "entrega" | "reposicao" | null = null;
-      if (campanha.includes("kit restaurante") || campanha.includes("positivação kit") || campanha.includes("positivacao kit")) {
+      if (campanha.includes("KIT RESTAURANTE") || campanha.includes("POSITIVACAO KIT") || campanha.includes("POSITIVACAO_KIT")) {
         tipo = "entrega";
-      } else if (campanha.includes("reposição kit") || campanha.includes("reposicao kit")) {
+      } else if (campanha.includes("REPOSICAO_KIT") || campanha.includes("REPOSICAO KIT") || campanha.includes("REPOSITIVACAO")) {
         tipo = "reposicao";
       }
       if (!tipo) return;
