@@ -81,5 +81,37 @@ export const useCityMapping = () => {
     return true;
   }, [fetchCities]);
 
-  return { cities, loading, fetchCities, createCity, updateCity, deleteCity };
+  const bulkCreate = useCallback(async (entries: { cidade: string; regional: string; uf: string }[]) => {
+    const batchSize = 500;
+    let totalInserted = 0;
+    for (let i = 0; i < entries.length; i += batchSize) {
+      const batch = entries.slice(i, i + batchSize);
+      const { error } = await supabase
+        .from("city_regional_mapping")
+        .insert(batch.map(e => ({ cidade: e.cidade.trim(), regional: e.regional.trim(), uf: e.uf.trim().toUpperCase() })));
+      if (error) {
+        toast.error(`Erro na importação (lote ${Math.floor(i / batchSize) + 1}): ${error.message}`);
+        return false;
+      }
+      totalInserted += batch.length;
+    }
+    toast.success(`${totalInserted} cidades importadas com sucesso!`);
+    await fetchCities();
+    return true;
+  }, [fetchCities]);
+
+  const deleteAll = useCallback(async () => {
+    const { error } = await supabase
+      .from("city_regional_mapping")
+      .delete()
+      .gt("created_at", "2000-01-01");
+    if (error) {
+      toast.error("Erro ao limpar registros: " + error.message);
+      return false;
+    }
+    await fetchCities();
+    return true;
+  }, [fetchCities]);
+
+  return { cities, loading, fetchCities, createCity, updateCity, deleteCity, bulkCreate, deleteAll };
 };
