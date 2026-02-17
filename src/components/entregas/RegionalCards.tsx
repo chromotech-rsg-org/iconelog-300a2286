@@ -19,6 +19,9 @@ interface RegionalCardsProps {
 }
 
 export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: RegionalCardsProps) => {
+  // Sort by total (entrega + reposição) descending
+  const sortedData = [...data].sort((a, b) => (b.entregaTotal + b.reposicaoTotal) - (a.entregaTotal + a.reposicaoTotal));
+  
   // Calculate total geral
   const totalGeral = data.reduce((sum, item) => sum + item.entregaTotal + item.reposicaoTotal, 0);
   
@@ -31,7 +34,7 @@ export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: Regio
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {data.map((item) => {
+          {sortedData.map((item) => {
             const total = item.entregaTotal + item.reposicaoTotal;
             const finalizados = item.entregaFinalizado + item.reposicaoFinalizado;
             const emTransito = item.entregaEmTransito + item.reposicaoEmTransito;
