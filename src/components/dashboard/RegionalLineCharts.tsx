@@ -1,4 +1,3 @@
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { MiniLineChart } from "./MiniLineChart";
 
 interface DayData {
@@ -37,7 +36,7 @@ export const RegionalLineCharts = ({
   onLinePointClick 
 }: RegionalLineChartsProps) => {
   return (
-    <div className="h-full rounded-lg border border-dashboard-border bg-dashboard-card/50 p-4">
+    <div className="h-full rounded-lg border border-dashboard-border bg-dashboard-card/50 p-4 overflow-y-auto custom-scrollbar">
       <h3 className="mb-4 text-sm font-semibold text-dashboard-accent">
         Evolução Diária por Regional
         {selectedDay !== null && (
@@ -46,26 +45,24 @@ export const RegionalLineCharts = ({
           </span>
         )}
       </h3>
-      <ScrollArea className="h-[calc(100%-2rem)]">
-        <div className="flex flex-col gap-4 pr-4">
-          {data.map((regionalData, index) => (
-            <MiniLineChart
-              key={regionalData.region}
-              region={regionalData.region}
-              data={regionalData.data}
-              index={index}
-              selectedDay={selectedDay}
-              selectedMetric={selectedMetric}
-              selectedMonths={selectedMonths}
-              selectedDateRange={selectedDateRange}
-              isSelected={selectedRegion === regionalData.region}
-              onDayClick={onDayClick}
-              onRegionClick={onRegionClick}
-              onLinePointClick={onLinePointClick}
-            />
-          ))}
-        </div>
-      </ScrollArea>
+      <div className="flex flex-col gap-4">
+        {data.map((regionalData, index) => (
+          <MiniLineChart
+            key={regionalData.region}
+            region={regionalData.region}
+            data={regionalData.data}
+            index={index}
+            selectedDay={selectedDay}
+            selectedMetric={selectedMetric}
+            selectedMonths={selectedMonths}
+            selectedDateRange={selectedDateRange}
+            isSelected={selectedRegion === regionalData.region}
+            onDayClick={onDayClick}
+            onRegionClick={onRegionClick}
+            onLinePointClick={onLinePointClick}
+          />
+        ))}
+      </div>
     </div>
   );
 };
