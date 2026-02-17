@@ -198,7 +198,7 @@ export const MiniLineChart = ({
         );
 
         return (
-          <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent">
+          <div className="chart-scroll-x">
             {chart}
           </div>
         );

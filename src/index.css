@@ -124,3 +124,27 @@ All colors MUST be HSL.
 .popover-dark-scroll::-webkit-scrollbar-thumb:hover {
   background: hsl(0, 0%, 45%);
 }
+
+/* Horizontal scrollbar for charts */
+.chart-scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.chart-scroll-x::-webkit-scrollbar {
+  height: 6px;
+}
+
+.chart-scroll-x::-webkit-scrollbar-track {
+  background: hsl(0, 0%, 10%);
+  border-radius: 3px;
+}
+
+.chart-scroll-x::-webkit-scrollbar-thumb {
+  background: hsl(0, 0%, 30%);
+  border-radius: 3px;
+}
+
+.chart-scroll-x::-webkit-scrollbar-thumb:hover {
+  background: hsl(45, 100%, 50%);
+}
