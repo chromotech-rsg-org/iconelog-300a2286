@@ -184,20 +184,18 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     const fmt = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-    // Build month-by-month chunks from Jan 2025 to Dec 2026
+    // Build month-by-month chunks from Jan of current year to current month
     const chunks: { data_inicial: string; data_final: string }[] = [];
-    const startYear = 2025;
-    const endYear = 2026;
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-indexed
 
-    for (let y = startYear; y <= endYear; y++) {
-      for (let m = 1; m <= 12; m++) {
-        const firstDay = new Date(y, m - 1, 1);
-        const lastDay = new Date(y, m, 0);
-        chunks.push({
-          data_inicial: `${fmt(firstDay)} 00:00`,
-          data_final: `${fmt(lastDay)} 23:59`,
-        });
-      }
+    for (let m = 1; m <= currentMonth; m++) {
+      const firstDay = new Date(currentYear, m - 1, 1);
+      const lastDay = new Date(currentYear, m, 0);
+      chunks.push({
+        data_inicial: `${fmt(firstDay)} 00:00`,
+        data_final: `${fmt(lastDay)} 23:59`,
+      });
     }
 
     // Fetch FOLLOWUP month by month and merge

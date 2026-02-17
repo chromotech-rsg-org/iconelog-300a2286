@@ -43,14 +43,32 @@ const Estoque = () => {
   const [filterByName, setFilterByName] = useState<string | null>(null);
   const [filterByDate, setFilterByDate] = useState<string | null>(null);
 
-  // Filtered items based on active filters
+  // Filtered items based on active filters (month/year filter by lastEntryDate)
   const displayItems = useMemo(() => {
     let items = stockItems;
+
+    // Apply month/year filters using lastEntryDate field
+    const hasMonthFilter = selectedMonths.length > 0 && selectedMonths.length < 12;
+    const hasYearFilter = selectedYears.length > 0;
+    if (hasMonthFilter || hasYearFilter) {
+      items = items.filter(item => {
+        if (!item.lastEntryDate) return false;
+        const normalized = String(item.lastEntryDate).replace(/\//g, "-");
+        const d = new Date(normalized);
+        if (isNaN(d.getTime())) return false;
+        const month = d.getMonth() + 1;
+        const year = d.getFullYear();
+        const monthOk = !hasMonthFilter || selectedMonths.includes(month);
+        const yearOk = !hasYearFilter || selectedYears.includes(year);
+        return monthOk && yearOk;
+      });
+    }
+
     if (selectedSKU) items = items.filter(i => i.sku === selectedSKU);
     if (filterByName) items = items.filter(i => i.name === filterByName);
     if (filterByDate) items = items.filter(i => i.lastEntryDate === filterByDate);
     return items;
-  }, [stockItems, selectedSKU, filterByName, filterByDate]);
+  }, [stockItems, selectedMonths, selectedYears, selectedSKU, filterByName, filterByDate]);
 
   const handleRefreshData = useCallback(() => {
     if (codCli) {
