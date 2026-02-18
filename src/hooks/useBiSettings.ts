@@ -7,6 +7,7 @@ export interface BiSetting {
   display_name: string;
   logo_url: string | null;
   display_order: number;
+  slug: string | null;
   cod_cli: string | null;
   company_name: string | null;
   refresh_interval_minutes: number;
@@ -46,9 +47,9 @@ export interface BiSetting {
    );
  
    const updateSetting = async (
-     pageId: string,
-     updates: Partial<Pick<BiSetting, "display_name" | "logo_url">>
-   ) => {
+    pageId: string,
+    updates: Partial<Pick<BiSetting, "display_name" | "logo_url" | "slug">>
+  ) => {
      try {
        const { error } = await supabase
          .from("bi_settings")
