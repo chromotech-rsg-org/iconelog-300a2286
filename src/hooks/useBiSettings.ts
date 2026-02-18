@@ -39,12 +39,19 @@ export interface BiSetting {
      fetchSettings();
    }, [fetchSettings]);
  
-   const getSettingByPageId = useCallback(
-     (pageId: string): BiSetting | undefined => {
-       return settings.find((s) => s.page_id === pageId);
-     },
-     [settings]
-   );
+    const getSettingByPageId = useCallback(
+      (pageId: string): BiSetting | undefined => {
+        return settings.find((s) => s.page_id === pageId);
+      },
+      [settings]
+    );
+
+    const getSettingBySlug = useCallback(
+      (slug: string): BiSetting | undefined => {
+        return settings.find((s) => s.slug === slug || s.page_id === slug);
+      },
+      [settings]
+    );
  
    const updateSetting = async (
     pageId: string,
@@ -140,16 +147,17 @@ export interface BiSetting {
     }
   };
 
-   return {
-     settings,
-     loading,
-     getSettingByPageId,
-     updateSetting,
-     uploadLogo,
-     removeLogo,
-    getSystemSetting,
-    getOrderedBiSettings,
-    updateDisplayOrder,
-     refetch: fetchSettings,
-   };
- };
+    return {
+      settings,
+      loading,
+      getSettingByPageId,
+      getSettingBySlug,
+      updateSetting,
+      uploadLogo,
+      removeLogo,
+     getSystemSetting,
+     getOrderedBiSettings,
+     updateDisplayOrder,
+      refetch: fetchSettings,
+    };
+  };
