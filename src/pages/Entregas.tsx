@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { allMonthValues } from "@/data/mockData";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { EntregasKPICards } from "@/components/entregas/EntregasKPICards";
@@ -17,8 +16,8 @@ import { saveAs } from "file-saver";
 import { X, Loader2, AlertCircle, InboxIcon } from "lucide-react";
 
 const Entregas = () => {
-  const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
+  const allMonths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
   const { getCodCli, loading: settingsLoading } = useBiSettingsContext();
   const codCli = getCodCli("entregas");
@@ -38,7 +37,7 @@ const Entregas = () => {
   } = useFollowupData(codCli, "entregas");
 
   const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [selectedMonths, setSelectedMonths] = useState<number[]>([currentMonth]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonths);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
   const [selectedRegional, setSelectedRegional] = useState<string | null>(null);
@@ -130,14 +129,14 @@ const Entregas = () => {
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
-    setSelectedMonths([currentMonth]);
+    setSelectedMonths(allMonths);
     setSelectedYears([currentYear]);
     setSelectedRegions([]);
     clearAllFilters();
-  }, [currentMonth, currentYear, clearAllFilters]);
+  }, [currentYear, clearAllFilters]);
 
   const hasActiveFilters = !!(selectedRegional || selectedTipo || selectedStatus);
-  const isDefaultState = selectedMonths.length === 1 && selectedMonths[0] === currentMonth && selectedYears.length === 1 && selectedYears[0] === currentYear && selectedRegions.length === 0;
+  const isDefaultState = selectedMonths.length === 12 && selectedYears.length === 1 && selectedYears[0] === currentYear && selectedRegions.length === 0;
   const hasGlobalFilters = !isDefaultState || hasActiveFilters;
 
   if (!settingsLoading && !codCli) {
