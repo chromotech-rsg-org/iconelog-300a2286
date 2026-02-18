@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -44,16 +43,15 @@ export const AnaliticoCityView = ({
   const [search, setSearch] = useState("");
 
   // Extract unique cities from API data that are NOT in city_regional_mapping
-  const unmatchedCities = useMemo(() => {
+  // Detailed unmatched records (each row = one followup record)
+  const unmatchedRecords = useMemo(() => {
     const normalizedMappings = new Set(
       cityMappings.map((m) => normalize(m.cidade))
     );
 
-    // Collect unique city+UF combinations from followup data
-    const cityMap = new Map<string, { cidade: string; uf: string; count: number }>();
+    const records: { pedido: string; campanha: string; cidade: string; uf: string }[] = [];
 
     followupData.forEach((item) => {
-      // Apply same campaign/service filters as B-Side Entregas
       const tipoServico = (item.ds_tipo_servico || "").toLowerCase();
       if (tipoServico.includes("reentrega")) return;
 
@@ -67,22 +65,33 @@ export const AnaliticoCityView = ({
 
       if (!cidade) return;
 
-      const normalizedCidade = normalize(cidade);
-
-      // Only include cities NOT found in mapping
-      if (!normalizedMappings.has(normalizedCidade)) {
-        const key = `${normalizedCidade}|${uf}`;
-        const existing = cityMap.get(key);
-        if (existing) {
-          existing.count++;
-        } else {
-          cityMap.set(key, { cidade, uf, count: 1 });
-        }
+      if (!normalizedMappings.has(normalize(cidade))) {
+        records.push({
+          pedido: item.nr_minuta || item.nr_pedido || item.pedido || "",
+          campanha,
+          cidade,
+          uf,
+        });
       }
     });
 
-    return Array.from(cityMap.values()).sort((a, b) => b.count - a.count);
+    return records;
   }, [followupData, cityMappings]);
+
+  // Aggregated unique cities for KPIs and charts
+  const unmatchedCities = useMemo(() => {
+    const cityMap = new Map<string, { cidade: string; uf: string; count: number }>();
+    unmatchedRecords.forEach((r) => {
+      const key = `${normalize(r.cidade)}|${r.uf}`;
+      const existing = cityMap.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        cityMap.set(key, { cidade: r.cidade, uf: r.uf, count: 1 });
+      }
+    });
+    return Array.from(cityMap.values()).sort((a, b) => b.count - a.count);
+  }, [unmatchedRecords]);
 
   // Group by UF
   const byUF = useMemo(() => {
@@ -104,21 +113,20 @@ export const AnaliticoCityView = ({
     }));
   }, [unmatchedCities]);
 
-  // Filtered table
-  const filteredCities = useMemo(() => {
-    if (!search) return unmatchedCities;
+  // Filtered table (now filtering records, not aggregated cities)
+  const filteredRecords = useMemo(() => {
+    if (!search) return unmatchedRecords;
     const s = search.toLowerCase();
-    return unmatchedCities.filter(
-      (c) =>
-        c.cidade.toLowerCase().includes(s) ||
-        c.uf.toLowerCase().includes(s)
+    return unmatchedRecords.filter(
+      (r) =>
+        r.cidade.toLowerCase().includes(s) ||
+        r.uf.toLowerCase().includes(s) ||
+        r.pedido.toLowerCase().includes(s) ||
+        r.campanha.toLowerCase().includes(s)
     );
-  }, [unmatchedCities, search]);
+  }, [unmatchedRecords, search]);
 
-  const totalOccurrences = useMemo(
-    () => unmatchedCities.reduce((sum, c) => sum + c.count, 0),
-    [unmatchedCities]
-  );
+  const totalOccurrences = unmatchedRecords.length;
 
   return (
     <div className="space-y-4">
@@ -210,56 +218,57 @@ export const AnaliticoCityView = ({
 
       {/* Table */}
       <Card className="bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4 pb-2">
-          <div>
-            <CardTitle className="text-sm font-medium text-foreground">
-              Cidades da API sem regional cadastrada
-            </CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">
-              {unmatchedCities.length} cidades únicas · {totalOccurrences.toLocaleString("pt-BR")} registros na API
-            </p>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar cidade ou UF..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-background border-border text-foreground w-64"
-            />
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <CardTitle className="text-sm font-bold text-primary uppercase">
+                Regionais não encontradas
+              </CardTitle>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar pedido, campanha, cidade..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 bg-background border-border text-foreground w-72"
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[400px]">
             <Table>
               <TableHeader>
-                <TableRow className="border-border">
-                  <TableHead className="text-muted-foreground">Cidade</TableHead>
-                  <TableHead className="text-muted-foreground">UF</TableHead>
-                  <TableHead className="text-muted-foreground text-right">Ocorrências</TableHead>
+                <TableRow className="border-border bg-primary/10">
+                  <TableHead className="text-foreground font-semibold">Pedido</TableHead>
+                  <TableHead className="text-foreground font-semibold">Campanha</TableHead>
+                  <TableHead className="text-foreground font-semibold">Cidade Destino</TableHead>
+                  <TableHead className="text-foreground font-semibold">UF</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCities.map((city, idx) => (
-                  <TableRow key={`${city.cidade}-${city.uf}-${idx}`} className="border-border">
-                    <TableCell className="text-foreground">{city.cidade}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="border-border text-foreground">
-                        {city.uf || "N/I"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {city.count.toLocaleString("pt-BR")}
-                    </TableCell>
+                {filteredRecords.map((record, idx) => (
+                  <TableRow key={`${record.pedido}-${idx}`} className="border-border">
+                    <TableCell className="text-muted-foreground">{record.pedido}</TableCell>
+                    <TableCell className="text-muted-foreground">{record.campanha}</TableCell>
+                    <TableCell className="text-foreground font-medium">{record.cidade}</TableCell>
+                    <TableCell className="text-muted-foreground">{record.uf || "N/I"}</TableCell>
                   </TableRow>
                 ))}
-                {filteredCities.length === 0 && (
+                {filteredRecords.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                      {unmatchedCities.length === 0
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      {unmatchedRecords.length === 0
                         ? "Todas as cidades da API estão mapeadas! ✅"
                         : "Nenhum registro encontrado"}
                     </TableCell>
+                  </TableRow>
+                )}
+                {filteredRecords.length > 0 && (
+                  <TableRow className="border-border bg-muted/30">
+                    <TableCell colSpan={3} className="text-foreground font-bold">Total</TableCell>
+                    <TableCell className="text-foreground font-bold">{filteredRecords.length}</TableCell>
                   </TableRow>
                 )}
               </TableBody>
