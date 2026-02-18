@@ -53,6 +53,15 @@ export const AnaliticoCityView = ({
     const cityMap = new Map<string, { cidade: string; uf: string; count: number }>();
 
     followupData.forEach((item) => {
+      // Apply same campaign/service filters as B-Side Entregas
+      const tipoServico = (item.ds_tipo_servico || "").toLowerCase();
+      if (tipoServico.includes("reentrega")) return;
+
+      const campanha = (item.nm_campanha || item.ds_campanha || item.campanha || "").toUpperCase();
+      const isEntrega = campanha.includes("KIT RESTAURANTE") || campanha.includes("POSITIVACAO KIT") || campanha.includes("POSITIVACAO_KIT");
+      const isReposicao = campanha.includes("REPOSICAO_KIT") || campanha.includes("REPOSICAO KIT") || campanha.includes("REPOSITIVACAO");
+      if (!isEntrega && !isReposicao) return;
+
       const cidade = (item.ds_cidade_DES || item.ds_cidade || item.cidade || "").trim();
       const uf = (item.ds_uf_DES || item.ds_uf || item.uf || "").trim().toUpperCase();
 
