@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid } from "lucide-react";
+import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Link } from "lucide-react";
 import { useBiSettings } from "@/hooks/useBiSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
@@ -18,10 +18,12 @@ import { NavigationMenu } from "@/components/shared/NavigationMenu";
  const Settings = () => {
    const { isDeveloper, loading: authLoading } = useAuth();
   const { settings, loading, uploadLogo, updateSetting, updateDisplayOrder, getSystemSetting, getOrderedBiSettings, refetch } = useBiSettings();
-   const [editingNames, setEditingNames] = useState<Record<string, string>>({});
+  const [editingNames, setEditingNames] = useState<Record<string, string>>({});
+  const [editingSlugs, setEditingSlugs] = useState<Record<string, string>>({});
   const [editingOrders, setEditingOrders] = useState<Record<string, number>>({});
    const [uploading, setUploading] = useState<string | null>(null);
-   const [saving, setSaving] = useState<string | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [savingSlug, setSavingSlug] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState<string | null>(null);
    const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const systemFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -32,13 +34,16 @@ import { NavigationMenu } from "@/components/shared/NavigationMenu";
  
    // Initialize editing names from settings
    useEffect(() => {
-     const names: Record<string, string> = {};
+    const names: Record<string, string> = {};
+    const slugs: Record<string, string> = {};
     const orders: Record<string, number> = {};
-     settings.forEach((s) => {
-       names[s.page_id] = s.display_name;
+    settings.forEach((s) => {
+      names[s.page_id] = s.display_name;
+      slugs[s.page_id] = s.slug || "";
       orders[s.page_id] = s.display_order;
-     });
-     setEditingNames(names);
+    });
+    setEditingNames(names);
+    setEditingSlugs(slugs);
     setEditingOrders(orders);
    }, [settings]);
  
@@ -90,6 +95,29 @@ import { NavigationMenu } from "@/components/shared/NavigationMenu";
      }
    };
  
+  const handleSlugSave = async (pageId: string) => {
+    const newSlug = editingSlugs[pageId]?.trim();
+    if (!newSlug) {
+      toast.error("O slug não pode ser vazio");
+      return;
+    }
+    // Validate slug format
+    if (!/^[a-z0-9-]+$/.test(newSlug)) {
+      toast.error("O slug deve conter apenas letras minúsculas, números e hífens");
+      return;
+    }
+
+    setSavingSlug(pageId);
+    const result = await updateSetting(pageId, { slug: newSlug });
+    setSavingSlug(null);
+
+    if (result.success) {
+      toast.success("Slug atualizado com sucesso!");
+    } else {
+      toast.error("Erro ao atualizar slug");
+    }
+  };
+
   const handleOrderSave = async (pageId: string) => {
     const order = editingOrders[pageId];
     if (order === undefined || order < 0) {
@@ -379,7 +407,45 @@ import { NavigationMenu } from "@/components/shared/NavigationMenu";
                    </div>
                  </div>
 
-                {/* Order Section */}
+                 {/* Slug Section */}
+                 <div className="space-y-2">
+                   <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                     <Link className="h-3 w-3" />
+                     Slug (endereço)
+                   </Label>
+                   <div className="flex gap-2">
+                     <Input
+                       value={editingSlugs[setting.page_id] || ""}
+                       onChange={(e) =>
+                         setEditingSlugs((prev) => ({
+                           ...prev,
+                           [setting.page_id]: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+                         }))
+                       }
+                       className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9"
+                       placeholder="ex: entregas"
+                     />
+                     <Button
+                       variant="outline"
+                       size="icon"
+                       className="h-9 w-9 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark hover:border-dashboard-accent"
+                       onClick={() => handleSlugSave(setting.page_id)}
+                       disabled={
+                         savingSlug === setting.page_id ||
+                         editingSlugs[setting.page_id] === (getCurrentSetting(setting.page_id)?.slug || "")
+                       }
+                     >
+                       {savingSlug === setting.page_id ? (
+                         <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                       ) : (
+                         <Save className="h-4 w-4" />
+                       )}
+                     </Button>
+                   </div>
+                   <p className="text-[10px] text-muted-foreground/60">/{editingSlugs[setting.page_id] || setting.page_id}</p>
+                 </div>
+
+                 {/* Order Section */}
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">
                     Ordem no menu
