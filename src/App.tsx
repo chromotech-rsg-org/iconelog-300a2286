@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
  import { BiSettingsProvider } from "@/contexts/BiSettingsContext";
 import { SmartRedirect } from "@/components/auth/SmartRedirect";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import DynamicBiRoute from "@/components/auth/DynamicBiRoute";
 import Index from "./pages/Index";
 import Estoque from "./pages/Estoque";
 import Entregas from "./pages/Entregas";
@@ -31,18 +32,20 @@ const queryClient = new QueryClient();
            <BrowserRouter>
              <Routes>
                 <Route path="/" element={<SmartRedirect />} />
-               <Route path="/minutas" element={<Index />} />
-               <Route path="/estoque" element={<Estoque />} />
-               <Route path="/entregas" element={<Entregas />} />
-               <Route path="/tracking" element={<Tracking />} />
-               <Route path="/estoque-consolidado" element={<EstoqueConsolidado />} />
-               <Route path="/faturamento" element={<Faturamento />} />
-               <Route path="/analitico" element={<Analitico />} />
-               <Route path="/admin" element={<ProtectedRoute pageId="admin_panel" requireAuth={true}><Admin /></ProtectedRoute>} />
-               
-               <Route path="/auth" element={<Auth />} />
-               <Route path="/no-access" element={<NoAccess />} />
-               <Route path="*" element={<NotFound />} />
+                <Route path="/minutas" element={<Index />} />
+                <Route path="/estoque" element={<Estoque />} />
+                <Route path="/entregas" element={<Entregas />} />
+                <Route path="/tracking" element={<Tracking />} />
+                <Route path="/estoque-consolidado" element={<EstoqueConsolidado />} />
+                <Route path="/faturamento" element={<Faturamento />} />
+                <Route path="/analitico" element={<Analitico />} />
+                <Route path="/admin" element={<ProtectedRoute pageId="admin_panel" requireAuth={true}><Admin /></ProtectedRoute>} />
+                
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/no-access" element={<NoAccess />} />
+                {/* Dynamic slug-based routing - catches custom slugs like /b-side-entregas */}
+                <Route path="/:slug" element={<DynamicBiRoute />} />
+                <Route path="*" element={<NotFound />} />
              </Routes>
            </BrowserRouter>
          </TooltipProvider>
