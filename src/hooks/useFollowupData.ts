@@ -390,16 +390,16 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
       const regional = resolveRegional(cidade, cityMappings);
       const tipoServico = (item.ds_tipo_servico || "").toLowerCase();
-      const campanha = (item.nm_campanha || item.ds_campanha || item.campanha || "").toUpperCase();
+      const campanhaNorm = normalize(item.nm_campanha || item.ds_campanha || item.campanha || "");
       const statusReal = (item.fl_status_real || "").toLowerCase();
 
       if (tipoServico.includes("reentrega")) return;
 
       let tipo: "entrega" | "reposicao" | null = null;
-      if (campanha.includes("KIT RESTAURANTE") || campanha.includes("POSITIVACAO KIT") || campanha.includes("POSITIVACAO_KIT")) {
-        tipo = "entrega";
-      } else if (campanha.includes("REPOSICAO_KIT") || campanha.includes("REPOSICAO KIT") || campanha.includes("REPOSITIVACAO")) {
+      if (campanhaNorm.includes("REPOSICAO") || campanhaNorm.includes("REPOSITIVACAO")) {
         tipo = "reposicao";
+      } else if (campanhaNorm.includes("KIT RESTAURANTE") || campanhaNorm.includes("POSITIVACAO")) {
+        tipo = "entrega";
       }
       if (!tipo) return;
 

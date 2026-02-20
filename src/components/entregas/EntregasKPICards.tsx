@@ -74,8 +74,8 @@ export const EntregasKPICards = ({
                 <card.icon className={`h-5 w-5 ${card.color}`} />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">{card.title}</p>
-                <p className="text-xl font-bold text-foreground">{formatNumber(card.value)}</p>
+                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">{card.title}</p>
+                <p className="text-2xl font-bold text-foreground">{formatNumber(card.value)}</p>
               </div>
             </div>
           </CardContent>

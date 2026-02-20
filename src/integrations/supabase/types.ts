@@ -256,24 +256,33 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          interval_minutes: number | null
           is_active: boolean
+          last_executed_at: string | null
           page_id: string
+          schedule_type: string
           update_time: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
+          interval_minutes?: number | null
           is_active?: boolean
+          last_executed_at?: string | null
           page_id: string
+          schedule_type?: string
           update_time: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
+          interval_minutes?: number | null
           is_active?: boolean
+          last_executed_at?: string | null
           page_id?: string
+          schedule_type?: string
           update_time?: string
           updated_at?: string
         }

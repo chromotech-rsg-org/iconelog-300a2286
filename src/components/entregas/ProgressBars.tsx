@@ -47,12 +47,12 @@ export const ProgressBars = ({
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-dashboard-accent" />
               <span className="text-sm text-muted-foreground">Finalizados:</span>
-              <span className="text-sm font-bold text-foreground">{formatNumber(entregaFinalizado)}</span>
+              <span className="text-base font-bold text-foreground">{formatNumber(entregaFinalizado)}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-muted-foreground" />
               <span className="text-sm text-muted-foreground">Em Trânsito:</span>
-              <span className="text-sm font-bold text-foreground">{formatNumber(entregaEmTransito)}</span>
+              <span className="text-base font-bold text-foreground">{formatNumber(entregaEmTransito)}</span>
             </div>
           </div>
           
@@ -94,12 +94,12 @@ export const ProgressBars = ({
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-dashboard-accent" />
               <span className="text-sm text-muted-foreground">Finalizados:</span>
-              <span className="text-sm font-bold text-foreground">{formatNumber(reposicaoFinalizado)}</span>
+              <span className="text-base font-bold text-foreground">{formatNumber(reposicaoFinalizado)}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-muted-foreground" />
               <span className="text-sm text-muted-foreground">Em Trânsito:</span>
-              <span className="text-sm font-bold text-foreground">{formatNumber(reposicaoEmTransito)}</span>
+              <span className="text-base font-bold text-foreground">{formatNumber(reposicaoEmTransito)}</span>
             </div>
           </div>
           
