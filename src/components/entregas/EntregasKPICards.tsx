@@ -68,14 +68,14 @@ export const EntregasKPICards = ({
           className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all hover:border-dashboard-accent ${selectedTipo === card.tipo ? 'ring-2 ring-dashboard-accent' : ''}`}
           onClick={card.onClick}
         >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${card.bgColor}`}>
-                <card.icon className={`h-5 w-5 ${card.color}`} />
+          <CardContent className="p-5">
+            <div className="flex items-center gap-4">
+              <div className={`p-3 rounded-lg ${card.bgColor}`}>
+                <card.icon className={`h-6 w-6 ${card.color}`} />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wide">{card.title}</p>
-                <p className="text-2xl font-bold text-foreground">{formatNumber(card.value)}</p>
+                <p className="text-sm text-muted-foreground uppercase font-semibold tracking-wide">{card.title}</p>
+                <p className="text-4xl font-black text-foreground">{formatNumber(card.value)}</p>
               </div>
             </div>
           </CardContent>
