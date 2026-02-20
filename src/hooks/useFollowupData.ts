@@ -214,9 +214,9 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     }
 
     // Fetch PRODUTOSDISTRIBUIDOS for minutas and tracking
+    let allProdutos: FollowupItem[] = [];
     if (pageId === "minutas" || pageId === "tracking") {
       setRefreshStage("requesting_produtos");
-      let allProdutos: FollowupItem[] = [];
       for (let i = 0; i < chunks.length; i++) {
         setRefreshRecordCount(allProdutos.length);
         const result = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, chunks[i], pageId);
@@ -234,8 +234,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       if (allFollowup.length > 0) await saveToCache("followup", allFollowup);
-      if ((pageId === "minutas" || pageId === "tracking") && produtosData.length > 0) {
-        await saveToCache("produtos", produtosData);
+      if ((pageId === "minutas" || pageId === "tracking") && allProdutos.length > 0) {
+        await saveToCache("produtos", allProdutos);
       }
       await saveLastUpdate();
     } else {

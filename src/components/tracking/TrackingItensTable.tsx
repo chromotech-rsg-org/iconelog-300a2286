@@ -32,6 +32,13 @@ export const TrackingItensTable = ({ items }: Props) => {
     return data;
   }, [items, search, columnFilter]);
 
+  const vlTotal = useMemo(() => {
+    return filtered.reduce((sum, item) => {
+      const val = parseFloat(item.vl_total || "0");
+      return sum + (isNaN(val) ? 0 : val);
+    }, 0);
+  }, [filtered]);
+
   const totalPages = Math.ceil(filtered.length / perPage);
   const paged = filtered.slice(page * perPage, (page + 1) * perPage);
 
@@ -46,7 +53,7 @@ export const TrackingItensTable = ({ items }: Props) => {
   };
 
   return (
-    <Card className="bg-card border-border flex flex-col">
+    <Card className="bg-card border-border flex flex-col h-full">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-medium text-foreground">
@@ -80,8 +87,14 @@ export const TrackingItensTable = ({ items }: Props) => {
             </SelectContent>
           </Select>
         </div>
+        {vlTotal > 0 && (
+          <div className="mt-1 text-right">
+            <span className="text-[10px] text-muted-foreground">Vl. Total: </span>
+            <span className="text-xs font-bold text-primary">{formatCurrency(vlTotal)}</span>
+          </div>
+        )}
       </CardHeader>
-      <CardContent className="p-0 flex-1 flex flex-col">
+      <CardContent className="p-0 flex-1 flex flex-col min-h-0">
         <style>{`
           .tracking-itens-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
           .tracking-itens-scroll::-webkit-scrollbar-track { background: hsl(0, 0%, 14%); border-radius: 3px; }
@@ -89,8 +102,8 @@ export const TrackingItensTable = ({ items }: Props) => {
           .tracking-itens-scroll::-webkit-scrollbar-thumb:hover { background: hsl(0, 0%, 50%); }
           .tracking-itens-scroll { overflow: scroll !important; }
         `}</style>
-        <div className="tracking-itens-scroll flex-1" style={{ overflow: "scroll", maxHeight: 400 }}>
-          <Table className="min-w-[700px]">
+        <div className="tracking-itens-scroll flex-1" style={{ overflow: "scroll" }}>
+          <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow className="border-border bg-muted/20 sticky top-0 z-10">
                 <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Pedido</TableHead>
@@ -102,16 +115,24 @@ export const TrackingItensTable = ({ items }: Props) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paged.map((item, idx) => (
-                <TableRow key={idx} className="border-border hover:bg-muted/20">
-                  <TableCell className="text-primary text-[11px] px-2 py-1 whitespace-nowrap cursor-pointer hover:underline" onClick={() => handleColumnClick("nr_pedido", item.nr_pedido)}>{item.nr_pedido || "—"}</TableCell>
-                  <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap cursor-pointer hover:underline" onClick={() => handleColumnClick("cod_prod_cliente", item.cod_prod_cliente)}>{item.cod_prod_cliente || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground text-[11px] px-2 py-1 whitespace-nowrap max-w-[200px] truncate cursor-pointer hover:text-primary" onClick={() => handleColumnClick("descricao", item.descricao)}>{item.descricao || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground text-[11px] px-2 py-1 whitespace-nowrap cursor-pointer hover:text-primary" onClick={() => handleColumnClick("nm_sub_grupo", item.nm_sub_grupo)}>{item.nm_sub_grupo || "—"}</TableCell>
-                  <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{parseInt(item.m3_total || "0").toLocaleString()}</TableCell>
-                  <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(parseFloat(item.vl_total || "0"))}</TableCell>
+              {paged.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground text-xs py-8">
+                    {items.length === 0 ? "Nenhum dado disponível" : "0 registros"}
+                  </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                paged.map((item, idx) => (
+                  <TableRow key={idx} className="border-border hover:bg-muted/20">
+                    <TableCell className="text-primary text-[11px] px-2 py-1 whitespace-nowrap cursor-pointer hover:underline" onClick={() => handleColumnClick("nr_pedido", item.nr_pedido)}>{item.nr_pedido || "—"}</TableCell>
+                    <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap cursor-pointer hover:underline" onClick={() => handleColumnClick("cod_prod_cliente", item.cod_prod_cliente)}>{item.cod_prod_cliente || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground text-[11px] px-2 py-1 whitespace-nowrap max-w-[200px] truncate cursor-pointer hover:text-primary" onClick={() => handleColumnClick("descricao", item.descricao)}>{item.descricao || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground text-[11px] px-2 py-1 whitespace-nowrap cursor-pointer hover:text-primary" onClick={() => handleColumnClick("nm_sub_grupo", item.nm_sub_grupo)}>{item.nm_sub_grupo || "—"}</TableCell>
+                    <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{parseInt(item.m3_total || "0").toLocaleString()}</TableCell>
+                    <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(parseFloat(item.vl_total || "0"))}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>

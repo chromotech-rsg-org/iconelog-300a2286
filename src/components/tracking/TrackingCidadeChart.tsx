@@ -20,7 +20,7 @@ export const TrackingCidadeChart = ({ data, onCidadeClick, selectedCidade }: Pro
   const chartHeight = Math.max(chartData.length * barHeight, 100);
 
   return (
-    <Card className={`bg-card border-border transition-all ${selectedCidade ? "ring-1 ring-primary" : ""}`}>
+    <Card className={`bg-card border-border transition-all h-full flex flex-col ${selectedCidade ? "ring-1 ring-primary" : ""}`}>
       <CardHeader className="pb-1">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-foreground">Entregas por Cidade</CardTitle>
@@ -36,7 +36,7 @@ export const TrackingCidadeChart = ({ data, onCidadeClick, selectedCidade }: Pro
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-2">
+      <CardContent className="p-2 flex-1 min-h-0">
         <style>{`
           .cidade-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
           .cidade-scroll::-webkit-scrollbar-track { background: hsl(0, 0%, 12%); border-radius: 3px; }
@@ -44,7 +44,7 @@ export const TrackingCidadeChart = ({ data, onCidadeClick, selectedCidade }: Pro
           .cidade-scroll::-webkit-scrollbar-thumb:hover { background: hsl(0, 0%, 45%); }
           .cidade-scroll { overflow-y: scroll !important; }
         `}</style>
-        <div className="cidade-scroll" style={{ height: 350, overflowY: "scroll" }}>
+        <div className="cidade-scroll h-full" style={{ overflowY: "scroll" }}>
           <div style={{ height: chartHeight, minHeight: 100 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
