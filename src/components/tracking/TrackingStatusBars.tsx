@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface Props {
   finalizado: number;
@@ -9,32 +8,40 @@ interface Props {
 }
 
 export const TrackingStatusBars = ({ finalizado, transito, onStatusClick, selectedStatus }: Props) => {
-  const data = [
-    { name: "FINALIZADO", value: finalizado },
-    { name: "TRÂNSITO", value: transito },
+  const total = finalizado + transito;
+  const percFinalizado = total > 0 ? (finalizado / total) * 100 : 0;
+  const percTransito = total > 0 ? (transito / total) * 100 : 0;
+
+  const items = [
+    { name: "FINALIZADO", value: finalizado, perc: percFinalizado, color: "bg-green-500" },
+    { name: "TRÂNSITO", value: transito, perc: percTransito, color: "bg-blue-500" },
   ];
-  const colors = ["hsl(142, 76%, 36%)", "hsl(217, 91%, 60%)"];
 
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-1">
         <CardTitle className="text-sm font-medium text-foreground">Status Pedidos</CardTitle>
       </CardHeader>
-      <CardContent className="h-[120px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" onClick={(d) => {
-            if (d?.activePayload?.[0]) onStatusClick(d.activePayload[0].payload.name);
-          }}>
-            <XAxis type="number" stroke="hsl(0, 0%, 60%)" fontSize={10} hide />
-            <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={10} width={80} />
-            <Tooltip contentStyle={{ backgroundColor: "hsl(0, 0%, 6%)", border: "1px solid hsl(0, 0%, 15%)" }} />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]} cursor="pointer" label={{ position: "right", fill: "hsl(0, 0%, 95%)", fontSize: 11 }}>
-              {data.map((entry, i) => (
-                <Cell key={i} fill={colors[i]} opacity={selectedStatus && selectedStatus !== entry.name ? 0.3 : 1} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      <CardContent className="p-3 space-y-2">
+        {items.map((item) => {
+          const isSelected = selectedStatus === item.name;
+          const dimmed = selectedStatus && !isSelected;
+          return (
+            <div
+              key={item.name}
+              className={`cursor-pointer transition-all rounded p-1.5 hover:bg-muted/20 ${isSelected ? "ring-1 ring-primary" : ""} ${dimmed ? "opacity-30" : ""}`}
+              onClick={() => onStatusClick(item.name)}
+            >
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-muted-foreground">{item.name}</span>
+                <span className="text-foreground font-semibold">{item.value.toLocaleString()}</span>
+              </div>
+              <div className="w-full h-2 bg-muted/30 rounded-full overflow-hidden">
+                <div className={`h-full ${item.color} rounded-full transition-all`} style={{ width: `${item.perc}%` }} />
+              </div>
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );

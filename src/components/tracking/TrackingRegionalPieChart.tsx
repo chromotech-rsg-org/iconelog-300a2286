@@ -10,30 +10,32 @@ interface Props {
 }
 
 export const TrackingRegionalPieChart = ({ data, onRegionalClick, selectedRegional }: Props) => {
+  const total = data.reduce((s, d) => s + d.value, 0);
+
   return (
-    <Card className={`bg-card border-border cursor-pointer transition-all ${selectedRegional ? "ring-2 ring-purple-500" : ""}`}>
+    <Card className="bg-card border-border">
       <CardHeader className="pb-1">
-        <CardTitle className="text-sm font-medium text-foreground">Pedidos por Região</CardTitle>
+        <CardTitle className="text-sm font-medium text-foreground">Pedido | Região</CardTitle>
       </CardHeader>
-      <CardContent className="h-[200px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              outerRadius={65}
-              dataKey="value"
-              onClick={(d) => d?.name && onRegionalClick(d.name)}
+      <CardContent className="p-2 space-y-1">
+        {data.map((item, i) => {
+          const perc = total > 0 ? ((item.value / total) * 100).toFixed(1) : "0";
+          const isSelected = selectedRegional === item.name;
+          const dimmed = selectedRegional && !isSelected;
+          return (
+            <div
+              key={item.name}
+              className={`flex items-center justify-between text-xs cursor-pointer rounded px-2 py-1 transition-all hover:bg-muted/30 ${isSelected ? "bg-primary/10 ring-1 ring-primary" : ""} ${dimmed ? "opacity-30" : ""}`}
+              onClick={() => onRegionalClick(item.name)}
             >
-              {data.map((entry, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} opacity={selectedRegional && selectedRegional !== entry.name ? 0.3 : 1} />
-              ))}
-            </Pie>
-            <Tooltip contentStyle={{ backgroundColor: "hsl(0, 0%, 6%)", border: "1px solid hsl(0, 0%, 15%)" }} />
-            <Legend wrapperStyle={{ fontSize: 10, color: "hsl(0, 0%, 60%)" }} />
-          </PieChart>
-        </ResponsiveContainer>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                <span className="text-muted-foreground">{item.name}</span>
+              </div>
+              <span className="text-muted-foreground">{perc}%</span>
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );

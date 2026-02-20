@@ -1,7 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
-
-const COLORS = ["hsl(45, 100%, 50%)", "hsl(217, 91%, 60%)", "hsl(25, 95%, 53%)", "hsl(142, 76%, 36%)", "hsl(280, 65%, 60%)", "hsl(0, 84%, 60%)"];
 
 interface Props {
   data: { name: string; value: number }[];
@@ -10,31 +7,31 @@ interface Props {
 }
 
 export const TrackingModalidadeChart = ({ data, onModalidadeClick, selectedModalidade }: Props) => {
+  const total = data.reduce((s, d) => s + d.value, 0);
+
   return (
-    <Card className={`bg-card border-border cursor-pointer transition-all ${selectedModalidade ? "ring-2 ring-blue-500" : ""}`}>
+    <Card className="bg-card border-border">
       <CardHeader className="pb-1">
-        <CardTitle className="text-sm font-medium text-foreground">Pedidos por Modalidade</CardTitle>
+        <CardTitle className="text-sm font-medium text-foreground">Pedidos | Modalidade</CardTitle>
       </CardHeader>
-      <CardContent className="h-[200px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              innerRadius={40}
-              outerRadius={65}
-              dataKey="value"
-              onClick={(d) => d?.name && onModalidadeClick(d.name)}
+      <CardContent className="p-3 space-y-1.5">
+        {data.map((item) => {
+          const isSelected = selectedModalidade === item.name;
+          const dimmed = selectedModalidade && !isSelected;
+          return (
+            <div
+              key={item.name}
+              className={`flex items-center justify-between text-xs cursor-pointer rounded px-2 py-1.5 transition-all hover:bg-muted/30 ${isSelected ? "bg-primary/10 ring-1 ring-primary" : ""} ${dimmed ? "opacity-30" : ""}`}
+              onClick={() => onModalidadeClick(item.name)}
             >
-              {data.map((entry, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} opacity={selectedModalidade && selectedModalidade !== entry.name ? 0.3 : 1} />
-              ))}
-            </Pie>
-            <Tooltip contentStyle={{ backgroundColor: "hsl(0, 0%, 6%)", border: "1px solid hsl(0, 0%, 15%)" }} />
-            <Legend wrapperStyle={{ fontSize: 10, color: "hsl(0, 0%, 60%)" }} />
-          </PieChart>
-        </ResponsiveContainer>
+              <span className="text-muted-foreground truncate mr-2">{item.name}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-foreground font-semibold">{item.value.toLocaleString()}</span>
+                <span className="text-muted-foreground text-[10px]">MIL</span>
+              </div>
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );
