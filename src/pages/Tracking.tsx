@@ -430,11 +430,11 @@ const Tracking = () => {
         ) : (
           <>
             {/* ===== BLOCO 1: KPIs + Performance + Charts + Pedidos Table ===== */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3" style={{ minHeight: 520 }}>
               {/* Left: KPIs row + Charts row */}
-              <div className="lg:col-span-8 flex flex-col gap-3">
-                {/* Row 1: KPIs (2/3) + Performance (1/3) — same height as charts below */}
-                <div className="grid grid-cols-3 gap-3">
+              <div className="lg:col-span-8 flex flex-col gap-3 h-full">
+                {/* Row 1: KPIs (2/3) + Performance (1/3) */}
+                <div className="grid grid-cols-3 gap-3" style={{ height: 160 }}>
                   <div className="col-span-2">
                     <TrackingKPICards kpis={chartData.kpis} onPrazoClick={handlePrazoClick} selectedPrazo={selectedPrazo} />
                   </div>
@@ -448,8 +448,8 @@ const Tracking = () => {
                     />
                   </div>
                 </div>
-                {/* Row 2: Status + Tipo Serviço + Modalidade */}
-                <div className="grid grid-cols-3 gap-3">
+                {/* Row 2: Status + Tipo Serviço + Modalidade — fills remaining height */}
+                <div className="grid grid-cols-3 gap-3 flex-1 min-h-0">
                   <TrackingStatusBars
                     finalizado={chartData.kpis.finalizado}
                     transito={chartData.kpis.transito}
@@ -461,35 +461,35 @@ const Tracking = () => {
                 </div>
               </div>
 
-              {/* Right: Pedidos Consolidados table — spans full height */}
-              <div className="lg:col-span-4 lg:row-span-2">
+              {/* Right: Pedidos Consolidados table — spans full height of block 1 */}
+              <div className="lg:col-span-4 h-full" style={{ minHeight: 520 }}>
                 <TrackingPedidosTable orders={filteredOrders} onCidadeClick={handleCidadeClick} onStatusClick={handleStatusClick} />
               </div>
             </div>
 
             {/* ===== BLOCO 2: Cidades + Regional/Mapa + Itens Table ===== */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start mt-3">
-              {/* Left area same as block 1 left (col-span-8), inner grid-cols-3 */}
-              <div className="lg:col-span-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 mt-3" style={{ height: 520 }}>
+              {/* Left: Cidades (2/3) + Region/Map stacked (1/3) */}
+              <div className="lg:col-span-8 h-full">
                 <div className="grid grid-cols-3 gap-3 h-full">
-                  {/* Entregas por Cidade — same width as Status + Tipo (2/3) */}
-                  <div className="col-span-2">
+                  {/* Entregas por Cidade — 2/3 width, full height */}
+                  <div className="col-span-2 h-full">
                     <TrackingCidadeChart data={chartData.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
                   </div>
-                  {/* Região + Estado stacked — same width as Modalidade (1/3), half height each */}
-                  <div className="col-span-1 flex flex-col gap-3">
-                    <div className="flex-1 min-h-0">
+                  {/* Região + Mapa stacked — 1/3 width, each exactly half */}
+                  <div className="col-span-1 flex flex-col gap-3 h-full">
+                    <div style={{ height: "calc(50% - 6px)" }}>
                       <TrackingRegionalPieChart data={chartData.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
                     </div>
-                    <div className="flex-1 min-h-0">
+                    <div style={{ height: "calc(50% - 6px)" }}>
                       <TrackingBrazilMap estadoData={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Itens dos Pedidos table — same height as Entregas por Cidade */}
-              <div className="lg:col-span-4">
+              {/* Itens dos Pedidos table — same height as block */}
+              <div className="lg:col-span-4 h-full">
                 <TrackingItensTable items={filteredProdutos} />
               </div>
             </div>

@@ -53,7 +53,7 @@ export const TrackingPedidosTable = ({ orders, onCidadeClick, onStatusClick }: P
   };
 
   return (
-    <Card className="bg-card border-border flex flex-col">
+    <Card className="bg-card border-border flex flex-col h-full">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-medium text-foreground">
@@ -96,7 +96,7 @@ export const TrackingPedidosTable = ({ orders, onCidadeClick, onStatusClick }: P
           .tracking-pedidos-scroll::-webkit-scrollbar-thumb:hover { background: hsl(0, 0%, 50%); }
           .tracking-pedidos-scroll { overflow: scroll !important; }
         `}</style>
-        <div className="tracking-pedidos-scroll flex-1" style={{ overflow: "scroll", maxHeight: 400 }}>
+        <div className="tracking-pedidos-scroll flex-1" style={{ overflow: "scroll" }}>
           <Table className="min-w-[1200px]">
             <TableHeader>
               <TableRow className="border-border bg-muted/20 sticky top-0 z-10">
