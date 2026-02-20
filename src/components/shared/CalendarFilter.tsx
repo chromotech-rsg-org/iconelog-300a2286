@@ -21,11 +21,19 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
   const [open, setOpen] = useState(false);
   const clickCountRef = useRef(0);
 
-  const isRange = selectedDateRange?.from && selectedDateRange?.to &&
-    selectedDateRange.from.toDateString() !== selectedDateRange.to.toDateString();
+  const hasFrom = !!selectedDateRange?.from;
+  const isRange = hasFrom && selectedDateRange?.to &&
+    selectedDateRange.from!.toDateString() !== selectedDateRange.to.toDateString();
 
   const getLabel = () => {
-    if (!selectedDateRange?.from) return <span className="text-muted-foreground">Período</span>;
+    if (!hasFrom) return <span className="text-muted-foreground">Período</span>;
+    if (!selectedDateRange?.to) {
+      return (
+        <>
+          {format(selectedDateRange!.from!, "dd/MM/yyyy", { locale: ptBR })} - <span className="text-muted-foreground">...</span>
+        </>
+      );
+    }
     if (isRange) {
       return (
         <>
@@ -33,12 +41,11 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
         </>
       );
     }
-    return format(selectedDateRange.from, "dd/MM/yyyy", { locale: ptBR });
+    return format(selectedDateRange!.from!, "dd/MM/yyyy", { locale: ptBR });
   };
 
   const handleRangeSelect = (range: DateRange | undefined) => {
     if (!range || !range.from) {
-      // Reset click counter when clearing
       clickCountRef.current = 0;
       onDateRangeChange({ from: undefined, to: undefined });
       return;
@@ -47,16 +54,13 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
     clickCountRef.current++;
 
     if (clickCountRef.current === 1) {
-      // First click: select single day immediately
-      onDateRangeChange({ from: range.from, to: range.from });
+      // First click: set start date, keep "to" undefined so picker knows range is in progress
+      onDateRangeChange({ from: range.from, to: undefined });
     } else {
-      // Second click: either same day or range end
+      // Second click: complete the range
       clickCountRef.current = 0;
-      if (range.to) {
-        onDateRangeChange({ from: range.from, to: range.to });
-      } else {
-        onDateRangeChange({ from: range.from, to: range.from });
-      }
+      const to = range.to || range.from;
+      onDateRangeChange({ from: range.from, to });
     }
   };
 
@@ -82,7 +86,7 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
         >
           <CalendarIcon className="h-4 w-4" />
           {getLabel()}
-          {selectedDateRange?.from && (
+          {hasFrom && (
             <X
               className="h-3.5 w-3.5 ml-1 opacity-60 hover:opacity-100 cursor-pointer"
               onClick={handleClear}
