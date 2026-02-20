@@ -198,13 +198,21 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       });
     }
 
-    // Fetch FOLLOWUP month by month and merge
+    // Fetch FOLLOWUP month by month and merge, tagging each record with source month/year
     setRefreshStage("requesting_followup");
     let allFollowup: FollowupItem[] = [];
     for (let i = 0; i < chunks.length; i++) {
       setRefreshRecordCount(allFollowup.length);
       const result = await callMainApi("FOLLOWUP", codCli, chunks[i], pageId);
-      if (result) allFollowup = allFollowup.concat(result);
+      if (result) {
+        const monthIndex = i + 1; // 1-based month
+        const tagged = result.map((item: FollowupItem) => ({
+          ...item,
+          _fetch_month: monthIndex,
+          _fetch_year: currentYear,
+        }));
+        allFollowup = allFollowup.concat(tagged);
+      }
     }
 
     if (allFollowup.length > 0) {
@@ -376,11 +384,19 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   }, [produtosData]);
 
   const getEntregasData = useCallback((months?: number[], years?: number[]) => {
-    // Filter by month/year using ALL available date fields so in-transit records aren't lost
+    // Use _fetch_month/_fetch_year tags when available for accurate filtering
+    // This matches the API's internal date logic rather than parsing record date fields
     const filtered = (months?.length || years?.length) 
       ? followupData.filter(item => {
           const ms = months || [];
           const ys = years || [];
+          // Prefer fetch tags if available
+          if (item._fetch_month != null && item._fetch_year != null) {
+            const matchYear = ys.length === 0 || ys.includes(item._fetch_year);
+            const matchMonth = ms.length === 0 || ms.includes(item._fetch_month);
+            return matchYear && matchMonth;
+          }
+          // Fallback to date field matching for legacy cached data
           return dateMatchesMonthYear(item.dt_expedicao, ms, ys) ||
                  dateMatchesMonthYear(item.dt_baixa_minuta, ms, ys) ||
                  dateMatchesMonthYear(item.dt_previsao, ms, ys) ||
