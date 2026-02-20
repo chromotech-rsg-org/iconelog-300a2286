@@ -429,42 +429,61 @@ const Tracking = () => {
           </div>
         ) : (
           <>
-            {/* KPI Cards - full width row */}
-            <TrackingKPICards kpis={chartData.kpis} onPrazoClick={handlePrazoClick} selectedPrazo={selectedPrazo} />
-
-            {/* Main layout matching Power BI reference */}
+            {/* ===== BLOCO 1: KPIs + Performance + Charts + Pedidos Table ===== */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-              {/* LEFT COLUMN: Status, Tipo Serviço, Performance, Modalidade */}
-              <div className="lg:col-span-3 flex flex-col gap-3">
-                <TrackingStatusBars
-                  finalizado={chartData.kpis.finalizado}
-                  transito={chartData.kpis.transito}
-                  onStatusClick={handleStatusClick}
-                  selectedStatus={selectedStatus}
-                />
-                <TrackingTipoServicoChart data={chartData.tipoServico} onTipoClick={handleTipoClick} selectedTipo={selectedTipoServico} />
-                <TrackingGaugeChart
-                  percNoPrazo={chartData.kpis.percNoPrazo}
-                  noPrazo={chartData.kpis.noPrazo}
-                  foraPrazo={chartData.kpis.foraPrazo}
-                  onPrazoClick={handlePrazoClick}
-                  selectedPrazo={selectedPrazo}
-                />
-                <TrackingModalidadeChart data={chartData.modalidade} onModalidadeClick={handleModalidadeClick} selectedModalidade={selectedModalidade} />
-              </div>
+              {/* KPIs (5 cards) + Performance gauge */}
+              <div className="lg:col-span-8">
+                <div className="grid grid-cols-12 gap-2 items-stretch">
+                  {/* Quantidade de Pedidos */}
+                  <div className="col-span-4">
+                    <TrackingKPICards kpis={chartData.kpis} onPrazoClick={handlePrazoClick} selectedPrazo={selectedPrazo} />
+                  </div>
+                  {/* Performance gauge */}
+                  <div className="col-span-8">
+                    <TrackingGaugeChart
+                      percNoPrazo={chartData.kpis.percNoPrazo}
+                      noPrazo={chartData.kpis.noPrazo}
+                      foraPrazo={chartData.kpis.foraPrazo}
+                      onPrazoClick={handlePrazoClick}
+                      selectedPrazo={selectedPrazo}
+                    />
+                  </div>
+                </div>
 
-              {/* CENTER COLUMN: Entregas por Cidade, Pedido|Região + Mapa */}
-              <div className="lg:col-span-5 flex flex-col gap-3">
-                <TrackingCidadeChart data={chartData.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
-                <div className="grid grid-cols-2 gap-3">
-                  <TrackingRegionalPieChart data={chartData.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
-                  <TrackingBrazilMap estadoData={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
+                {/* Status + Tipo Serviço + Modalidade row */}
+                <div className="grid grid-cols-3 gap-3 mt-3">
+                  <TrackingStatusBars
+                    finalizado={chartData.kpis.finalizado}
+                    transito={chartData.kpis.transito}
+                    onStatusClick={handleStatusClick}
+                    selectedStatus={selectedStatus}
+                  />
+                  <TrackingTipoServicoChart data={chartData.tipoServico} onTipoClick={handleTipoClick} selectedTipo={selectedTipoServico} />
+                  <TrackingModalidadeChart data={chartData.modalidade} onModalidadeClick={handleModalidadeClick} selectedModalidade={selectedModalidade} />
                 </div>
               </div>
 
-              {/* RIGHT COLUMN: Pedidos table + Itens table (same height) */}
-              <div className="lg:col-span-4 flex flex-col gap-3">
+              {/* Pedidos Consolidados table */}
+              <div className="lg:col-span-4">
                 <TrackingPedidosTable orders={filteredOrders} onCidadeClick={handleCidadeClick} onStatusClick={handleStatusClick} />
+              </div>
+            </div>
+
+            {/* ===== BLOCO 2: Cidades + Regional Pie + Mapa + Itens Table ===== */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start mt-3">
+              {/* Entregas por Cidade */}
+              <div className="lg:col-span-3">
+                <TrackingCidadeChart data={chartData.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
+              </div>
+
+              {/* Regional Pie + Brazil Map */}
+              <div className="lg:col-span-5 flex flex-col gap-3">
+                <TrackingRegionalPieChart data={chartData.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
+                <TrackingBrazilMap estadoData={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
+              </div>
+
+              {/* Itens dos Pedidos table */}
+              <div className="lg:col-span-4">
                 <TrackingItensTable items={filteredProdutos} />
               </div>
             </div>
