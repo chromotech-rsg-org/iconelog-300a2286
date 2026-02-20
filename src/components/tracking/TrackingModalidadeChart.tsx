@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface Props {
   data: { name: string; value: number }[];
@@ -7,31 +8,50 @@ interface Props {
 }
 
 export const TrackingModalidadeChart = ({ data, onModalidadeClick, selectedModalidade }: Props) => {
-  const total = data.reduce((s, d) => s + d.value, 0);
+  const chartHeight = Math.max(data.length * 40, 80);
 
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-1">
         <CardTitle className="text-sm font-medium text-foreground">Pedidos | Modalidade</CardTitle>
       </CardHeader>
-      <CardContent className="p-3 space-y-1.5">
-        {data.map((item) => {
-          const isSelected = selectedModalidade === item.name;
-          const dimmed = selectedModalidade && !isSelected;
-          return (
-            <div
-              key={item.name}
-              className={`flex items-center justify-between text-xs cursor-pointer rounded px-2 py-1.5 transition-all hover:bg-muted/30 ${isSelected ? "bg-primary/10 ring-1 ring-primary" : ""} ${dimmed ? "opacity-30" : ""}`}
-              onClick={() => onModalidadeClick(item.name)}
+      <CardContent className="p-3">
+        <div style={{ height: chartHeight }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={data}
+              layout="vertical"
+              margin={{ top: 0, right: 40, left: 5, bottom: 0 }}
+              barSize={16}
+              onClick={(d) => {
+                if (d?.activePayload?.[0]) onModalidadeClick(d.activePayload[0].payload.name);
+              }}
             >
-              <span className="text-muted-foreground truncate mr-2">{item.name}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-foreground font-semibold">{item.value.toLocaleString()}</span>
-                <span className="text-muted-foreground text-[10px]">MIL</span>
-              </div>
-            </div>
-          );
-        })}
+              <XAxis type="number" hide />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={110}
+                tick={{ fill: "hsl(0, 0%, 65%)", fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{ backgroundColor: "hsl(0, 0%, 6%)", border: "1px solid hsl(0, 0%, 15%)", fontSize: 11 }}
+                formatter={(value: number) => [value.toLocaleString(), "Pedidos"]}
+              />
+              <Bar dataKey="value" name="Pedidos" radius={[0, 4, 4, 0]} cursor="pointer" label={{ position: "right", fill: "hsl(0, 0%, 75%)", fontSize: 10 }}>
+                {data.map((entry) => (
+                  <Cell
+                    key={entry.name}
+                    fill={selectedModalidade && selectedModalidade !== entry.name ? "hsl(0, 0%, 25%)" : "hsl(var(--primary))"}
+                    opacity={selectedModalidade && selectedModalidade !== entry.name ? 0.4 : 1}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );
