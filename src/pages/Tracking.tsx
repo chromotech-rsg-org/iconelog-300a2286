@@ -191,9 +191,26 @@ const Tracking = () => {
       kpis: { total, noPrazo, foraPrazo, percNoPrazo, percForaPrazo, finalizado, transito },
       tipoServico: Array.from(tipoServicoMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
       modalidade: Array.from(modalidadeMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
-      cidade: Array.from(cidadeStatusMap.entries()).map(([name, v]) => ({ name, ...v, total: v.finalizado + v.transito })).sort((a, b) => b.total - a.total).slice(0, 15),
+      cidade: Array.from(cidadeStatusMap.entries()).map(([name, v]) => ({ name, ...v, total: v.finalizado + v.transito })).sort((a, b) => b.total - a.total),
       estado: Array.from(estadoMap.entries()).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.value - a.value),
-      regional: Array.from(regionalMap.entries()).map(([name, value]) => ({ name, value })).filter(r => r.name !== "Sem Regional").sort((a, b) => b.value - a.value),
+      regional: (() => {
+        // Group by macro region
+        const UF_TO_MACRO: Record<string, string> = {
+          SP: "SUDESTE", RJ: "SUDESTE", MG: "SUDESTE", ES: "SUDESTE",
+          BA: "NORDESTE", SE: "NORDESTE", AL: "NORDESTE", PE: "NORDESTE", PB: "NORDESTE", RN: "NORDESTE", CE: "NORDESTE", PI: "NORDESTE", MA: "NORDESTE",
+          PR: "SUL", SC: "SUL", RS: "SUL",
+          AM: "NORTE", PA: "NORTE", AC: "NORTE", RO: "NORTE", RR: "NORTE", AP: "NORTE", TO: "NORTE",
+          GO: "CENTRO-OESTE", MT: "CENTRO-OESTE", MS: "CENTRO-OESTE", DF: "CENTRO-OESTE",
+        };
+        const macroMap = new Map<string, number>();
+        // Re-iterate filtered orders to group by UF -> macro region
+        filteredOrders.forEach(item => {
+          const uf = (item.ds_uf_DES || "").toUpperCase().trim();
+          const macro = UF_TO_MACRO[uf] || "OUTROS";
+          macroMap.set(macro, (macroMap.get(macro) || 0) + 1);
+        });
+        return Array.from(macroMap.entries()).map(([name, value]) => ({ name, value })).filter(r => r.name !== "OUTROS").sort((a, b) => b.value - a.value);
+      })(),
     };
   }, [filteredOrders, cityMappings]);
 
@@ -431,9 +448,9 @@ const Tracking = () => {
             <TrackingKPICards kpis={chartData.kpis} onPrazoClick={handlePrazoClick} selectedPrazo={selectedPrazo} />
 
             {/* Main 3-column layout matching Power BI */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
               {/* LEFT COLUMN: Status, Performance, Modalidade, Tipo Serviço */}
-              <div className="lg:col-span-3 space-y-3">
+              <div className="lg:col-span-3 flex flex-col gap-3">
                 <TrackingStatusBars
                   finalizado={chartData.kpis.finalizado}
                   transito={chartData.kpis.transito}
@@ -451,8 +468,8 @@ const Tracking = () => {
                 <TrackingTipoServicoChart data={chartData.tipoServico} onTipoClick={handleTipoClick} selectedTipo={selectedTipoServico} />
               </div>
 
-              {/* CENTER COLUMN: Região, Estado chart, Mapa, Entregas por Cidade */}
-              <div className="lg:col-span-5 space-y-3">
+              {/* CENTER COLUMN: Região + Mapa side by side, Estado chart, Entregas por Cidade */}
+              <div className="lg:col-span-5 flex flex-col gap-3">
                 <div className="grid grid-cols-2 gap-3">
                   <TrackingRegionalPieChart data={chartData.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
                   <TrackingBrazilMap estadoData={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
@@ -462,7 +479,7 @@ const Tracking = () => {
               </div>
 
               {/* RIGHT COLUMN: Pedidos table + Itens table */}
-              <div className="lg:col-span-4 space-y-3">
+              <div className="lg:col-span-4 flex flex-col gap-3">
                 <TrackingPedidosTable orders={filteredOrders} onCidadeClick={handleCidadeClick} onStatusClick={handleStatusClick} />
                 <TrackingItensTable items={filteredProdutos} />
               </div>
