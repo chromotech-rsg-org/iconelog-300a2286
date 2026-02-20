@@ -143,8 +143,20 @@ const Index = () => {
       setSelectedRegions(prev => prev.includes(region) ? prev.filter(r => r !== region) : [...prev, region]);
       setSelectedDay(prev => prev === day ? null : day);
       setSelectedMetric(prev => prev === metric ? null : metric);
+
+      // Find the dateStr from daily data to set calendar to that day
+      const regionData = aggregatedDailyData.find(r => r.region === region);
+      const dayEntry = regionData?.data.find(d => d.day === day);
+      if (dayEntry?.dateStr) {
+        const parts = dayEntry.dateStr.split("-");
+        const clickedDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        clickedDate.setHours(0, 0, 0, 0);
+        setSelectedDateRange({ from: clickedDate, to: clickedDate });
+        setSelectedMonths([]);
+        setSelectedYears([]);
+      }
     });
-  }, []);
+  }, [aggregatedDailyData]);
 
   const clearDayFilter = useCallback(() => startFilterTransition(() => setSelectedDay(null)), []);
   const clearMetricFilter = useCallback(() => startFilterTransition(() => setSelectedMetric(null)), []);
