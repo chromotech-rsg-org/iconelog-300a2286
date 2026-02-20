@@ -469,20 +469,20 @@ const Tracking = () => {
 
             {/* ===== BLOCO 2: Cidades + Regional/Mapa + Itens Table ===== */}
             {/* Same height as Block 1: use items-stretch so all columns match */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch mt-3" style={{ height: 190 }}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 mt-3" style={{ height: 190 }}>
               {/* Left area (col-span-8), inner grid-cols-3 */}
-              <div className="lg:col-span-8">
+              <div className="lg:col-span-8 h-full overflow-hidden">
                 <div className="grid grid-cols-3 gap-3 h-full">
                   {/* Entregas por Cidade — 2/3 width */}
-                  <div className="col-span-2 h-full">
+                  <div className="col-span-2 h-full overflow-hidden">
                     <TrackingCidadeChart data={chartData.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
                   </div>
                   {/* Região + Mapa stacked — 1/3 width, half height each */}
-                  <div className="col-span-1 flex flex-col gap-3 h-full">
-                    <div className="h-1/2 min-h-0">
+                  <div className="col-span-1 flex flex-col gap-3 h-full overflow-hidden">
+                    <div className="h-1/2 min-h-0 overflow-hidden">
                       <TrackingRegionalPieChart data={chartData.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
                     </div>
-                    <div className="h-1/2 min-h-0">
+                    <div className="h-1/2 min-h-0 overflow-hidden">
                       <TrackingBrazilMap estadoData={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
                     </div>
                   </div>
@@ -490,7 +490,7 @@ const Tracking = () => {
               </div>
 
               {/* Itens dos Pedidos table — same height */}
-              <div className="lg:col-span-4 h-full">
+              <div className="lg:col-span-4 h-full overflow-hidden">
                 <TrackingItensTable items={filteredProdutos} />
               </div>
             </div>
