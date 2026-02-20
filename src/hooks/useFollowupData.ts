@@ -25,11 +25,9 @@ const resolveRegional = (cidade: string, mappings: CityRegionalMapping[]): strin
 
 const parseDateStr = (dt: any): { month: number; year: number; date: Date | null } | null => {
   if (!dt) return null;
-  const str = typeof dt === "string" ? dt : String(dt);
-  const parts = str.split(/[\/\-]/);
-  if (parts.length < 2) return null;
-  const d = safeParseDate(str);
-  return { year: parseInt(parts[0], 10), month: parseInt(parts[1], 10), date: d };
+  const d = safeParseDate(String(dt));
+  if (!d) return null;
+  return { year: d.getFullYear(), month: d.getMonth() + 1, date: d };
 };
 
 const dateMatchesMonthYear = (dt: any, months: number[], years: number[]): boolean => {
@@ -50,26 +48,46 @@ const filterByMonthYear = (items: FollowupItem[], months: number[], years: numbe
 
 const safeParseDate = (dt: string): Date | null => {
   if (!dt) return null;
-  const normalized = dt.replace(/\//g, "-");
-  const d = new Date(normalized);
-  return isNaN(d.getTime()) ? null : d;
+  // Remove time portion if present (e.g. "2026-02-09 14:30:00")
+  const dateOnly = dt.trim().split(/[\sT]/)[0];
+  const parts = dateOnly.split(/[\/\-]/);
+  if (parts.length < 3) return null;
+
+  let year: number, month: number, day: number;
+  if (parts[0].length === 4) {
+    // YYYY-MM-DD or YYYY/MM/DD
+    year = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10);
+    day = parseInt(parts[2], 10);
+  } else {
+    // DD/MM/YYYY or DD-MM-YYYY
+    day = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10);
+    year = parseInt(parts[2], 10);
+  }
+
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+  // Use local date constructor to avoid timezone shifts
+  const d = new Date(year, month - 1, day);
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+  return d;
 };
 
 const isDateInDateRange = (dt: any, fromDate: Date, toDate: Date): boolean => {
   if (!dt) return false;
   const parsed = safeParseDate(String(dt));
   if (!parsed) return false;
-  return parsed.getTime() >= fromDate.getTime() && parsed.getTime() <= toDate.getTime();
+  // Compare date-only (start of day) to avoid time issues
+  const startOfDay = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  const fromStart = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+  const toStart = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+  return startOfDay >= fromStart && startOfDay <= toStart;
 };
 
 const filterByDateRange = (items: FollowupItem[], from: Date, to: Date): FollowupItem[] => {
-  const fromDate = new Date(from);
-  fromDate.setHours(0, 0, 0, 0);
-  const toDate = new Date(to);
-  toDate.setHours(23, 59, 59, 999);
   return items.filter(item => {
-    return isDateInDateRange(item.dt_expedicao, fromDate, toDate) ||
-           isDateInDateRange(item.dt_baixa_minuta, fromDate, toDate);
+    return isDateInDateRange(item.dt_expedicao, from, to) ||
+           isDateInDateRange(item.dt_baixa_minuta, from, to);
   });
 };
 
@@ -240,12 +258,9 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       : filterByMonthYear(followupData, months, years);
     const regionMap = new Map<string, { expedidas: number; baixadas: number }>();
 
-    // Build date range boundaries for independent field checking
     const hasDateRange = !!dateRange?.from;
-    const fromDate = hasDateRange ? new Date(dateRange.from!) : null;
-    const toDate = hasDateRange ? new Date(dateRange.to || dateRange.from!) : null;
-    if (fromDate) fromDate.setHours(0, 0, 0, 0);
-    if (toDate) toDate.setHours(23, 59, 59, 999);
+    const fromDate = hasDateRange ? dateRange.from! : null;
+    const toDate = hasDateRange ? (dateRange.to || dateRange.from!) : null;
 
     filtered.forEach(item => {
       const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
@@ -278,10 +293,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       : filterByMonthYear(followupData, months, years);
     
     const hasDateRange = dateRange?.from;
-    const rangeFrom = hasDateRange ? new Date(dateRange.from!) : null;
-    const rangeTo = hasDateRange ? new Date(dateRange.to || dateRange.from!) : null;
-    if (rangeFrom) rangeFrom.setHours(0, 0, 0, 0);
-    if (rangeTo) rangeTo.setHours(23, 59, 59, 999);
+    const rangeFrom = hasDateRange ? dateRange.from! : null;
+    const rangeTo = hasDateRange ? (dateRange.to || dateRange.from!) : null;
 
     const regionDayMap = new Map<string, Map<string, { expedidas: number; baixadas: number }>>();
 
@@ -298,7 +311,10 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
 
     const isDateInRange = (d: Date): boolean => {
       if (!rangeFrom || !rangeTo) return true;
-      return d.getTime() >= rangeFrom.getTime() && d.getTime() <= rangeTo.getTime();
+      const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const fromStart = new Date(rangeFrom.getFullYear(), rangeFrom.getMonth(), rangeFrom.getDate());
+      const toStart = new Date(rangeTo.getFullYear(), rangeTo.getMonth(), rangeTo.getDate());
+      return dStart >= fromStart && dStart <= toStart;
     };
 
     const toDateKey = (d: Date): string => {
