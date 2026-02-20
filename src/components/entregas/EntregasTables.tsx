@@ -87,11 +87,11 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
             <Table>
               <TableHeader className="sticky top-0 bg-dashboard-accent z-10">
                 <TableRow className="border-none hover:bg-transparent">
-                  <TableHead className="text-dashboard-dark font-bold text-xs py-2">REGIONAL</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-xs py-2">UF</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-xs py-2 text-right">FINALIZADO</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-xs py-2 text-right">EM TRÂNSITO</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-xs py-2 text-right">TOTAL</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">REGIONAL</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">UF</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">FINALIZADO</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">EM TRÂNSITO</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">TOTAL</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -103,19 +103,19 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
                       className={`border-dashboard-border cursor-pointer hover:bg-dashboard-border/50 ${isSelected ? 'bg-dashboard-accent/10' : ''}`}
                       onClick={() => onRegionalClick?.(item.regional)}
                     >
-                      <TableCell className={`text-xs py-2 ${isSelected ? 'text-dashboard-accent font-medium' : 'text-foreground'}`}>
+                      <TableCell className={`text-sm py-2 ${isSelected ? 'text-dashboard-accent font-medium' : 'text-foreground'}`}>
                         {item.regional}
                       </TableCell>
-                      <TableCell className="text-xs py-2 text-muted-foreground">
+                      <TableCell className="text-sm py-2 text-muted-foreground">
                         {getUF(item.regional)}
                       </TableCell>
-                      <TableCell className="text-xs py-2 text-right text-foreground">
+                      <TableCell className="text-sm py-2 text-right text-foreground">
                         {formatNumber(item.entregaFinalizado)}
                       </TableCell>
-                      <TableCell className="text-xs py-2 text-right text-foreground">
+                      <TableCell className="text-sm py-2 text-right text-foreground">
                         {formatNumber(item.entregaEmTransito)}
                       </TableCell>
-                      <TableCell className="text-xs py-2 text-right font-medium text-foreground">
+                      <TableCell className="text-sm py-2 text-right font-medium text-foreground">
                         {formatNumber(item.entregaTotal)}
                       </TableCell>
                     </TableRow>
@@ -126,8 +126,8 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
           </ScrollArea>
           {/* Total Row */}
           <div className="flex items-center justify-between px-4 py-2 border-t border-dashboard-border bg-dashboard-card">
-            <span className="text-xs font-bold text-foreground">Total</span>
-            <div className="flex gap-8 text-xs">
+            <span className="text-sm font-bold text-foreground">Total</span>
+            <div className="flex gap-8 text-sm">
               <span className="font-bold text-foreground">{formatNumber(entregaTotals.finalizado)}</span>
               <span className="font-bold text-foreground">{formatNumber(entregaTotals.emTransito)}</span>
               <span className="font-bold text-dashboard-accent">{formatNumber(entregaTotals.total)}</span>
@@ -155,11 +155,11 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
             <Table>
               <TableHeader className="sticky top-0 bg-dashboard-accent z-10">
                 <TableRow className="border-none hover:bg-transparent">
-                  <TableHead className="text-dashboard-dark font-bold text-xs py-2">REGIONAL</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-xs py-2">UF</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-xs py-2 text-right">FINALIZADO</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-xs py-2 text-right">EM TRÂNSITO</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-xs py-2 text-right">TOTAL</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">REGIONAL</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">UF</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">FINALIZADO</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">EM TRÂNSITO</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">TOTAL</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -171,19 +171,19 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
                       className={`border-dashboard-border cursor-pointer hover:bg-dashboard-border/50 ${isSelected ? 'bg-dashboard-accent/10' : ''}`}
                       onClick={() => onRegionalClick?.(item.regional)}
                     >
-                      <TableCell className={`text-xs py-2 ${isSelected ? 'text-dashboard-accent font-medium' : 'text-foreground'}`}>
+                      <TableCell className={`text-sm py-2 ${isSelected ? 'text-dashboard-accent font-medium' : 'text-foreground'}`}>
                         {item.regional}
                       </TableCell>
-                      <TableCell className="text-xs py-2 text-muted-foreground">
+                      <TableCell className="text-sm py-2 text-muted-foreground">
                         {getUF(item.regional)}
                       </TableCell>
-                      <TableCell className="text-xs py-2 text-right text-foreground">
+                      <TableCell className="text-sm py-2 text-right text-foreground">
                         {formatNumber(item.reposicaoFinalizado)}
                       </TableCell>
-                      <TableCell className="text-xs py-2 text-right text-foreground">
+                      <TableCell className="text-sm py-2 text-right text-foreground">
                         {formatNumber(item.reposicaoEmTransito)}
                       </TableCell>
-                      <TableCell className="text-xs py-2 text-right font-medium text-foreground">
+                      <TableCell className="text-sm py-2 text-right font-medium text-foreground">
                         {formatNumber(item.reposicaoTotal)}
                       </TableCell>
                     </TableRow>
@@ -194,8 +194,8 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
           </ScrollArea>
           {/* Total Row */}
           <div className="flex items-center justify-between px-4 py-2 border-t border-dashboard-border bg-dashboard-card">
-            <span className="text-xs font-bold text-foreground">Total</span>
-            <div className="flex gap-8 text-xs">
+            <span className="text-sm font-bold text-foreground">Total</span>
+            <div className="flex gap-8 text-sm">
               <span className="font-bold text-foreground">{formatNumber(reposicaoTotals.finalizado)}</span>
               <span className="font-bold text-foreground">{formatNumber(reposicaoTotals.emTransito)}</span>
               <span className="font-bold text-dashboard-accent">{formatNumber(reposicaoTotals.total)}</span>

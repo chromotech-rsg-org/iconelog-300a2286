@@ -46,8 +46,10 @@ const ConfigurarBI = () => {
   const [duplicating, setDuplicating] = useState<string | null>(null);
   const [expandedCharts, setExpandedCharts] = useState<Record<string, boolean>>({});
   const [expandedSchedules, setExpandedSchedules] = useState<Record<string, boolean>>({});
-  const [schedules, setSchedules] = useState<Record<string, { id: string; update_time: string; is_active: boolean }[]>>({});
+  const [schedules, setSchedules] = useState<Record<string, { id: string; update_time: string; is_active: boolean; schedule_type: string; interval_minutes: number | null }[]>>({});
   const [newScheduleTime, setNewScheduleTime] = useState<Record<string, string>>({});
+  const [newScheduleType, setNewScheduleType] = useState<Record<string, string>>({});
+  const [newIntervalMinutes, setNewIntervalMinutes] = useState<Record<string, number>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const systemFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -81,10 +83,10 @@ const ConfigurarBI = () => {
     };
     const fetchSchedules = async () => {
       const { data } = await supabase.from("bi_scheduled_updates").select("*").order("update_time");
-      const grouped: Record<string, { id: string; update_time: string; is_active: boolean }[]> = {};
+      const grouped: Record<string, { id: string; update_time: string; is_active: boolean; schedule_type: string; interval_minutes: number | null }[]> = {};
       (data || []).forEach((row: any) => {
         if (!grouped[row.page_id]) grouped[row.page_id] = [];
-        grouped[row.page_id].push({ id: row.id, update_time: row.update_time, is_active: row.is_active });
+        grouped[row.page_id].push({ id: row.id, update_time: row.update_time, is_active: row.is_active, schedule_type: row.schedule_type || "time", interval_minutes: row.interval_minutes || null });
       });
       setSchedules(grouped);
     };
@@ -191,19 +193,30 @@ const ConfigurarBI = () => {
   };
 
   const handleAddSchedule = async (pageId: string) => {
-    const time = newScheduleTime[pageId];
-    if (!time) { toast.error("Selecione um horário"); return; }
-    const { error } = await supabase.from("bi_scheduled_updates").insert({ page_id: pageId, update_time: time } as any);
-    if (error) {
-      if (error.message.includes("unique")) toast.error("Horário já cadastrado");
-      else toast.error("Erro: " + error.message);
-      return;
+    const schedType = newScheduleType[pageId] || "time";
+    if (schedType === "time") {
+      const time = newScheduleTime[pageId];
+      if (!time) { toast.error("Selecione um horário"); return; }
+      const { error } = await supabase.from("bi_scheduled_updates").insert({ page_id: pageId, update_time: time, schedule_type: "time" } as any);
+      if (error) {
+        if (error.message.includes("unique")) toast.error("Horário já cadastrado");
+        else toast.error("Erro: " + error.message);
+        return;
+      }
+    } else {
+      const mins = newIntervalMinutes[pageId];
+      if (!mins || mins < 1) { toast.error("Informe o intervalo em minutos"); return; }
+      const { error } = await supabase.from("bi_scheduled_updates").insert({ page_id: pageId, update_time: "00:00", schedule_type: "interval", interval_minutes: mins } as any);
+      if (error) {
+        toast.error("Erro: " + error.message);
+        return;
+      }
     }
     toast.success("Agendamento adicionado!");
     setNewScheduleTime(prev => ({ ...prev, [pageId]: "" }));
-    // Refresh schedules
+    setNewIntervalMinutes(prev => ({ ...prev, [pageId]: 0 }));
     const { data } = await supabase.from("bi_scheduled_updates").select("*").eq("page_id", pageId).order("update_time");
-    setSchedules(prev => ({ ...prev, [pageId]: (data || []).map((r: any) => ({ id: r.id, update_time: r.update_time, is_active: r.is_active })) }));
+    setSchedules(prev => ({ ...prev, [pageId]: (data || []).map((r: any) => ({ id: r.id, update_time: r.update_time, is_active: r.is_active, schedule_type: r.schedule_type || "time", interval_minutes: r.interval_minutes || null })) }));
   };
 
   const handleRemoveSchedule = async (pageId: string, scheduleId: string) => {
@@ -503,10 +516,30 @@ const ConfigurarBI = () => {
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pt-2 space-y-2">
+                  {/* Schedule type selector */}
+                  <div className="flex gap-1 mb-1">
+                    <Button variant={(!newScheduleType[setting.page_id] || newScheduleType[setting.page_id] === "time") ? "default" : "outline"} size="sm"
+                      className="h-7 text-xs flex-1" onClick={() => setNewScheduleType(prev => ({ ...prev, [setting.page_id]: "time" }))}>
+                      Por Horário
+                    </Button>
+                    <Button variant={newScheduleType[setting.page_id] === "interval" ? "default" : "outline"} size="sm"
+                      className="h-7 text-xs flex-1" onClick={() => setNewScheduleType(prev => ({ ...prev, [setting.page_id]: "interval" }))}>
+                      Por Intervalo
+                    </Button>
+                  </div>
                   <div className="flex gap-2">
-                    <Input type="time" value={newScheduleTime[setting.page_id] || ""}
-                      onChange={(e) => setNewScheduleTime(prev => ({ ...prev, [setting.page_id]: e.target.value }))}
-                      className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-8 flex-1" />
+                    {(!newScheduleType[setting.page_id] || newScheduleType[setting.page_id] === "time") ? (
+                      <Input type="time" value={newScheduleTime[setting.page_id] || ""}
+                        onChange={(e) => setNewScheduleTime(prev => ({ ...prev, [setting.page_id]: e.target.value }))}
+                        className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-8 flex-1" />
+                    ) : (
+                      <div className="flex items-center gap-1 flex-1">
+                        <Input type="number" min={1} max={1440} value={newIntervalMinutes[setting.page_id] || ""}
+                          onChange={(e) => setNewIntervalMinutes(prev => ({ ...prev, [setting.page_id]: parseInt(e.target.value) || 0 }))}
+                          className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-8 w-20" placeholder="Min" />
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">minutos</span>
+                      </div>
+                    )}
                     <Button variant="outline" size="sm" className="h-8 text-xs border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
                       onClick={() => handleAddSchedule(setting.page_id)}>
                       <Plus className="h-3 w-3 mr-1" /> Adicionar
@@ -517,7 +550,11 @@ const ConfigurarBI = () => {
                   ) : (
                     (schedules[setting.page_id] || []).map(schedule => (
                       <div key={schedule.id} className="flex items-center gap-2 px-2 py-1 rounded bg-dashboard-dark/30">
-                        <span className="text-sm text-foreground font-mono flex-1">{schedule.update_time.substring(0, 5)}</span>
+                        <span className="text-sm text-foreground font-mono flex-1">
+                          {schedule.schedule_type === "interval"
+                            ? `A cada ${schedule.interval_minutes} min`
+                            : schedule.update_time.substring(0, 5)}
+                        </span>
                         <Switch checked={schedule.is_active} onCheckedChange={(checked) => handleToggleSchedule(setting.page_id, schedule.id, checked)} />
                         <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive"
                           onClick={() => handleRemoveSchedule(setting.page_id, schedule.id)}>

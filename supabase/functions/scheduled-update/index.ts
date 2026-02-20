@@ -26,10 +26,10 @@ Deno.serve(async (req) => {
 
     console.log("Scheduled update check at BRT:", currentTime);
 
-    // Find active schedules matching current time (within 1 minute window)
+    // Find active schedules
     const { data: schedules, error: schedError } = await supabase
       .from("bi_scheduled_updates")
-      .select("page_id, update_time")
+      .select("page_id, update_time, schedule_type, interval_minutes, last_executed_at")
       .eq("is_active", true);
 
     if (schedError) {
@@ -40,9 +40,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Filter schedules matching current time (HH:MM match)
-    const matchingSchedules = (schedules || []).filter((s) => {
-      const schedTime = s.update_time.substring(0, 5); // "HH:MM"
+    // Filter schedules: time-based match HH:MM, interval-based check elapsed minutes
+    const matchingSchedules = (schedules || []).filter((s: any) => {
+      if (s.schedule_type === "interval" && s.interval_minutes) {
+        if (!s.last_executed_at) return true; // never executed
+        const lastExec = new Date(s.last_executed_at).getTime();
+        const elapsed = (now.getTime() - lastExec) / 60000;
+        return elapsed >= s.interval_minutes;
+      }
+      // Default: time-based
+      const schedTime = (s.update_time || "").substring(0, 5);
       return schedTime === currentTime;
     });
 
@@ -229,6 +236,15 @@ Deno.serve(async (req) => {
         { page_id: pageId, last_update_at: new Date().toISOString() },
         { onConflict: "page_id" }
       );
+
+      // Update last_executed_at for interval-based schedules in this page
+      const scheduleIds = matchingSchedules.filter((s: any) => s.page_id === pageId).map((s: any) => s.page_id);
+      if (scheduleIds.length > 0) {
+        await supabase.from("bi_scheduled_updates")
+          .update({ last_executed_at: new Date().toISOString() } as any)
+          .eq("page_id", pageId)
+          .eq("is_active", true);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, results, time: currentTime }), {

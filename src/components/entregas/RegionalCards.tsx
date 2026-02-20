@@ -47,12 +47,12 @@ export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: Regio
                 className={`p-3 rounded-md cursor-pointer transition-all hover:bg-dashboard-border/50 ${isSelected ? 'bg-dashboard-accent/10 ring-1 ring-dashboard-accent' : ''}`}
                 onClick={() => onRegionalClick?.(item.regional)}
               >
-                <div className={`text-xs font-bold uppercase mb-1 ${isSelected ? 'text-dashboard-accent' : 'text-foreground'}`}>
+                <div className={`text-sm font-bold uppercase mb-1 ${isSelected ? 'text-dashboard-accent' : 'text-foreground'}`}>
                   {item.regional}
                 </div>
-                <div className="flex items-baseline gap-1 mb-2">
-                  <span className="text-2xl font-bold text-dashboard-accent">{formatNumber(total)}</span>
-                  <span className="text-xs text-muted-foreground">pedidos</span>
+                <div className="flex items-baseline gap-1.5 mb-2">
+                  <span className="text-3xl font-bold text-dashboard-accent">{formatNumber(total)}</span>
+                  <span className="text-sm text-muted-foreground">pedidos</span>
                 </div>
                 
                 {/* Progress bar - only finalizados */}
@@ -63,7 +63,7 @@ export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: Regio
                   />
                 </div>
                 
-                <div className="text-[10px] text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   Finalizados: {formatNumber(finalizados)} • Em trânsito: {formatNumber(emTransito)}
                 </div>
               </div>
