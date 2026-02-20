@@ -95,8 +95,9 @@ export const useApiProxy = () => {
     }
 
     const body = response.body;
-    // Handle response format: { sucesso, ocorrencias: [...] }
+    // Handle response format: { sucesso, ocorrencias: [...] } or { mensagem, pedidos: [...] }
     if (body?.ocorrencias && Array.isArray(body.ocorrencias)) return body.ocorrencias;
+    if (body?.pedidos && Array.isArray(body.pedidos)) return body.pedidos;
     if (Array.isArray(body)) return body;
     if (body?.data && Array.isArray(body.data)) return body.data;
     if (body?.results && Array.isArray(body.results)) return body.results;
