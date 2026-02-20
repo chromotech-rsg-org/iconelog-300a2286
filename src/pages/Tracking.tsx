@@ -8,9 +8,6 @@ import { allMonthValues } from "@/data/mockData";
 import { AlertCircle, InboxIcon, Loader2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
-import { Clock } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -48,10 +45,12 @@ const Tracking = () => {
   } = useFollowupData(codCli, "tracking");
 
   const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [activeTab, setActiveTab] = useState("bside");
   const [showError, setShowError] = useState(true);
   const [showRefreshProgress, setShowRefreshProgress] = useState(true);
   const [isFiltering, startFilterTransition] = useTransition();
+
+  // B-SIDE / D-SIDE filter (not tabs)
+  const [selectedSide, setSelectedSide] = useState<string>("B-SIDE");
 
   // Global filters
   const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
@@ -80,9 +79,17 @@ const Tracking = () => {
     [getTrackingData, selectedMonths, selectedYears, selectedDateRange, dateRangeActive]
   );
 
-  // Apply interactive filters on top
+  // Apply ALL interactive filters to orders
   const filteredOrders = useMemo(() => {
     let orders = trackingRaw.filteredOrders;
+
+    // B-SIDE / D-SIDE filter
+    if (selectedSide) {
+      // These map to ds_tipo_servico or similar field
+      // B-SIDE = standard deliveries, D-SIDE = returns/other
+      // For now just pass through - adjust based on actual data field
+    }
+
     if (selectedPrazo !== null) {
       const now = new Date();
       now.setHours(0, 0, 0, 0);
@@ -105,51 +112,114 @@ const Tracking = () => {
         return !st.includes("FINALIZADO") && !st.includes("ENTREGUE");
       });
     }
-    if (selectedRegions.length > 0) {
-      // Will need city mappings to filter by regional
+    if (selectedRegional) {
+      // Filter by regional using city mappings
+      orders = orders.filter(o => {
+        const cidade = (o.ds_cidade_DES || "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        const mapping = cityMappings.find(m => m.cidade.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase() === cidade);
+        return mapping?.regional === selectedRegional;
+      });
     }
     return orders;
-  }, [trackingRaw, selectedPrazo, selectedTipoServico, selectedModalidade, selectedCidade, selectedEstado, selectedStatus, selectedRegions]);
+  }, [trackingRaw, selectedPrazo, selectedTipoServico, selectedModalidade, selectedCidade, selectedEstado, selectedStatus, selectedRegional, selectedSide, cityMappings]);
 
-  // Recalculate KPIs from filtered orders
-  const kpis = useMemo(() => {
-    if (!selectedPrazo && !selectedTipoServico && !selectedModalidade && !selectedCidade && !selectedEstado && !selectedStatus) {
-      return trackingRaw.kpis;
-    }
-    return trackingRaw.kpis; // Use raw KPIs always, filters only affect tables/details
-  }, [trackingRaw]);
+  // Recalculate all chart data from filtered orders for full interactivity
+  const chartData = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    let noPrazo = 0, foraPrazo = 0, finalizado = 0, transito = 0;
+    const tipoServicoMap = new Map<string, number>();
+    const modalidadeMap = new Map<string, number>();
+    const cidadeStatusMap = new Map<string, { finalizado: number; transito: number }>();
+    const estadoMap = new Map<string, { value: number; noPrazo: number; foraPrazo: number; semOcorrencia: number; comOcorrencia: number }>();
+    const regionalMap = new Map<string, number>();
+
+    filteredOrders.forEach(item => {
+      const statusReal = (item.fl_status_real || "").toUpperCase();
+      const isFinalizado = statusReal.includes("FINALIZADO") || statusReal.includes("ENTREGUE");
+      if (isFinalizado) finalizado++; else transito++;
+
+      const dtPrevisao = item.dt_previsao ? (() => { const s = String(item.dt_previsao).trim().split(/[\sT]/)[0]; const p = s.split(/[\/\-]/); if (p.length < 3) return null; if (p[0].length === 4) return new Date(+p[0], +p[1]-1, +p[2]); return new Date(+p[2], +p[1]-1, +p[0]); })() : null;
+      const dtEntregaReal = item.dt_entrega_real ? (() => { const s = String(item.dt_entrega_real).trim().split(/[\sT]/)[0]; const p = s.split(/[\/\-]/); if (p.length < 3) return null; if (p[0].length === 4) return new Date(+p[0], +p[1]-1, +p[2]); return new Date(+p[2], +p[1]-1, +p[0]); })() : null;
+
+      if (dtPrevisao) {
+        if (dtEntregaReal) { if (dtEntregaReal <= dtPrevisao) noPrazo++; else foraPrazo++; }
+        else { if (now <= dtPrevisao) noPrazo++; else foraPrazo++; }
+      }
+
+      const tipo = (item.ds_tipo_servico || "OUTROS").toUpperCase();
+      tipoServicoMap.set(tipo, (tipoServicoMap.get(tipo) || 0) + 1);
+
+      const mod = (item.ds_modalidade_transporte || "OUTROS").toUpperCase();
+      modalidadeMap.set(mod, (modalidadeMap.get(mod) || 0) + 1);
+
+      const cidade = (item.ds_cidade_DES || "").toUpperCase();
+      if (cidade) {
+        if (!cidadeStatusMap.has(cidade)) cidadeStatusMap.set(cidade, { finalizado: 0, transito: 0 });
+        const cs = cidadeStatusMap.get(cidade)!;
+        if (isFinalizado) cs.finalizado++; else cs.transito++;
+      }
+
+      const uf = (item.ds_uf_DES || "").toUpperCase();
+      if (uf) {
+        if (!estadoMap.has(uf)) estadoMap.set(uf, { value: 0, noPrazo: 0, foraPrazo: 0, semOcorrencia: 0, comOcorrencia: 0 });
+        const es = estadoMap.get(uf)!;
+        es.value++;
+        if (dtPrevisao) {
+          if (dtEntregaReal) { if (dtEntregaReal <= dtPrevisao) es.noPrazo++; else es.foraPrazo++; }
+          else { if (now <= dtPrevisao) es.noPrazo++; else es.foraPrazo++; }
+        }
+        const hasOcorrencia = statusReal.includes("OCORRENCIA") || statusReal.includes("DEVOLU") || statusReal.includes("SINISTRO");
+        if (hasOcorrencia) es.comOcorrencia++; else es.semOcorrencia++;
+      }
+
+      const cidadeOrig = item.ds_cidade_DES || "";
+      const normalized = cidadeOrig.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+      const found = cityMappings.find(m => m.cidade.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase() === normalized);
+      const regional = found?.regional || "Sem Regional";
+      regionalMap.set(regional, (regionalMap.get(regional) || 0) + 1);
+    });
+
+    const total = filteredOrders.length;
+    const percNoPrazo = total > 0 ? (noPrazo / total) * 100 : 0;
+    const percForaPrazo = total > 0 ? (foraPrazo / total) * 100 : 0;
+
+    return {
+      kpis: { total, noPrazo, foraPrazo, percNoPrazo, percForaPrazo, finalizado, transito },
+      tipoServico: Array.from(tipoServicoMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+      modalidade: Array.from(modalidadeMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+      cidade: Array.from(cidadeStatusMap.entries()).map(([name, v]) => ({ name, ...v, total: v.finalizado + v.transito })).sort((a, b) => b.total - a.total).slice(0, 15),
+      estado: Array.from(estadoMap.entries()).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.value - a.value),
+      regional: Array.from(regionalMap.entries()).map(([name, value]) => ({ name, value })).filter(r => r.name !== "Sem Regional").sort((a, b) => b.value - a.value),
+    };
+  }, [filteredOrders, cityMappings]);
 
   // Filtered produtos for items table
   const filteredProdutos = useMemo(() => {
-    if (!filteredOrders.length) return produtosData;
+    if (!filteredOrders.length && !selectedPrazo && !selectedTipoServico && !selectedModalidade && !selectedCidade && !selectedEstado && !selectedStatus && !selectedRegional) return produtosData;
     const orderNumbers = new Set(filteredOrders.map(o => o.nr_pedido));
     return produtosData.filter(p => orderNumbers.has(p.nr_pedido));
-  }, [produtosData, filteredOrders]);
+  }, [produtosData, filteredOrders, selectedPrazo, selectedTipoServico, selectedModalidade, selectedCidade, selectedEstado, selectedStatus, selectedRegional]);
 
   const handlePrazoClick = useCallback((prazo: boolean) => {
     startFilterTransition(() => setSelectedPrazo(prev => prev === prazo ? null : prazo));
   }, []);
-
   const handleTipoClick = useCallback((tipo: string) => {
     startFilterTransition(() => setSelectedTipoServico(prev => prev === tipo ? null : tipo));
   }, []);
-
   const handleModalidadeClick = useCallback((mod: string) => {
     startFilterTransition(() => setSelectedModalidade(prev => prev === mod ? null : mod));
   }, []);
-
   const handleCidadeClick = useCallback((cidade: string) => {
     startFilterTransition(() => setSelectedCidade(prev => prev === cidade.toUpperCase() ? null : cidade.toUpperCase()));
   }, []);
-
   const handleRegionalClick = useCallback((regional: string) => {
     startFilterTransition(() => setSelectedRegional(prev => prev === regional ? null : regional));
   }, []);
-
   const handleEstadoClick = useCallback((uf: string) => {
     startFilterTransition(() => setSelectedEstado(prev => prev === uf ? null : uf));
   }, []);
-
   const handleStatusClick = useCallback((status: string) => {
     startFilterTransition(() => setSelectedStatus(prev => prev === status ? null : status));
   }, []);
@@ -183,7 +253,7 @@ const Tracking = () => {
 
   const handleExportExcel = useCallback(() => {
     const exportData = filteredOrders.map(order => ({
-      "N Mov": order.cod_conhecimento || "",
+      "Nº Mov": order.cod_conhecimento || "",
       "Pedido": order.nr_pedido || "",
       "Tipo Serviço": order.ds_tipo_servico || "",
       "Modalidade": order.ds_modalidade_transporte || "",
@@ -250,6 +320,21 @@ const Tracking = () => {
         cityMappings={cityMappings}
       />
 
+      {/* B-SIDE / D-SIDE as filter buttons */}
+      <div className="px-6 pt-3 flex items-center gap-2">
+        {["B-SIDE", "D-SIDE"].map(side => (
+          <Button
+            key={side}
+            variant={selectedSide === side ? "default" : "outline"}
+            size="sm"
+            className={`text-xs ${selectedSide === side ? "bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
+            onClick={() => setSelectedSide(side)}
+          >
+            {side}
+          </Button>
+        ))}
+      </div>
+
       {showRefreshProgress && (
         <RefreshProgress stage={refreshStage} recordCount={refreshRecordCount} onDismiss={() => setShowRefreshProgress(false)} />
       )}
@@ -259,33 +344,38 @@ const Tracking = () => {
         <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-card/50 animate-fade-in">
           <span className="text-xs text-muted-foreground">Filtros:</span>
           {selectedPrazo !== null && (
-            <Badge variant="outline" className={`cursor-pointer ${selectedPrazo ? "border-green-500 bg-green-500/10 text-green-400" : "border-red-500 bg-red-500/10 text-red-400"}`} onClick={() => setSelectedPrazo(null)}>
+            <Badge variant="outline" className={`cursor-pointer text-[10px] ${selectedPrazo ? "border-green-500 bg-green-500/10 text-green-400" : "border-red-500 bg-red-500/10 text-red-400"}`} onClick={() => setSelectedPrazo(null)}>
               {selectedPrazo ? "No Prazo" : "Fora do Prazo"} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedTipoServico && (
-            <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedTipoServico(null)}>
-              Tipo: {selectedTipoServico} <X className="ml-1 h-3 w-3" />
+            <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer text-[10px]" onClick={() => setSelectedTipoServico(null)}>
+              {selectedTipoServico} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedModalidade && (
-            <Badge variant="outline" className="border-blue-500 bg-blue-500/10 text-blue-400 cursor-pointer" onClick={() => setSelectedModalidade(null)}>
-              Mod: {selectedModalidade} <X className="ml-1 h-3 w-3" />
+            <Badge variant="outline" className="border-blue-500 bg-blue-500/10 text-blue-400 cursor-pointer text-[10px]" onClick={() => setSelectedModalidade(null)}>
+              {selectedModalidade} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedCidade && (
-            <Badge variant="outline" className="border-orange-500 bg-orange-500/10 text-orange-400 cursor-pointer" onClick={() => setSelectedCidade(null)}>
-              Cidade: {selectedCidade} <X className="ml-1 h-3 w-3" />
+            <Badge variant="outline" className="border-orange-500 bg-orange-500/10 text-orange-400 cursor-pointer text-[10px]" onClick={() => setSelectedCidade(null)}>
+              {selectedCidade} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedEstado && (
-            <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedEstado(null)}>
+            <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer text-[10px]" onClick={() => setSelectedEstado(null)}>
               UF: {selectedEstado} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
+          {selectedRegional && (
+            <Badge variant="outline" className="border-purple-500 bg-purple-500/10 text-purple-400 cursor-pointer text-[10px]" onClick={() => setSelectedRegional(null)}>
+              {selectedRegional} <X className="ml-1 h-3 w-3" />
+            </Badge>
+          )}
           {selectedStatus && (
-            <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedStatus(null)}>
-              Status: {selectedStatus} <X className="ml-1 h-3 w-3" />
+            <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer text-[10px]" onClick={() => setSelectedStatus(null)}>
+              {selectedStatus} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           <Button variant="ghost" size="sm" onClick={clearAllInteractiveFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
@@ -295,7 +385,7 @@ const Tracking = () => {
       )}
 
       {error && showError && (
-        <div className="mx-6 mt-4 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-center gap-2">
+        <div className="mx-6 mt-3 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="flex-1">{error}</span>
           <button onClick={() => setShowError(false)} className="p-0.5 rounded hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></button>
@@ -312,78 +402,59 @@ const Tracking = () => {
         </div>
       )}
 
-      <div className="p-6 space-y-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-card border border-border">
-            <TabsTrigger value="bside" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">B-SIDE</TabsTrigger>
-            <TabsTrigger value="dside" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">D-SIDE</TabsTrigger>
-          </TabsList>
+      <div className="p-4 space-y-3">
+        {showEmptyState ? (
+          <div className="flex items-center justify-center h-[60vh]">
+            <div className="text-center space-y-3">
+              <InboxIcon className="h-12 w-12 mx-auto text-muted-foreground" />
+              <h2 className="text-lg font-semibold text-foreground">Nenhum dado disponível</h2>
+              <p className="text-sm text-muted-foreground">Clique no botão <strong>Atualizar</strong> no cabeçalho para buscar os dados.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* KPI Cards - full width row */}
+            <TrackingKPICards kpis={chartData.kpis} onPrazoClick={handlePrazoClick} selectedPrazo={selectedPrazo} />
 
-          <TabsContent value="bside" className="space-y-4 mt-4">
-            {showEmptyState ? (
-              <div className="flex items-center justify-center h-[60vh]">
-                <div className="text-center space-y-3">
-                  <InboxIcon className="h-12 w-12 mx-auto text-muted-foreground" />
-                  <h2 className="text-lg font-semibold text-foreground">Nenhum dado disponível</h2>
-                  <p className="text-sm text-muted-foreground">Clique no botão <strong>Atualizar</strong> no cabeçalho para buscar os dados.</p>
-                </div>
+            {/* Main 3-column layout matching Power BI */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+              {/* LEFT COLUMN: Status, Performance, Modalidade, Tipo Serviço */}
+              <div className="lg:col-span-3 space-y-3">
+                <TrackingStatusBars
+                  finalizado={chartData.kpis.finalizado}
+                  transito={chartData.kpis.transito}
+                  onStatusClick={handleStatusClick}
+                  selectedStatus={selectedStatus}
+                />
+                <TrackingGaugeChart
+                  percNoPrazo={chartData.kpis.percNoPrazo}
+                  noPrazo={chartData.kpis.noPrazo}
+                  foraPrazo={chartData.kpis.foraPrazo}
+                  onPrazoClick={handlePrazoClick}
+                  selectedPrazo={selectedPrazo}
+                />
+                <TrackingModalidadeChart data={chartData.modalidade} onModalidadeClick={handleModalidadeClick} selectedModalidade={selectedModalidade} />
+                <TrackingTipoServicoChart data={chartData.tipoServico} onTipoClick={handleTipoClick} selectedTipo={selectedTipoServico} />
               </div>
-            ) : (
-              <>
-                {/* KPI Cards */}
-                <TrackingKPICards kpis={kpis} onPrazoClick={handlePrazoClick} selectedPrazo={selectedPrazo} />
 
-                {/* Main grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                  {/* Left column */}
-                  <div className="lg:col-span-3 space-y-4">
-                    <TrackingGaugeChart
-                      percNoPrazo={kpis.percNoPrazo}
-                      noPrazo={kpis.noPrazo}
-                      foraPrazo={kpis.foraPrazo}
-                      onPrazoClick={handlePrazoClick}
-                      selectedPrazo={selectedPrazo}
-                    />
-                    <TrackingStatusBars
-                      finalizado={kpis.finalizado}
-                      transito={kpis.transito}
-                      onStatusClick={handleStatusClick}
-                      selectedStatus={selectedStatus}
-                    />
-                    <TrackingTipoServicoChart data={trackingRaw.tipoServico} onTipoClick={handleTipoClick} selectedTipo={selectedTipoServico} />
-                  </div>
-
-                  {/* Center column */}
-                  <div className="lg:col-span-5 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <TrackingModalidadeChart data={trackingRaw.modalidade} onModalidadeClick={handleModalidadeClick} selectedModalidade={selectedModalidade} />
-                      <TrackingRegionalPieChart data={trackingRaw.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
-                    </div>
-                    <TrackingEstadoChart data={trackingRaw.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
-                    <TrackingCidadeChart data={trackingRaw.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
-                  </div>
-
-                  {/* Right column */}
-                  <div className="lg:col-span-4 space-y-4">
-                    <TrackingBrazilMap estadoData={trackingRaw.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
-                    <TrackingPedidosTable orders={filteredOrders} onCidadeClick={handleCidadeClick} onStatusClick={handleStatusClick} />
-                    <TrackingItensTable items={filteredProdutos} />
-                  </div>
+              {/* CENTER COLUMN: Região, Estado chart, Mapa, Entregas por Cidade */}
+              <div className="lg:col-span-5 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <TrackingRegionalPieChart data={chartData.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
+                  <TrackingBrazilMap estadoData={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
                 </div>
-              </>
-            )}
-          </TabsContent>
+                <TrackingEstadoChart data={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
+                <TrackingCidadeChart data={chartData.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
+              </div>
 
-          <TabsContent value="dside" className="mt-4">
-            <Card className="bg-card border-border">
-              <CardContent className="p-12 text-center">
-                <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-medium text-foreground mb-2">D-SIDE em Desenvolvimento</h3>
-                <p className="text-muted-foreground">Esta funcionalidade estará disponível em breve.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              {/* RIGHT COLUMN: Pedidos table + Itens table */}
+              <div className="lg:col-span-4 space-y-3">
+                <TrackingPedidosTable orders={filteredOrders} onCidadeClick={handleCidadeClick} onStatusClick={handleStatusClick} />
+                <TrackingItensTable items={filteredProdutos} />
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

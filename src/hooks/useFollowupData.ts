@@ -464,7 +464,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     const tipoServicoMap = new Map<string, number>();
     const modalidadeMap = new Map<string, number>();
     const cidadeStatusMap = new Map<string, { finalizado: number; transito: number }>();
-    const estadoMap = new Map<string, number>();
+    const estadoMap = new Map<string, { value: number; noPrazo: number; foraPrazo: number; semOcorrencia: number; comOcorrencia: number }>();
     const regionalMap = new Map<string, number>();
 
     filtered.forEach(item => {
@@ -505,9 +505,24 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
         else cs.transito++;
       }
 
-      // Estado
+      // Estado with detailed stats
       const uf = (item.ds_uf_DES || "").toUpperCase();
-      if (uf) estadoMap.set(uf, (estadoMap.get(uf) || 0) + 1);
+      if (uf) {
+        if (!estadoMap.has(uf)) estadoMap.set(uf, { value: 0, noPrazo: 0, foraPrazo: 0, semOcorrencia: 0, comOcorrencia: 0 });
+        const es = estadoMap.get(uf)!;
+        es.value++;
+        // On-time logic per state
+        if (dtPrevisao) {
+          if (dtEntregaReal) {
+            if (dtEntregaReal <= dtPrevisao) es.noPrazo++; else es.foraPrazo++;
+          } else {
+            if (now <= dtPrevisao) es.noPrazo++; else es.foraPrazo++;
+          }
+        }
+        // Ocorrência: items with status issues are "com ocorrência"
+        const hasOcorrencia = statusReal.includes("OCORRENCIA") || statusReal.includes("DEVOLU") || statusReal.includes("SINISTRO");
+        if (hasOcorrencia) es.comOcorrencia++; else es.semOcorrencia++;
+      }
 
       // Regional from city mapping
       const cidadeOriginal = item.ds_cidade_DES || item.ds_cidade || "";
@@ -524,7 +539,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       tipoServico: Array.from(tipoServicoMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
       modalidade: Array.from(modalidadeMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
       cidade: Array.from(cidadeStatusMap.entries()).map(([name, v]) => ({ name, ...v, total: v.finalizado + v.transito })).sort((a, b) => b.total - a.total).slice(0, 15),
-      estado: Array.from(estadoMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+      estado: Array.from(estadoMap.entries()).map(([name, v]) => ({ name, ...v })).sort((a, b) => b.value - a.value),
       regional: Array.from(regionalMap.entries()).map(([name, value]) => ({ name, value })).filter(r => r.name !== "Sem Regional").sort((a, b) => b.value - a.value),
       filteredOrders: filtered,
     };
