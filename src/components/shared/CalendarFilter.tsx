@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { DateRange } from "react-day-picker";
+import { useState, useRef } from "react";
 
 interface CalendarFilterProps {
   selectedDateRange?: { from: Date | undefined; to: Date | undefined };
@@ -17,6 +18,9 @@ interface CalendarFilterProps {
 }
 
 export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: CalendarFilterProps) => {
+  const [open, setOpen] = useState(false);
+  const clickCountRef = useRef(0);
+
   const isRange = selectedDateRange?.from && selectedDateRange?.to &&
     selectedDateRange.from.toDateString() !== selectedDateRange.to.toDateString();
 
@@ -33,14 +37,33 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
   };
 
   const handleRangeSelect = (range: DateRange | undefined) => {
-    if (!range) {
+    if (!range || !range.from) {
+      // Reset click counter when clearing
+      clickCountRef.current = 0;
       onDateRangeChange({ from: undefined, to: undefined });
       return;
     }
-    onDateRangeChange({
-      from: range.from,
-      to: range.to ?? range.from, // single click = single day
-    });
+
+    clickCountRef.current++;
+
+    if (clickCountRef.current === 1) {
+      // First click: select single day immediately
+      onDateRangeChange({ from: range.from, to: range.from });
+    } else {
+      // Second click: either same day or range end
+      clickCountRef.current = 0;
+      if (range.to) {
+        onDateRangeChange({ from: range.from, to: range.to });
+      } else {
+        onDateRangeChange({ from: range.from, to: range.from });
+      }
+    }
+  };
+
+  const handleClear = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    clickCountRef.current = 0;
+    onDateRangeChange({ from: undefined, to: undefined });
   };
 
   const calendarRange: DateRange | undefined = selectedDateRange?.from
@@ -48,20 +71,29 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
     : undefined;
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={(o) => { if (!o) clickCountRef.current = 0; setOpen(o); }}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
           className={cn(
-            "w-auto justify-start border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border",
+            "w-auto justify-start border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border gap-2",
             selectedDateRange?.from && "text-dashboard-accent border-dashboard-accent/50"
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
+          <CalendarIcon className="h-4 w-4" />
           {getLabel()}
+          {selectedDateRange?.from && (
+            <X
+              className="h-3.5 w-3.5 ml-1 opacity-60 hover:opacity-100 cursor-pointer"
+              onClick={handleClear}
+            />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 bg-dashboard-card border-dashboard-border z-50" align="start">
+        <div className="p-3 pb-1 text-xs text-muted-foreground">
+          Clique uma vez para um dia · Clique em outro dia para período
+        </div>
         <Calendar
           mode="range"
           selected={calendarRange}
@@ -69,7 +101,7 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
           numberOfMonths={2}
           locale={ptBR}
           defaultMonth={selectedDateRange?.from ?? new Date()}
-          className={cn("p-3 pointer-events-auto")}
+          className={cn("p-3 pt-1 pointer-events-auto")}
         />
 
         {selectedDateRange?.from && (
@@ -77,7 +109,7 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onDateRangeChange({ from: undefined, to: undefined })}
+              onClick={() => handleClear()}
               className="w-full text-xs text-muted-foreground hover:text-dashboard-accent"
             >
               Limpar seleção
