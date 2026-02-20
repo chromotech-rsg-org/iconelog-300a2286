@@ -139,7 +139,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
 
         if (followupCache?.data) setFollowupData(followupCache.data as FollowupItem[]);
 
-        if (pageId === "minutas") {
+        if (pageId === "minutas" || pageId === "tracking") {
           const { data: produtosCache } = await supabase
             .from("bi_data_cache")
             .select("data")
@@ -213,8 +213,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       setFollowupData(allFollowup);
     }
 
-    // Only fetch PRODUTOSDISTRIBUIDOS for minutas
-    if (pageId === "minutas") {
+    // Fetch PRODUTOSDISTRIBUIDOS for minutas and tracking
+    if (pageId === "minutas" || pageId === "tracking") {
       setRefreshStage("requesting_produtos");
       let allProdutos: FollowupItem[] = [];
       for (let i = 0; i < chunks.length; i++) {
@@ -234,8 +234,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       if (allFollowup.length > 0) await saveToCache("followup", allFollowup);
-      if (pageId === "minutas" && allFollowup.length > 0) {
-        // produtos already saved above if needed
+      if ((pageId === "minutas" || pageId === "tracking") && produtosData.length > 0) {
+        await saveToCache("produtos", produtosData);
       }
       await saveLastUpdate();
     } else {
@@ -431,6 +431,105 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     }));
   }, [followupData, cityMappings]);
 
+  const getTrackingData = useCallback((months: number[], years: number[], dateRange?: { from?: Date; to?: Date }) => {
+    // Filter followup data by date
+    const hasDateRange = !!dateRange?.from;
+    let filtered = followupData;
+    if (hasDateRange) {
+      filtered = filtered.filter(item => {
+        const dtPrev = item.dt_previsao ? safeParseDate(String(item.dt_previsao)) : null;
+        const dtEntrega = item.dt_entrega_real ? safeParseDate(String(item.dt_entrega_real)) : null;
+        const dtExp = item.dt_expedicao ? safeParseDate(String(item.dt_expedicao)) : null;
+        const from = dateRange.from!;
+        const to = dateRange.to || dateRange.from!;
+        return (dtPrev && isDateInDateRange(String(item.dt_previsao), from, to)) ||
+               (dtEntrega && isDateInDateRange(String(item.dt_entrega_real), from, to)) ||
+               (dtExp && isDateInDateRange(String(item.dt_expedicao), from, to));
+      });
+    } else if (months.length || years.length) {
+      filtered = filtered.filter(item => {
+        return dateMatchesMonthYear(item.dt_previsao, months, years) ||
+               dateMatchesMonthYear(item.dt_entrega_real, months, years) ||
+               dateMatchesMonthYear(item.dt_expedicao, months, years);
+      });
+    }
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    let noPrazo = 0;
+    let foraPrazo = 0;
+    let finalizado = 0;
+    let transito = 0;
+    const tipoServicoMap = new Map<string, number>();
+    const modalidadeMap = new Map<string, number>();
+    const cidadeStatusMap = new Map<string, { finalizado: number; transito: number }>();
+    const estadoMap = new Map<string, number>();
+    const regionalMap = new Map<string, number>();
+
+    filtered.forEach(item => {
+      const statusReal = (item.fl_status_real || "").toUpperCase();
+      const isFinalizado = statusReal.includes("FINALIZADO") || statusReal.includes("ENTREGUE");
+
+      if (isFinalizado) finalizado++;
+      else transito++;
+
+      // On-time logic
+      const dtPrevisao = item.dt_previsao ? safeParseDate(String(item.dt_previsao)) : null;
+      const dtEntregaReal = item.dt_entrega_real ? safeParseDate(String(item.dt_entrega_real)) : null;
+
+      if (dtPrevisao) {
+        if (dtEntregaReal) {
+          if (dtEntregaReal <= dtPrevisao) noPrazo++;
+          else foraPrazo++;
+        } else {
+          if (now <= dtPrevisao) noPrazo++;
+          else foraPrazo++;
+        }
+      }
+
+      // Tipo servico
+      const tipo = (item.ds_tipo_servico || "OUTROS").toUpperCase();
+      tipoServicoMap.set(tipo, (tipoServicoMap.get(tipo) || 0) + 1);
+
+      // Modalidade
+      const mod = (item.ds_modalidade_transporte || "OUTROS").toUpperCase();
+      modalidadeMap.set(mod, (modalidadeMap.get(mod) || 0) + 1);
+
+      // Cidade with status
+      const cidade = (item.ds_cidade_DES || "").toUpperCase();
+      if (cidade) {
+        if (!cidadeStatusMap.has(cidade)) cidadeStatusMap.set(cidade, { finalizado: 0, transito: 0 });
+        const cs = cidadeStatusMap.get(cidade)!;
+        if (isFinalizado) cs.finalizado++;
+        else cs.transito++;
+      }
+
+      // Estado
+      const uf = (item.ds_uf_DES || "").toUpperCase();
+      if (uf) estadoMap.set(uf, (estadoMap.get(uf) || 0) + 1);
+
+      // Regional from city mapping
+      const cidadeOriginal = item.ds_cidade_DES || item.ds_cidade || "";
+      const regional = resolveRegional(cidadeOriginal, cityMappings);
+      regionalMap.set(regional, (regionalMap.get(regional) || 0) + 1);
+    });
+
+    const total = filtered.length;
+    const percNoPrazo = total > 0 ? (noPrazo / total) * 100 : 0;
+    const percForaPrazo = total > 0 ? (foraPrazo / total) * 100 : 0;
+
+    return {
+      kpis: { total, noPrazo, foraPrazo, percNoPrazo, percForaPrazo, finalizado, transito },
+      tipoServico: Array.from(tipoServicoMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+      modalidade: Array.from(modalidadeMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+      cidade: Array.from(cidadeStatusMap.entries()).map(([name, v]) => ({ name, ...v, total: v.finalizado + v.transito })).sort((a, b) => b.total - a.total).slice(0, 15),
+      estado: Array.from(estadoMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+      regional: Array.from(regionalMap.entries()).map(([name, value]) => ({ name, value })).filter(r => r.name !== "Sem Regional").sort((a, b) => b.value - a.value),
+      filteredOrders: filtered,
+    };
+  }, [followupData, cityMappings]);
+
   return {
     followupData,
     produtosData,
@@ -446,6 +545,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     getMinutasDailyData,
     getTotalValue,
     getEntregasData,
+    getTrackingData,
     cityMappings,
     lastUpdateAt,
   };
