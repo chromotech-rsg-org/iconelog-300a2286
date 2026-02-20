@@ -431,15 +431,14 @@ const Tracking = () => {
           <>
             {/* ===== BLOCO 1: KPIs + Performance + Charts + Pedidos Table ===== */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-              {/* KPIs (5 cards) + Performance gauge */}
-              <div className="lg:col-span-8">
-                <div className="grid grid-cols-12 gap-2 items-stretch">
-                  {/* Quantidade de Pedidos */}
-                  <div className="col-span-4">
+              {/* Left: KPIs row + Charts row */}
+              <div className="lg:col-span-8 flex flex-col gap-3">
+                {/* Row 1: KPIs (2/3) + Performance (1/3) — same height as charts below */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
                     <TrackingKPICards kpis={chartData.kpis} onPrazoClick={handlePrazoClick} selectedPrazo={selectedPrazo} />
                   </div>
-                  {/* Performance gauge */}
-                  <div className="col-span-8">
+                  <div className="col-span-1">
                     <TrackingGaugeChart
                       percNoPrazo={chartData.kpis.percNoPrazo}
                       noPrazo={chartData.kpis.noPrazo}
@@ -449,9 +448,8 @@ const Tracking = () => {
                     />
                   </div>
                 </div>
-
-                {/* Status + Tipo Serviço + Modalidade row */}
-                <div className="grid grid-cols-3 gap-3 mt-3">
+                {/* Row 2: Status + Tipo Serviço + Modalidade */}
+                <div className="grid grid-cols-3 gap-3">
                   <TrackingStatusBars
                     finalizado={chartData.kpis.finalizado}
                     transito={chartData.kpis.transito}
@@ -463,26 +461,34 @@ const Tracking = () => {
                 </div>
               </div>
 
-              {/* Pedidos Consolidados table */}
-              <div className="lg:col-span-4">
+              {/* Right: Pedidos Consolidados table — spans full height */}
+              <div className="lg:col-span-4 lg:row-span-2">
                 <TrackingPedidosTable orders={filteredOrders} onCidadeClick={handleCidadeClick} onStatusClick={handleStatusClick} />
               </div>
             </div>
 
-            {/* ===== BLOCO 2: Cidades + Regional Pie + Mapa + Itens Table ===== */}
+            {/* ===== BLOCO 2: Cidades + Regional/Mapa + Itens Table ===== */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start mt-3">
-              {/* Entregas por Cidade */}
-              <div className="lg:col-span-3">
-                <TrackingCidadeChart data={chartData.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
+              {/* Left area same as block 1 left (col-span-8), inner grid-cols-3 */}
+              <div className="lg:col-span-8">
+                <div className="grid grid-cols-3 gap-3 h-full">
+                  {/* Entregas por Cidade — same width as Status + Tipo (2/3) */}
+                  <div className="col-span-2">
+                    <TrackingCidadeChart data={chartData.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
+                  </div>
+                  {/* Região + Estado stacked — same width as Modalidade (1/3), half height each */}
+                  <div className="col-span-1 flex flex-col gap-3">
+                    <div className="flex-1 min-h-0">
+                      <TrackingRegionalPieChart data={chartData.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
+                    </div>
+                    <div className="flex-1 min-h-0">
+                      <TrackingBrazilMap estadoData={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Regional Pie + Brazil Map */}
-              <div className="lg:col-span-5 flex flex-col gap-3">
-                <TrackingRegionalPieChart data={chartData.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
-                <TrackingBrazilMap estadoData={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
-              </div>
-
-              {/* Itens dos Pedidos table */}
+              {/* Itens dos Pedidos table — same height as Entregas por Cidade */}
               <div className="lg:col-span-4">
                 <TrackingItensTable items={filteredProdutos} />
               </div>
