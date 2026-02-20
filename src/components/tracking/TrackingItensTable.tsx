@@ -136,8 +136,8 @@ export const TrackingItensTable = ({ items }: Props) => {
             </TableBody>
           </Table>
         </div>
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/10">
+        {/* Pagination — sticky at bottom */}
+        <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
           <span className="text-[10px] text-muted-foreground">
             {filtered.length > 0 ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, filtered.length)} de ${filtered.length}` : "0 registros"}
           </span>
