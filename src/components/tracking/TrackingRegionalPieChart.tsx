@@ -32,19 +32,19 @@ export const TrackingRegionalPieChart = ({ data, onRegionalClick, selectedRegion
   const withPercent = data.map(d => ({ ...d, percent: total > 0 ? d.value / total : 0 }));
 
   return (
-    <Card className="bg-card border-border h-full flex flex-col">
-      <CardHeader className="pb-0 pt-2">
+    <Card className="bg-card border-border">
+      <CardHeader className="pb-0">
         <CardTitle className="text-sm font-medium text-foreground">Pedido | Região</CardTitle>
       </CardHeader>
-      <CardContent className="p-2 flex-1 min-h-0">
+      <CardContent className="p-2 h-[260px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={withPercent}
               cx="50%"
               cy="45%"
-              outerRadius={55}
-              innerRadius={22}
+              outerRadius={75}
+              innerRadius={30}
               dataKey="value"
               nameKey="name"
               label={renderLabel}
@@ -66,8 +66,8 @@ export const TrackingRegionalPieChart = ({ data, onRegionalClick, selectedRegion
             </Pie>
             <Tooltip content={<CustomTooltip />} />
             <Legend
-              wrapperStyle={{ fontSize: 9, paddingTop: 2 }}
-              formatter={(value) => <span className="text-muted-foreground text-[9px]">{value}</span>}
+              wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
+              formatter={(value) => <span className="text-muted-foreground text-[10px]">{value}</span>}
             />
           </PieChart>
         </ResponsiveContainer>

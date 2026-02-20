@@ -17,22 +17,22 @@ export const TrackingGaugeChart = ({ percNoPrazo, noPrazo, foraPrazo, onPrazoCli
   ];
 
   return (
-    <Card className="bg-card border-border h-full flex flex-col">
-      <CardHeader className="pb-0 pt-3">
+    <Card className="bg-card border-border">
+      <CardHeader className="pb-0">
         <CardTitle className="text-sm font-medium text-foreground">Performance</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col items-center justify-between flex-1 pb-3">
-        <div className="relative w-full flex-1 min-h-[100px]">
+      <CardContent className="flex flex-col items-center pb-3">
+        <div className="relative w-full h-[140px]">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={gaugeData}
                 cx="50%"
-                cy="85%"
+                cy="90%"
                 startAngle={180}
                 endAngle={0}
-                innerRadius={55}
-                outerRadius={80}
+                innerRadius={65}
+                outerRadius={90}
                 dataKey="value"
                 stroke="none"
               >
@@ -41,8 +41,8 @@ export const TrackingGaugeChart = ({ percNoPrazo, noPrazo, foraPrazo, onPrazoCli
               </Pie>
             </PieChart>
           </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-end pb-0 pointer-events-none">
-            <span className="text-2xl font-black text-foreground">{percNoPrazo.toFixed(2)}%</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-end pb-2 pointer-events-none">
+            <span className="text-3xl font-black text-foreground">{percNoPrazo.toFixed(2)}%</span>
           </div>
         </div>
 
