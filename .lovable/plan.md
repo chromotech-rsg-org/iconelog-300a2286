@@ -1,49 +1,42 @@
 
-# Corrigir B-Side Entregas - Dados Zerados
 
-## Problema Identificado
+# Ajuste na Logica de Contagem de Minutas
 
-Ao investigar os dados no banco, encontrei **14.545 registros** ja cacheados para entregas. O problema esta na logica de filtragem do `getEntregasData`:
+## Problema Atual
 
-1. **Campo errado**: O codigo busca `item.ds_campanha` mas o campo real nos dados da API e `nm_campanha`
-2. **Filtros de campanha incorretos**: Os valores reais sao diferentes do esperado:
+A logica atual filtra os registros usando qualquer campo de data disponivel (`dt_inicio`, `dt_expedicao`, `dt_baixa_minuta`) e depois conta expedidas/baixadas apenas verificando se o campo existe. Isso gera contagens incorretas porque:
 
-```text
-Valores reais no banco:
-+-------------------------------------+--------+
-| nm_campanha                         | qtd    |
-+-------------------------------------+--------+
-| 99FOOD_POSITIVACAO KIT              | 8.410  |  --> Entrega
-| 99FOOD_REPOSICAO_KIT                | 4.511  |  --> Reposicao
-| 99FOOD_KIT RESTAURANTE              | 1.302  |  --> Entrega
-| 99FOOD_PLACA POSITIVADA             | 92     |  --> Ignorar
-| 99FOOD_ESTOQUE_MOVEL                | 66     |  --> Ignorar
-| ...demais campanhas                 |        |
-+-------------------------------------+--------+
-```
+1. Um registro pode entrar no filtro por causa do `dt_inicio`, mas nao ter `dt_expedicao` no periodo selecionado
+2. A contagem nao valida se a data especifica de cada campo esta dentro do periodo
+3. O campo `dt_inicio` nao deveria ser usado
 
-O codigo atual procura por `"kit restaurante"`, `"positivacao kit"` e `"reposicao kit"` usando `includes()`, mas os valores reais contem prefixo `99FOOD_` e underscores. A funcao `includes` deve funcionar para a maioria, porem `ds_campanha` nao existe - o campo correto e `nm_campanha`.
+## Nova Logica
 
-## Plano de Correcao
+Para cada registro, contar **independentemente**:
+- **Expedidas**: apenas se `dt_expedicao` cair dentro do periodo selecionado
+- **Baixadas**: apenas se `dt_baixa_minuta` cair dentro do periodo selecionado
 
-### 1. Corrigir `getEntregasData` em `useFollowupData.ts`
+Exemplo do usuario: filtrando dias 09 e 10/02 em Porto Alegre, contar quantos registros tem `dt_expedicao` nesses dias (259) e quantos tem `dt_baixa_minuta` nesses dias (205).
 
-Alterar a linha que le o campo campanha:
-- **De**: `item.ds_campanha || item.campanha || ""`
-- **Para**: `item.nm_campanha || item.ds_campanha || item.campanha || ""`
+## Alteracoes Tecnicas
 
-Ajustar os filtros de campanha para refletir os valores reais:
-- **Entrega**: campanhas que contenham `"KIT RESTAURANTE"` ou `"POSITIVACAO KIT"` ou `"POSITIVACAO_KIT"` (cobrir variantes com e sem underscore)
-- **Reposicao**: campanhas que contenham `"REPOSICAO_KIT"` ou `"REPOSICAO KIT"` ou `"REPOSITIVACAO"` (conforme mencionado pelo usuario: "Repositivacao-Kit")
+### Arquivo: `src/hooks/useFollowupData.ts`
 
-Manter a exclusao de `ds_tipo_servico` contendo "REENTREGA" (1.404 registros serao excluidos).
+1. **Remover `dt_inicio` de `parseDateField`** - usar apenas `dt_expedicao` e `dt_baixa_minuta`
 
-### 2. Garantir cache compartilhado (ja funciona)
+2. **Refatorar `filterByMonthYear`** - incluir registro se `dt_expedicao` OU `dt_baixa_minuta` cair no mes/ano selecionado (sem `dt_inicio`)
 
-Os dados ja estao cacheados corretamente com `page_id = 'entregas'` e `cache_key = 'followup_099'` (14.545 registros). Nenhuma alteracao necessaria no cache.
+3. **Refatorar `filterByDateRange`** - remover `dt_inicio` da lista de datas candidatas
 
-### Resumo Tecnico
+4. **Refatorar `getMinutasData`** - em vez de apenas verificar se o campo existe, verificar se a data do campo esta dentro do periodo selecionado:
+   - Se filtro por calendario (dateRange): contar expedida somente se `dt_expedicao` estiver no range, contar baixada somente se `dt_baixa_minuta` estiver no range
+   - Se filtro por mes/ano: contar expedida somente se `dt_expedicao` bater com mes/ano, contar baixada somente se `dt_baixa_minuta` bater com mes/ano
 
-Apenas o arquivo `src/hooks/useFollowupData.ts` precisa ser alterado, na funcao `getEntregasData` (~5 linhas de mudanca):
-- Adicionar `nm_campanha` como campo prioritario
-- Ajustar os patterns de matching para cobrir `POSITIVACAO KIT`, `KIT RESTAURANTE` (Entrega) e `REPOSICAO_KIT` / `REPOSITIVACAO` (Reposicao)
+5. **`getMinutasDailyData` ja esta correto** - ele ja conta expedidas e baixadas independentemente por data. Apenas remover `dt_inicio` do pre-filtro.
+
+### Resumo do Impacto
+
+- Apenas o arquivo `src/hooks/useFollowupData.ts` sera alterado
+- Os componentes visuais (KPICards, graficos, tabelas) permanecem inalterados
+- A contagem passara a refletir exatamente quantas expedicoes e baixas ocorreram no periodo selecionado
+
