@@ -468,7 +468,8 @@ const Tracking = () => {
             </div>
 
             {/* ===== BLOCO 2: Cidades + Regional/Mapa + Itens Table ===== */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch mt-3">
+            {/* Same height as Block 1: use items-stretch so all columns match */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch mt-3" style={{ minHeight: 420 }}>
               {/* Left area (col-span-8), inner grid-cols-3 */}
               <div className="lg:col-span-8">
                 <div className="grid grid-cols-3 gap-3 h-full">
