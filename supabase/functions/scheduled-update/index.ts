@@ -98,18 +98,25 @@ Deno.serve(async (req) => {
       }
 
       // Determine if this page needs date range params
-      const needsDateRange = ["minutas", "entregas"].includes(pageId) ||
+      const needsDateRange = ["minutas", "entregas", "tracking"].includes(pageId) ||
         integrations.some(i => ["FOLLOWUP", "PRODUTOSDISTRIBUIDOS"].includes(i.name.toUpperCase()));
 
-      // Calculate date range for current month (only used for followup-type APIs)
-      const firstDay = new Date(brtTime.getFullYear(), brtTime.getMonth(), 1);
-      const lastDay = new Date(brtTime.getFullYear(), brtTime.getMonth() + 1, 0);
+      // Calculate date range: always from Jan 1st of current year to today
       const fmt = (d: Date) =>
         `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      const dateRange = {
-        data_inicial: `${fmt(firstDay)} 00:00`,
-        data_final: `${fmt(lastDay)} 23:59`,
-      };
+      const currentYear = brtTime.getFullYear();
+      const currentMonth = brtTime.getMonth() + 1; // 1-based
+
+      // Build month-by-month chunks from January to current month
+      const monthChunks: { data_inicial: string; data_final: string }[] = [];
+      for (let m = 1; m <= currentMonth; m++) {
+        const firstDay = new Date(currentYear, m - 1, 1);
+        const lastDay = new Date(currentYear, m, 0);
+        monthChunks.push({
+          data_inicial: `${fmt(firstDay)} 00:00`,
+          data_final: `${fmt(lastDay)} 23:59`,
+        });
+      }
 
       // Call each API integration
       for (const integration of integrations) {
@@ -133,10 +140,6 @@ Deno.serve(async (req) => {
         // Build request body - only include date range for APIs that need it
         const apiName = integration.name.toUpperCase();
         const apiNeedsDateRange = ["FOLLOWUP", "PRODUTOSDISTRIBUIDOS"].includes(apiName);
-        const body: Record<string, any> = { cod_cli: biSetting.cod_cli };
-        if (apiNeedsDateRange) {
-          Object.assign(body, dateRange);
-        }
 
         // Determine cache key based on API name
         const cacheKey = `${integration.name.toLowerCase()}_${biSetting.cod_cli}`;
@@ -144,42 +147,70 @@ Deno.serve(async (req) => {
         try {
           console.log(`Calling API: ${integration.name} for page ${pageId}`);
           const startTime = Date.now();
-          const apiResponse = await fetch(url, {
-            method: "POST",
-            headers,
-            body: JSON.stringify(body),
-          });
-          const execTime = Date.now() - startTime;
 
-          const responseBody = await apiResponse.json().catch(() => null);
+          let allDataArray: any[] = [];
 
-          // Extract data array
-          let dataArray: any[] = [];
-          if (responseBody?.ocorrencias && Array.isArray(responseBody.ocorrencias)) {
-            dataArray = responseBody.ocorrencias;
-          } else if (Array.isArray(responseBody)) {
-            dataArray = responseBody;
-          } else if (responseBody?.data && Array.isArray(responseBody.data)) {
-            dataArray = responseBody.data;
+          if (apiNeedsDateRange) {
+            // Fetch month by month from Jan to current month
+            for (const chunk of monthChunks) {
+              const body: Record<string, any> = { cod_cli: biSetting.cod_cli, ...chunk };
+              const apiResponse = await fetch(url, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(body),
+              });
+              const responseBody = await apiResponse.json().catch(() => null);
+              let dataArray: any[] = [];
+              if (responseBody?.ocorrencias && Array.isArray(responseBody.ocorrencias)) {
+                dataArray = responseBody.ocorrencias;
+              } else if (responseBody?.pedidos && Array.isArray(responseBody.pedidos)) {
+                dataArray = responseBody.pedidos;
+              } else if (Array.isArray(responseBody)) {
+                dataArray = responseBody;
+              } else if (responseBody?.data && Array.isArray(responseBody.data)) {
+                dataArray = responseBody.data;
+              }
+              allDataArray = allDataArray.concat(dataArray);
+              console.log(`  Chunk ${chunk.data_inicial}: ${dataArray.length} records`);
+            }
+          } else {
+            const body: Record<string, any> = { cod_cli: biSetting.cod_cli };
+            const apiResponse = await fetch(url, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(body),
+            });
+            const responseBody = await apiResponse.json().catch(() => null);
+            if (responseBody?.ocorrencias && Array.isArray(responseBody.ocorrencias)) {
+              allDataArray = responseBody.ocorrencias;
+            } else if (responseBody?.pedidos && Array.isArray(responseBody.pedidos)) {
+              allDataArray = responseBody.pedidos;
+            } else if (Array.isArray(responseBody)) {
+              allDataArray = responseBody;
+            } else if (responseBody?.data && Array.isArray(responseBody.data)) {
+              allDataArray = responseBody.data;
+            }
           }
+
+          const execTime = Date.now() - startTime;
 
           // Save to cache
           await supabase.from("bi_data_cache").upsert(
             {
               page_id: pageId,
               cache_key: cacheKey,
-              data: dataArray as any,
+              data: allDataArray as any,
               cached_at: new Date().toISOString(),
             },
             { onConflict: "page_id,cache_key" }
           );
 
-          console.log(`API ${integration.name}: ${apiResponse.status}, ${dataArray.length} records, ${execTime}ms`);
+          console.log(`API ${integration.name}: ${allDataArray.length} total records, ${execTime}ms`);
           results.push({
             page_id: pageId,
             api: integration.name,
-            status: apiResponse.status,
-            records: dataArray.length,
+            status: 200,
+            records: allDataArray.length,
             time_ms: execTime,
           });
         } catch (apiError: any) {

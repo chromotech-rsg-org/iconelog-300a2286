@@ -7,7 +7,7 @@ interface Props {
   selectedTipo: string | null;
 }
 
-const ALLOWED_TYPES = ["ENTREGA", "REENTREGA", "COLETA", "RETIRA MATRIZ", "DESCARTE", "DIFAL"];
+const ALLOWED_TYPES = ["ENTREGA", "REENTREGA"];
 
 export const TrackingTipoServicoChart = ({ data, onTipoClick, selectedTipo }: Props) => {
   const filtered = data.filter(d => ALLOWED_TYPES.includes(d.name));
