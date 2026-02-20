@@ -49,8 +49,8 @@ const Tracking = () => {
   const [showRefreshProgress, setShowRefreshProgress] = useState(true);
   const [isFiltering, startFilterTransition] = useTransition();
 
-  // B-SIDE / D-SIDE filter (not tabs)
-  const [selectedSide, setSelectedSide] = useState<string>("B-SIDE");
+  // B-SIDE / D-SIDE multi-select filter (empty = show all)
+  const [selectedSides, setSelectedSides] = useState<string[]>([]);
 
   // Global filters
   const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
@@ -83,11 +83,13 @@ const Tracking = () => {
   const filteredOrders = useMemo(() => {
     let orders = trackingRaw.filteredOrders;
 
-    // B-SIDE / D-SIDE filter
-    if (selectedSide) {
-      // These map to ds_tipo_servico or similar field
-      // B-SIDE = standard deliveries, D-SIDE = returns/other
-      // For now just pass through - adjust based on actual data field
+    // B-SIDE / D-SIDE filter (from followup field, e.g. ds_lado or similar)
+    if (selectedSides.length > 0) {
+      orders = orders.filter(o => {
+        const lado = (o.ds_lado || o.ds_side || "").toUpperCase().trim();
+        return selectedSides.some(s => lado.includes(s.replace("-", "").replace(" ", ""))) || 
+               selectedSides.some(s => lado === s);
+      });
     }
 
     if (selectedPrazo !== null) {
@@ -121,7 +123,7 @@ const Tracking = () => {
       });
     }
     return orders;
-  }, [trackingRaw, selectedPrazo, selectedTipoServico, selectedModalidade, selectedCidade, selectedEstado, selectedStatus, selectedRegional, selectedSide, cityMappings]);
+  }, [trackingRaw, selectedPrazo, selectedTipoServico, selectedModalidade, selectedCidade, selectedEstado, selectedStatus, selectedRegional, selectedSides, cityMappings]);
 
   // Recalculate all chart data from filtered orders for full interactivity
   const chartData = useMemo(() => {
@@ -320,19 +322,31 @@ const Tracking = () => {
         cityMappings={cityMappings}
       />
 
-      {/* B-SIDE / D-SIDE as filter buttons */}
+      {/* B-SIDE / D-SIDE as toggle filter buttons */}
       <div className="px-6 pt-3 flex items-center gap-2">
-        {["B-SIDE", "D-SIDE"].map(side => (
-          <Button
-            key={side}
-            variant={selectedSide === side ? "default" : "outline"}
-            size="sm"
-            className={`text-xs ${selectedSide === side ? "bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
-            onClick={() => setSelectedSide(side)}
-          >
-            {side}
+        {["B-SIDE", "D-SIDE"].map(side => {
+          const isActive = selectedSides.includes(side);
+          return (
+            <Button
+              key={side}
+              variant={isActive ? "default" : "outline"}
+              size="sm"
+              className={`text-xs ${isActive ? "bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
+              onClick={() => {
+                setSelectedSides(prev =>
+                  prev.includes(side) ? prev.filter(s => s !== side) : [...prev, side]
+                );
+              }}
+            >
+              {side}
+            </Button>
+          );
+        })}
+        {selectedSides.length > 0 && (
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" onClick={() => setSelectedSides([])}>
+            Limpar
           </Button>
-        ))}
+        )}
       </div>
 
       {showRefreshProgress && (
