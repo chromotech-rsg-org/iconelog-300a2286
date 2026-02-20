@@ -36,9 +36,7 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
 
   const heatmapData = useMemo(() => {
     const d: Record<string, number> = {};
-    estadoData.forEach(e => {
-      d[e.name] = e.value;
-    });
+    estadoData.forEach(e => { d[e.name] = e.value; });
     return d;
   }, [estadoData]);
 
@@ -51,12 +49,9 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-      // Detect hovered state from SVG path element
       const target = e.target as SVGElement;
       const uf = target?.getAttribute?.("data-uf") || target?.closest?.("[data-uf]")?.getAttribute("data-uf");
-      if (uf) {
-        setHoveredState(uf);
-      }
+      if (uf) setHoveredState(uf);
     }
   };
 
@@ -66,13 +61,13 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
   }, [hoveredState, estadoData]);
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader className="pb-1">
+    <Card className="bg-card border-border h-full flex flex-col">
+      <CardHeader className="pb-1 pt-2">
         <CardTitle className="text-sm font-medium text-foreground">Pedidos | Estado</CardTitle>
       </CardHeader>
-      <CardContent className="p-2 relative" ref={containerRef} onMouseMove={handleMouseMove}>
+      <CardContent className="p-2 relative flex-1 min-h-0" ref={containerRef} onMouseMove={handleMouseMove}>
         <div
-          className="brazil-map-container"
+          className="brazil-map-container h-full"
           onMouseLeave={() => setHoveredState(null)}
           style={{ position: "relative" }}
         >
@@ -98,41 +93,32 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
           />
         </div>
 
-        {/* Custom Tooltip */}
         {hoveredData && (
           <div
-            className="absolute z-50 pointer-events-none bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-xl p-3 min-w-[220px]"
+            className="absolute z-50 pointer-events-none bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-xl p-2.5 min-w-[200px]"
             style={{
-              left: Math.min(tooltipPos.x + 12, 200),
+              left: Math.min(tooltipPos.x + 12, 160),
               top: tooltipPos.y - 10,
             }}
           >
-            <div className="text-xs font-bold text-primary mb-2 border-b border-border pb-1.5">
+            <div className="text-xs font-bold text-primary mb-1.5 border-b border-border pb-1">
               {UF_NAMES[hoveredData.name] || hoveredData.name}
             </div>
-            <div className="space-y-1 text-[11px]">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Cod Conhecimento</span>
+            <div className="space-y-0.5 text-[10px]">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Pedidos</span>
                 <span className="text-foreground font-semibold">{hoveredData.value.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Sem Ocorrência</span>
-                <span className="text-foreground font-semibold">{hoveredData.semOcorrencia.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Com Ocorrência</span>
-                <span className="text-foreground font-semibold">{hoveredData.comOcorrencia.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">% No Prazo</span>
                 <span className="text-green-400 font-semibold">
-                  {hoveredData.value > 0 ? ((hoveredData.noPrazo / hoveredData.value) * 100).toFixed(2) : "0.00"}%
+                  {hoveredData.value > 0 ? ((hoveredData.noPrazo / hoveredData.value) * 100).toFixed(1) : "0.0"}%
                 </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">% Fora do Prazo</span>
                 <span className="text-red-400 font-semibold">
-                  {hoveredData.value > 0 ? ((hoveredData.foraPrazo / hoveredData.value) * 100).toFixed(2) : "0.00"}%
+                  {hoveredData.value > 0 ? ((hoveredData.foraPrazo / hoveredData.value) * 100).toFixed(1) : "0.0"}%
                 </span>
               </div>
             </div>
