@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cell } from "recharts";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface CidadeData {
   name: string;
@@ -16,9 +15,8 @@ interface Props {
 }
 
 export const TrackingCidadeChart = ({ data, onCidadeClick, selectedCidade }: Props) => {
-  // Show all cities, one per line
   const chartData = data;
-  const barHeight = 28;
+  const barHeight = 38;
   const chartHeight = Math.max(chartData.length * barHeight, 100);
 
   return (
@@ -39,7 +37,14 @@ export const TrackingCidadeChart = ({ data, onCidadeClick, selectedCidade }: Pro
         </div>
       </CardHeader>
       <CardContent className="p-2">
-        <ScrollArea className="h-[350px]" style={{ overflow: "scroll" as any }}>
+        <style>{`
+          .cidade-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+          .cidade-scroll::-webkit-scrollbar-track { background: hsl(0, 0%, 12%); border-radius: 3px; }
+          .cidade-scroll::-webkit-scrollbar-thumb { background: hsl(0, 0%, 35%); border-radius: 3px; }
+          .cidade-scroll::-webkit-scrollbar-thumb:hover { background: hsl(0, 0%, 45%); }
+          .cidade-scroll { overflow-y: scroll !important; }
+        `}</style>
+        <div className="cidade-scroll" style={{ height: 350, overflowY: "scroll" }}>
           <div style={{ height: chartHeight, minHeight: 100 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -60,6 +65,7 @@ export const TrackingCidadeChart = ({ data, onCidadeClick, selectedCidade }: Pro
                   tick={{ fill: "hsl(0, 0%, 70%)", fontSize: 9 }}
                   axisLine={false}
                   tickLine={false}
+                  interval={0}
                 />
                 <Tooltip
                   contentStyle={{ backgroundColor: "hsl(0, 0%, 6%)", border: "1px solid hsl(0, 0%, 15%)", fontSize: 11 }}
@@ -97,7 +103,7 @@ export const TrackingCidadeChart = ({ data, onCidadeClick, selectedCidade }: Pro
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );

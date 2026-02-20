@@ -19,7 +19,6 @@ import { TrackingTipoServicoChart } from "@/components/tracking/TrackingTipoServ
 import { TrackingModalidadeChart } from "@/components/tracking/TrackingModalidadeChart";
 import { TrackingCidadeChart } from "@/components/tracking/TrackingCidadeChart";
 import { TrackingRegionalPieChart } from "@/components/tracking/TrackingRegionalPieChart";
-import { TrackingEstadoChart } from "@/components/tracking/TrackingEstadoChart";
 import { TrackingBrazilMap } from "@/components/tracking/TrackingBrazilMap";
 import { TrackingPedidosTable } from "@/components/tracking/TrackingPedidosTable";
 import { TrackingItensTable } from "@/components/tracking/TrackingItensTable";
@@ -118,11 +117,18 @@ const Tracking = () => {
       });
     }
     if (selectedRegional) {
-      // Filter by regional using city mappings
+      // Filter by macro-region using UF mapping
+      const UF_TO_MACRO: Record<string, string> = {
+        SP: "SUDESTE", RJ: "SUDESTE", MG: "SUDESTE", ES: "SUDESTE",
+        BA: "NORDESTE", SE: "NORDESTE", AL: "NORDESTE", PE: "NORDESTE", PB: "NORDESTE", RN: "NORDESTE", CE: "NORDESTE", PI: "NORDESTE", MA: "NORDESTE",
+        PR: "SUL", SC: "SUL", RS: "SUL",
+        AM: "NORTE", PA: "NORTE", AC: "NORTE", RO: "NORTE", RR: "NORTE", AP: "NORTE", TO: "NORTE",
+        GO: "CENTRO-OESTE", MT: "CENTRO-OESTE", MS: "CENTRO-OESTE", DF: "CENTRO-OESTE",
+      };
       orders = orders.filter(o => {
-        const cidade = (o.ds_cidade_DES || "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-        const mapping = cityMappings.find(m => m.cidade.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase() === cidade);
-        return mapping?.regional === selectedRegional;
+        const uf = (o.ds_uf_DES || "").toUpperCase().trim();
+        const macro = UF_TO_MACRO[uf] || "OUTROS";
+        return macro === selectedRegional;
       });
     }
     return orders;
@@ -426,9 +432,9 @@ const Tracking = () => {
             {/* KPI Cards - full width row */}
             <TrackingKPICards kpis={chartData.kpis} onPrazoClick={handlePrazoClick} selectedPrazo={selectedPrazo} />
 
-            {/* Main 3-column layout matching Power BI */}
+            {/* Main layout matching Power BI reference */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-              {/* LEFT COLUMN: Status, Performance, Modalidade, Tipo Serviço */}
+              {/* LEFT COLUMN: Status, Tipo Serviço, Performance, Modalidade */}
               <div className="lg:col-span-3 flex flex-col gap-3">
                 <TrackingStatusBars
                   finalizado={chartData.kpis.finalizado}
@@ -436,6 +442,7 @@ const Tracking = () => {
                   onStatusClick={handleStatusClick}
                   selectedStatus={selectedStatus}
                 />
+                <TrackingTipoServicoChart data={chartData.tipoServico} onTipoClick={handleTipoClick} selectedTipo={selectedTipoServico} />
                 <TrackingGaugeChart
                   percNoPrazo={chartData.kpis.percNoPrazo}
                   noPrazo={chartData.kpis.noPrazo}
@@ -444,20 +451,18 @@ const Tracking = () => {
                   selectedPrazo={selectedPrazo}
                 />
                 <TrackingModalidadeChart data={chartData.modalidade} onModalidadeClick={handleModalidadeClick} selectedModalidade={selectedModalidade} />
-                <TrackingTipoServicoChart data={chartData.tipoServico} onTipoClick={handleTipoClick} selectedTipo={selectedTipoServico} />
               </div>
 
-              {/* CENTER COLUMN: Região + Mapa side by side, Estado chart, Entregas por Cidade */}
+              {/* CENTER COLUMN: Entregas por Cidade, Pedido|Região + Mapa */}
               <div className="lg:col-span-5 flex flex-col gap-3">
+                <TrackingCidadeChart data={chartData.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
                 <div className="grid grid-cols-2 gap-3">
                   <TrackingRegionalPieChart data={chartData.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
                   <TrackingBrazilMap estadoData={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
                 </div>
-                <TrackingEstadoChart data={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
-                <TrackingCidadeChart data={chartData.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
               </div>
 
-              {/* RIGHT COLUMN: Pedidos table + Itens table */}
+              {/* RIGHT COLUMN: Pedidos table + Itens table (same height) */}
               <div className="lg:col-span-4 flex flex-col gap-3">
                 <TrackingPedidosTable orders={filteredOrders} onCidadeClick={handleCidadeClick} onStatusClick={handleStatusClick} />
                 <TrackingItensTable items={filteredProdutos} />

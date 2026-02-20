@@ -3,23 +3,6 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recha
 
 const COLORS = ["hsl(45, 100%, 50%)", "hsl(217, 91%, 60%)", "hsl(142, 76%, 36%)", "hsl(25, 95%, 53%)", "hsl(280, 65%, 60%)", "hsl(0, 72%, 51%)", "hsl(180, 60%, 45%)"];
 
-// Map individual regionals to macro regions
-const MACRO_REGIONS: Record<string, string> = {
-  "SUDESTE": "SUDESTE",
-  "NORDESTE": "NORDESTE",
-  "SUL": "SUL",
-  "NORTE": "NORTE",
-  "CENTRO-OESTE": "CENTRO-OESTE",
-};
-
-const UF_TO_MACRO: Record<string, string> = {
-  SP: "SUDESTE", RJ: "SUDESTE", MG: "SUDESTE", ES: "SUDESTE",
-  BA: "NORDESTE", SE: "NORDESTE", AL: "NORDESTE", PE: "NORDESTE", PB: "NORDESTE", RN: "NORDESTE", CE: "NORDESTE", PI: "NORDESTE", MA: "NORDESTE",
-  PR: "SUL", SC: "SUL", RS: "SUL",
-  AM: "NORTE", PA: "NORTE", AC: "NORTE", RO: "NORTE", RR: "NORTE", AP: "NORTE", TO: "NORTE",
-  GO: "CENTRO-OESTE", MT: "CENTRO-OESTE", MS: "CENTRO-OESTE", DF: "CENTRO-OESTE",
-};
-
 interface Props {
   data: { name: string; value: number }[];
   onRegionalClick: (regional: string) => void;
@@ -45,26 +28,8 @@ const renderLabel = ({ name, percent }: any) => {
 };
 
 export const TrackingRegionalPieChart = ({ data, onRegionalClick, selectedRegional }: Props) => {
-  // Group data by macro region
-  const macroMap = new Map<string, number>();
-  data.forEach(item => {
-    // Check if item.name is already a macro region
-    const upper = item.name.toUpperCase().trim();
-    const macroKey = Object.keys(MACRO_REGIONS).find(k => upper.includes(k));
-    if (macroKey) {
-      macroMap.set(macroKey, (macroMap.get(macroKey) || 0) + item.value);
-    } else {
-      // Try UF mapping or keep as-is
-      macroMap.set(upper, (macroMap.get(upper) || 0) + item.value);
-    }
-  });
-
-  const pieData = Array.from(macroMap.entries())
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value);
-
-  const total = pieData.reduce((s, d) => s + d.value, 0);
-  const withPercent = pieData.map(d => ({ ...d, percent: total > 0 ? d.value / total : 0 }));
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const withPercent = data.map(d => ({ ...d, percent: total > 0 ? d.value / total : 0 }));
 
   return (
     <Card className="bg-card border-border">

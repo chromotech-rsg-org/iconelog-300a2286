@@ -16,13 +16,13 @@ export const TrackingItensTable = ({ items }: Props) => {
       </CardHeader>
       <CardContent className="p-0">
         <style>{`
-          .tracking-itens-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-          .tracking-itens-scroll::-webkit-scrollbar-track { background: hsl(0, 0%, 10%); }
-          .tracking-itens-scroll::-webkit-scrollbar-thumb { background: hsl(0, 0%, 30%); border-radius: 4px; }
-          .tracking-itens-scroll::-webkit-scrollbar-thumb:hover { background: hsl(0, 0%, 40%); }
+          .tracking-itens-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+          .tracking-itens-scroll::-webkit-scrollbar-track { background: hsl(0, 0%, 12%); border-radius: 3px; }
+          .tracking-itens-scroll::-webkit-scrollbar-thumb { background: hsl(0, 0%, 35%); border-radius: 3px; }
+          .tracking-itens-scroll::-webkit-scrollbar-thumb:hover { background: hsl(0, 0%, 45%); }
           .tracking-itens-scroll { overflow: scroll !important; }
         `}</style>
-        <div className="tracking-itens-scroll overflow-x-scroll overflow-y-auto max-h-[400px]">
+        <div className="tracking-itens-scroll" style={{ overflow: "scroll", maxHeight: 400 }}>
           <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow className="border-border bg-muted/20 sticky top-0 z-10">

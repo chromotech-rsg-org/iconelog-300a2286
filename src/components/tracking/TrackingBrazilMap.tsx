@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMemo, useState, useRef } from "react";
 import BrazilHeatmap from "react-brazil-heatmap";
 import "react-brazil-heatmap/dist/style.css";
-import type { GeographyType, Metadata } from "react-brazil-heatmap";
+import type { GeographyType } from "react-brazil-heatmap";
 
 interface EstadoStats {
   name: string;
@@ -42,24 +42,6 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
     return d;
   }, [estadoData]);
 
-  const metadata = useMemo<Metadata>(() => {
-    const m: Metadata = {};
-    estadoData.forEach(e => {
-      const total = e.value;
-      const percNoPrazo = total > 0 ? ((e.noPrazo / total) * 100).toFixed(2) : "0.00";
-      const percForaPrazo = total > 0 ? ((e.foraPrazo / total) * 100).toFixed(2) : "0.00";
-      m[e.name] = {
-        "Nome Estado": UF_NAMES[e.name] || e.name,
-        "Contagem de Cod Conhecimento": total,
-        "Sem Ocorrência": e.semOcorrencia,
-        "Com Ocorrência": e.comOcorrencia,
-        "% No Prazo": `${percNoPrazo}%`,
-        "% Fora do Prazo": `${percForaPrazo}%`,
-      };
-    });
-    return m;
-  }, [estadoData]);
-
   const handleClick = (geo: GeographyType) => {
     const uf = geo.properties.uf;
     if (uf) onEstadoClick(uf);
@@ -69,6 +51,12 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      // Detect hovered state from SVG path element
+      const target = e.target as SVGElement;
+      const uf = target?.getAttribute?.("data-uf") || target?.closest?.("[data-uf]")?.getAttribute("data-uf");
+      if (uf) {
+        setHoveredState(uf);
+      }
     }
   };
 
@@ -105,7 +93,7 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
           `}</style>
           <BrazilHeatmap
             data={heatmapData}
-            colorRange={["hsl(220, 15%, 25%)", "hsl(220, 60%, 45%)"]}
+            colorRange={["hsl(45, 30%, 20%)", "hsl(45, 100%, 50%)"]}
             onClick={handleClick}
           />
         </div>

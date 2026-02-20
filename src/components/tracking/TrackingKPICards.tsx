@@ -19,7 +19,7 @@ interface Props {
 
 export const TrackingKPICards = ({ kpis, onPrazoClick, selectedPrazo }: Props) => {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
       {/* Quantidade de Pedidos - bigger emphasis */}
       <Card className="bg-card border-primary/50 border-2">
         <CardContent className="p-3 flex flex-col items-center justify-center">
@@ -62,19 +62,6 @@ export const TrackingKPICards = ({ kpis, onPrazoClick, selectedPrazo }: Props) =
         </CardContent>
       </Card>
 
-      <Card className="bg-card border-border">
-        <CardContent className="p-3 text-center">
-          <span className="text-[10px] text-muted-foreground">Finalizado</span>
-          <p className="text-xl font-bold text-foreground">{formatNumber(kpis.finalizado)}</p>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-card border-border">
-        <CardContent className="p-3 text-center">
-          <span className="text-[10px] text-muted-foreground">Trânsito</span>
-          <p className="text-xl font-bold text-foreground">{formatNumber(kpis.transito)}</p>
-        </CardContent>
-      </Card>
     </div>
   );
 };
