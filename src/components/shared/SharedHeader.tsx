@@ -42,6 +42,9 @@ import { CalendarFilter } from "./CalendarFilter";
   // Date range filter
   selectedDateRange?: { from: Date | undefined; to: Date | undefined };
   onDateRangeChange?: (range: { from: Date | undefined; to: Date | undefined }) => void;
+  // B-SIDE / D-SIDE filter
+  selectedSides?: string[];
+  onSidesChange?: (sides: string[]) => void;
   // Dados para filtros dinâmicos
   followupData?: any[];
   cityMappings?: any[];
@@ -65,6 +68,8 @@ import { CalendarFilter } from "./CalendarFilter";
     onRegionsChange,
     selectedDateRange,
     onDateRangeChange,
+    selectedSides,
+    onSidesChange,
     onClearAllFilters,
     onExportExcel,
     onRefreshData,
@@ -411,6 +416,36 @@ import { CalendarFilter } from "./CalendarFilter";
               selectedDateRange={selectedDateRange}
               onDateRangeChange={onDateRangeChange}
             />
+          )}
+
+          {/* B-SIDE / D-SIDE toggle filters */}
+          {selectedSides && onSidesChange && (
+            <div className="flex items-center gap-1">
+              {["B-SIDE", "D-SIDE"].map(side => {
+                const isActive = selectedSides.includes(side);
+                return (
+                  <Button
+                    key={side}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      onSidesChange(
+                        selectedSides.includes(side)
+                          ? selectedSides.filter(s => s !== side)
+                          : [...selectedSides, side]
+                      );
+                    }}
+                    className={`px-3 py-1 text-xs font-medium transition-all duration-200 border ${
+                      isActive
+                        ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent hover:bg-dashboard-accent/80"
+                        : "text-muted-foreground border-dashboard-border hover:text-dashboard-accent hover:bg-dashboard-border"
+                    }`}
+                  >
+                    {side}
+                  </Button>
+                );
+              })}
+            </div>
           )}
 
           {showExport && onExportExcel && (

@@ -83,12 +83,15 @@ const Tracking = () => {
   const filteredOrders = useMemo(() => {
     let orders = trackingRaw.filteredOrders;
 
-    // B-SIDE / D-SIDE filter (from followup field, e.g. ds_lado or similar)
+    // B-SIDE / D-SIDE filter using nr_ccusto_ped_cliente field
     if (selectedSides.length > 0) {
       orders = orders.filter(o => {
-        const lado = (o.ds_lado || o.ds_side || "").toUpperCase().trim();
-        return selectedSides.some(s => lado.includes(s.replace("-", "").replace(" ", ""))) || 
-               selectedSides.some(s => lado === s);
+        const ccusto = (o.nr_ccusto_ped_cliente || "").toUpperCase().trim();
+        return selectedSides.some(s => {
+          const sNorm = s.replace("-", "").replace(" ", "").toUpperCase();
+          const ccustoNorm = ccusto.replace("-", "").replace(" ", "");
+          return ccustoNorm.includes(sNorm) || ccustoNorm === sNorm || ccusto.includes(s.toUpperCase());
+        });
       });
     }
 
@@ -258,6 +261,7 @@ const Tracking = () => {
     setSelectedYears([currentYear]);
     setSelectedRegions([]);
     setSelectedDateRange({ from: undefined, to: undefined });
+    setSelectedSides([]);
     clearAllInteractiveFilters();
   }, [currentYear, clearAllInteractiveFilters]);
 
@@ -334,37 +338,12 @@ const Tracking = () => {
         onClearAllFilters={clearGlobalFilters}
         onExportExcel={handleExportExcel}
         onRefreshData={handleRefreshData}
-        hasActiveFilters={hasActiveFilters}
+        hasActiveFilters={hasActiveFilters || selectedSides.length > 0}
         followupData={followupData}
         cityMappings={cityMappings}
+        selectedSides={selectedSides}
+        onSidesChange={(sides) => setSelectedSides(sides)}
       />
-
-      {/* B-SIDE / D-SIDE as toggle filter buttons */}
-      <div className="px-6 pt-3 flex items-center gap-2">
-        {["B-SIDE", "D-SIDE"].map(side => {
-          const isActive = selectedSides.includes(side);
-          return (
-            <Button
-              key={side}
-              variant={isActive ? "default" : "outline"}
-              size="sm"
-              className={`text-xs ${isActive ? "bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
-              onClick={() => {
-                setSelectedSides(prev =>
-                  prev.includes(side) ? prev.filter(s => s !== side) : [...prev, side]
-                );
-              }}
-            >
-              {side}
-            </Button>
-          );
-        })}
-        {selectedSides.length > 0 && (
-          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground h-7" onClick={() => setSelectedSides([])}>
-            Limpar
-          </Button>
-        )}
-      </div>
 
       {showRefreshProgress && (
         <RefreshProgress stage={refreshStage} recordCount={refreshRecordCount} onDismiss={() => setShowRefreshProgress(false)} />
