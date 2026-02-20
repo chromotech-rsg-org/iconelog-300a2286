@@ -1,42 +1,156 @@
 
 
-# Ajuste na Logica de Contagem de Minutas
+# Tracking Consolidado - Implementacao com APIs Reais
 
-## Problema Atual
+## Visao Geral
 
-A logica atual filtra os registros usando qualquer campo de data disponivel (`dt_inicio`, `dt_expedicao`, `dt_baixa_minuta`) e depois conta expedidas/baixadas apenas verificando se o campo existe. Isso gera contagens incorretas porque:
+Transformar a pagina de Tracking Consolidado de dados mock para dados reais das APIs FOLLOWUP e PRODUTOSDISTRIBUIDOS, mantendo todas as informacoes fidedignas ao Power BI atual, com o layout visual do sistema (modo escuro, tons amarelos).
 
-1. Um registro pode entrar no filtro por causa do `dt_inicio`, mas nao ter `dt_expedicao` no periodo selecionado
-2. A contagem nao valida se a data especifica de cada campo esta dentro do periodo
-3. O campo `dt_inicio` nao deveria ser usado
+## Fontes de Dados
 
-## Nova Logica
+- **FOLLOWUP**: Dados de pedidos (nr_pedido, ds_tipo_servico, ds_modalidade_transporte, nm_campanha, ds_cidade_DES, ds_uf_DES, fl_status_real, dt_previsao, dt_entrega_real, nm_solicitante, nr_qtde_SKU, vl_total, cod_conhecimento)
+- **PRODUTOSDISTRIBUIDOS**: Itens dos pedidos (nr_pedido, cod_prod_cliente, descricao, nm_sub_grupo, m3_total, vl_total, nr_qtde)
 
-Para cada registro, contar **independentemente**:
-- **Expedidas**: apenas se `dt_expedicao` cair dentro do periodo selecionado
-- **Baixadas**: apenas se `dt_baixa_minuta` cair dentro do periodo selecionado
+## Logica de "No Prazo" vs "Fora do Prazo"
 
-Exemplo do usuario: filtrando dias 09 e 10/02 em Porto Alegre, contar quantos registros tem `dt_expedicao` nesses dias (259) e quantos tem `dt_baixa_minuta` nesses dias (205).
+- Se `dt_entrega_real` existe e `dt_entrega_real <= dt_previsao` -> No Prazo
+- Se `dt_entrega_real` existe e `dt_entrega_real > dt_previsao` -> Fora do Prazo
+- Se nao tem `dt_entrega_real` (ainda em transito), usa data atual vs `dt_previsao`
+
+## Componentes Visuais
+
+### 1. KPI Cards (destaque maior para Quantidade de Pedidos)
+- **Quantidade de Pedidos** (card maior, fonte maior)
+- Qtde no Prazo / % no Prazo
+- Qtde Fora do Prazo / % Fora do Prazo
+- Status: Finalizado / Transito
+
+### 2. Grafico de Performance (Velocimetro/Gauge)
+- Estilo semi-circular tipo velocimetro (nao donut)
+- Mostra a % No Prazo no centro
+- Cores: verde para No Prazo, salmao/rosa para Fora do Prazo
+- Filtros clicaveis "No Prazo" e "Fora do Prazo" abaixo do gauge
+- Implementado com Recharts PieChart customizado (startAngle=180, endAngle=0)
+
+### 3. Status Pedidos (barras horizontais)
+- FINALIZADO e TRANSITO com contagem
+
+### 4. Pedidos por Tipo de Servico (barras horizontais)
+- ENTREGA, REENTREGA, COLETA, RETIRA MATRIZ, DESCARTE
+- Agrupado pelo campo `ds_tipo_servico`
+
+### 5. Pedidos por Modalidade (donut chart)
+- RODOVIARIO, EXCLUSIVO, etc.
+- Campo `ds_modalidade_transporte`
+
+### 6. Entregas por Cidade (barras horizontais com status)
+- Top cidades com barras divididas por FINALIZADO/TRANSITO
+- Clicavel para filtrar
+
+### 7. Pedido por Regiao (pie chart)
+- Sudeste, Nordeste, Sul, Centro-Oeste
+- Usa mapeamento regional existente (city_regional_mapping)
+
+### 8. Pedidos por Estado (barras verticais)
+- Campo `ds_uf_DES`
+
+### 9. Mapa do Brasil
+- SVG do mapa do Brasil com estados clicaveis
+- Colorido por volume de pedidos
+- Clicar em um estado filtra todos os dados
+- Implementado com SVG paths para cada estado brasileiro
+
+### 10. Tabela "Pedidos Consolidados"
+Colunas conforme imagem 2:
+- N Mov (cod_conhecimento)
+- Pedido (nr_pedido)
+- Tipo de Servico (ds_tipo_servico)
+- Modalidade (ds_modalidade_transporte)
+- Campanha (nm_campanha)
+- Qtde SKU (nr_qtde_SKU)
+- Vl. Tot. Pedido (vl_total do followup)
+- Prev. de Entrega (dt_previsao)
+- Data Entrega Real (dt_entrega_real)
+- Status (fl_status_real)
+- Cidade Destino (ds_cidade_DES)
+- UF (ds_uf_DES)
+- Solicitante (nm_solicitante)
+
+### 11. Tabela "Itens dos Pedidos"
+Colunas conforme imagem 3 (dados da API PRODUTOSDISTRIBUIDOS):
+- Pedido (nr_pedido)
+- Cod. Item (cod_prod_cliente)
+- Descricao (descricao)
+- SubGrupo (nm_sub_grupo)
+- M3 Total (m3_total)
+- Vl. Total (vl_total)
 
 ## Alteracoes Tecnicas
 
-### Arquivo: `src/hooks/useFollowupData.ts`
+### 1. `src/hooks/useFollowupData.ts`
+- Adicionar funcao `getTrackingData()` que retorna KPIs e dados agregados para o tracking
+- Incluir logica de "No Prazo" baseada em `dt_previsao` vs `dt_entrega_real`
+- Agrupamentos por tipo_servico, modalidade, cidade, estado, regiao
+- O fetch de PRODUTOSDISTRIBUIDOS sera ativado tambem para `pageId === "tracking"` (alem de "minutas")
+- Adicionar cache para tracking (`followup_099` e `produtos_099` com page_id "tracking")
 
-1. **Remover `dt_inicio` de `parseDateField`** - usar apenas `dt_expedicao` e `dt_baixa_minuta`
+### 2. `src/components/tracking/` (novos arquivos)
+- `TrackingKPICards.tsx` - Cards de KPI com destaque no total
+- `TrackingGaugeChart.tsx` - Grafico velocimetro de performance
+- `TrackingStatusBars.tsx` - Barras de status (Finalizado/Transito)
+- `TrackingTipoServicoChart.tsx` - Barras horizontais por tipo servico
+- `TrackingModalidadeChart.tsx` - Donut por modalidade
+- `TrackingCidadeChart.tsx` - Barras por cidade com status
+- `TrackingRegionalPieChart.tsx` - Pizza por regiao
+- `TrackingEstadoChart.tsx` - Barras por estado
+- `TrackingBrazilMap.tsx` - Mapa SVG do Brasil interativo
+- `TrackingPedidosTable.tsx` - Tabela de pedidos consolidados
+- `TrackingItensTable.tsx` - Tabela de itens dos pedidos
 
-2. **Refatorar `filterByMonthYear`** - incluir registro se `dt_expedicao` OU `dt_baixa_minuta` cair no mes/ano selecionado (sem `dt_inicio`)
+### 3. `src/pages/Tracking.tsx` (reescrita completa)
+- Remover dados mock e importar `useFollowupData` com pageId "tracking"
+- Integrar com `SharedHeader` e sistema de filtros (meses, anos, regionais, calendario)
+- Layout em grid reproduzindo a estrutura do Power BI:
+  - Coluna esquerda: KPIs, Status, Tipo Servico, Entregas por Cidade
+  - Centro: Performance (gauge), Modalidade, Regiao, Estado, Mapa
+  - Direita: Tabela Pedidos Consolidados, Tabela Itens
+- Todos os graficos e tabelas sao interativos (clique filtra globalmente)
+- Tabs B-SIDE / D-SIDE mantidas
 
-3. **Refatorar `filterByDateRange`** - remover `dt_inicio` da lista de datas candidatas
+### 4. `src/data/trackingData.ts`
+- Remover dados mock (nao sera mais usado)
 
-4. **Refatorar `getMinutasData`** - em vez de apenas verificar se o campo existe, verificar se a data do campo esta dentro do periodo selecionado:
-   - Se filtro por calendario (dateRange): contar expedida somente se `dt_expedicao` estiver no range, contar baixada somente se `dt_baixa_minuta` estiver no range
-   - Se filtro por mes/ano: contar expedida somente se `dt_expedicao` bater com mes/ano, contar baixada somente se `dt_baixa_minuta` bater com mes/ano
+### 5. Mapa do Brasil SVG
+- Criar `src/components/tracking/brazil-map-paths.ts` com os paths SVG de cada estado
+- Cada estado colorido proporcionalmente ao volume de pedidos
+- Click em estado aplica filtro global por UF
 
-5. **`getMinutasDailyData` ja esta correto** - ele ja conta expedidas e baixadas independentemente por data. Apenas remover `dt_inicio` do pre-filtro.
+## Fluxo de Dados
 
-### Resumo do Impacto
+```text
+API FOLLOWUP ──> bi_data_cache (page_id: "tracking")
+                       │
+                       ▼
+              useFollowupData(codCli, "tracking")
+                       │
+                       ├── getTrackingData(months, years, dateRange)
+                       │     ├── KPIs (total, prazo, status)
+                       │     ├── Por tipo servico
+                       │     ├── Por modalidade  
+                       │     ├── Por cidade (com status)
+                       │     ├── Por estado
+                       │     └── Por regiao
+                       │
+API PRODUTOS ──> produtosData
+                       │
+                       └── Tabela Itens dos Pedidos
+```
 
-- Apenas o arquivo `src/hooks/useFollowupData.ts` sera alterado
-- Os componentes visuais (KPICards, graficos, tabelas) permanecem inalterados
-- A contagem passara a refletir exatamente quantas expedicoes e baixas ocorreram no periodo selecionado
+## Cores e Estilo
+
+- Fundo escuro (#0a0a0a), bordas finas
+- Destaque amarelo (#ffcc00) para KPIs e elementos ativos
+- Verde para "No Prazo", vermelho/salmao para "Fora do Prazo"
+- Gauge com gradiente verde -> amarelo -> vermelho
+- Mapa em tons de amarelo (mais escuro = mais pedidos)
 
