@@ -376,9 +376,17 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   }, [produtosData]);
 
   const getEntregasData = useCallback((months?: number[], years?: number[]) => {
-    // Filter by month/year if provided
+    // Filter by month/year using ALL available date fields so in-transit records aren't lost
     const filtered = (months?.length || years?.length) 
-      ? filterByMonthYear(followupData, months || [], years || [])
+      ? followupData.filter(item => {
+          const ms = months || [];
+          const ys = years || [];
+          return dateMatchesMonthYear(item.dt_expedicao, ms, ys) ||
+                 dateMatchesMonthYear(item.dt_baixa_minuta, ms, ys) ||
+                 dateMatchesMonthYear(item.dt_previsao, ms, ys) ||
+                 dateMatchesMonthYear(item.dt_entrega_real, ms, ys) ||
+                 dateMatchesMonthYear(item.dt_emissao, ms, ys);
+        })
       : followupData;
 
     const regionMap = new Map<string, {
