@@ -23,8 +23,7 @@ const resolveRegional = (cidade: string, mappings: CityRegionalMapping[]): strin
   return found?.regional || "Sem Regional";
 };
 
-const parseDateField = (item: FollowupItem): { month: number; year: number; date: Date | null } | null => {
-  const dt = item.dt_inicio || item.dt_expedicao || item.dt_baixa_minuta;
+const parseDateStr = (dt: any): { month: number; year: number; date: Date | null } | null => {
   if (!dt) return null;
   const str = typeof dt === "string" ? dt : String(dt);
   const parts = str.split(/[\/\-]/);
@@ -33,14 +32,19 @@ const parseDateField = (item: FollowupItem): { month: number; year: number; date
   return { year: parseInt(parts[0], 10), month: parseInt(parts[1], 10), date: d };
 };
 
+const dateMatchesMonthYear = (dt: any, months: number[], years: number[]): boolean => {
+  const parsed = parseDateStr(dt);
+  if (!parsed) return false;
+  const matchYear = years.length === 0 || years.includes(parsed.year);
+  const matchMonth = months.length === 0 || months.includes(parsed.month);
+  return matchYear && matchMonth;
+};
+
 const filterByMonthYear = (items: FollowupItem[], months: number[], years: number[]): FollowupItem[] => {
   if (!months.length && !years.length) return items;
   return items.filter(item => {
-    const parsed = parseDateField(item);
-    if (!parsed) return false;
-    const matchYear = years.length === 0 || years.includes(parsed.year);
-    const matchMonth = months.length === 0 || months.includes(parsed.month);
-    return matchYear && matchMonth;
+    return dateMatchesMonthYear(item.dt_expedicao, months, years) ||
+           dateMatchesMonthYear(item.dt_baixa_minuta, months, years);
   });
 };
 
@@ -51,19 +55,21 @@ const safeParseDate = (dt: string): Date | null => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+const isDateInDateRange = (dt: any, fromDate: Date, toDate: Date): boolean => {
+  if (!dt) return false;
+  const parsed = safeParseDate(String(dt));
+  if (!parsed) return false;
+  return parsed.getTime() >= fromDate.getTime() && parsed.getTime() <= toDate.getTime();
+};
+
 const filterByDateRange = (items: FollowupItem[], from: Date, to: Date): FollowupItem[] => {
   const fromDate = new Date(from);
   fromDate.setHours(0, 0, 0, 0);
   const toDate = new Date(to);
   toDate.setHours(23, 59, 59, 999);
   return items.filter(item => {
-    const candidateDates = [item.dt_expedicao, item.dt_baixa_minuta, item.dt_inicio].filter(Boolean);
-    if (candidateDates.length === 0) return false;
-    return candidateDates.some(dt => {
-      const parsed = safeParseDate(String(dt));
-      if (!parsed) return false;
-      return parsed.getTime() >= fromDate.getTime() && parsed.getTime() <= toDate.getTime();
-    });
+    return isDateInDateRange(item.dt_expedicao, fromDate, toDate) ||
+           isDateInDateRange(item.dt_baixa_minuta, fromDate, toDate);
   });
 };
 
@@ -234,6 +240,13 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       : filterByMonthYear(followupData, months, years);
     const regionMap = new Map<string, { expedidas: number; baixadas: number }>();
 
+    // Build date range boundaries for independent field checking
+    const hasDateRange = !!dateRange?.from;
+    const fromDate = hasDateRange ? new Date(dateRange.from!) : null;
+    const toDate = hasDateRange ? new Date(dateRange.to || dateRange.from!) : null;
+    if (fromDate) fromDate.setHours(0, 0, 0, 0);
+    if (toDate) toDate.setHours(23, 59, 59, 999);
+
     filtered.forEach(item => {
       const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
       const regional = resolveRegional(cidade, cityMappings);
@@ -243,8 +256,14 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       }
       const totals = regionMap.get(regional)!;
 
-      if (item.dt_expedicao) totals.expedidas++;
-      if (item.dt_baixa_minuta) totals.baixadas++;
+      // Count expedida only if dt_expedicao falls within the selected period
+      if (hasDateRange && fromDate && toDate) {
+        if (isDateInDateRange(item.dt_expedicao, fromDate, toDate)) totals.expedidas++;
+        if (isDateInDateRange(item.dt_baixa_minuta, fromDate, toDate)) totals.baixadas++;
+      } else {
+        if (dateMatchesMonthYear(item.dt_expedicao, months, years)) totals.expedidas++;
+        if (dateMatchesMonthYear(item.dt_baixa_minuta, months, years)) totals.baixadas++;
+      }
     });
 
     return Array.from(regionMap.entries()).map(([name, totals]) => ({
