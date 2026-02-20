@@ -1,452 +1,381 @@
-import { useState, useMemo, useCallback } from "react";
- import { DocumentHead } from "@/components/shared/DocumentHead";
+import { useState, useMemo, useCallback, useEffect, useTransition } from "react";
+import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
+import { useFollowupData } from "@/hooks/useFollowupData";
+import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
+import { allMonthValues } from "@/data/mockData";
+import { AlertCircle, InboxIcon, Loader2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import {
-  generateTrackingOrders,
-  calculateTrackingTotals,
-  getOrdersByTipoServico,
-  getOrdersByModalidade,
-  getOrdersByCidade,
-  getOrdersByRegional,
-  TrackingOrder,
-} from "@/data/trackingData";
-import { formatNumber, formatCurrency, allMonthValues } from "@/data/mockData";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Clock } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { Package, Clock, CheckCircle, AlertTriangle, TrendingUp, Percent, X } from "lucide-react";
 
-const COLORS = ['hsl(45, 100%, 50%)', 'hsl(217, 91%, 60%)', 'hsl(25, 95%, 53%)', 'hsl(142, 76%, 36%)', 'hsl(280, 65%, 60%)'];
+import { TrackingKPICards } from "@/components/tracking/TrackingKPICards";
+import { TrackingGaugeChart } from "@/components/tracking/TrackingGaugeChart";
+import { TrackingStatusBars } from "@/components/tracking/TrackingStatusBars";
+import { TrackingTipoServicoChart } from "@/components/tracking/TrackingTipoServicoChart";
+import { TrackingModalidadeChart } from "@/components/tracking/TrackingModalidadeChart";
+import { TrackingCidadeChart } from "@/components/tracking/TrackingCidadeChart";
+import { TrackingRegionalPieChart } from "@/components/tracking/TrackingRegionalPieChart";
+import { TrackingEstadoChart } from "@/components/tracking/TrackingEstadoChart";
+import { TrackingBrazilMap } from "@/components/tracking/TrackingBrazilMap";
+import { TrackingPedidosTable } from "@/components/tracking/TrackingPedidosTable";
+import { TrackingItensTable } from "@/components/tracking/TrackingItensTable";
 
 const Tracking = () => {
-  const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
+  const { getCodCli, loading: settingsLoading } = useBiSettingsContext();
+  const codCli = getCodCli("tracking");
+
+  const {
+    followupData,
+    produtosData,
+    cacheLoaded,
+    cacheLoading,
+    refreshing,
+    refreshStage,
+    refreshRecordCount,
+    error,
+    fetchFollowup,
+    getTrackingData,
+    cityMappings,
+    lastUpdateAt,
+  } = useFollowupData(codCli, "tracking");
 
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [activeTab, setActiveTab] = useState("bside");
-  const [orders] = useState(() => generateTrackingOrders(200));
+  const [showError, setShowError] = useState(true);
+  const [showRefreshProgress, setShowRefreshProgress] = useState(true);
+  const [isFiltering, startFilterTransition] = useTransition();
 
   // Global filters
   const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
-  const [selectedGlobalRegions, setSelectedGlobalRegions] = useState<string[]>([]);
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [selectedDateRange, setSelectedDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
 
-  // Filter states for BI interactivity
+  // Interactive filters
+  const [selectedPrazo, setSelectedPrazo] = useState<boolean | null>(null);
   const [selectedTipoServico, setSelectedTipoServico] = useState<string | null>(null);
   const [selectedModalidade, setSelectedModalidade] = useState<string | null>(null);
   const [selectedCidade, setSelectedCidade] = useState<string | null>(null);
   const [selectedRegional, setSelectedRegional] = useState<string | null>(null);
-  const [selectedPrazo, setSelectedPrazo] = useState<boolean | null>(null);
+  const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
-  // Filtered orders
+  useEffect(() => {
+    if (lastUpdateAt) setLastUpdate(lastUpdateAt);
+  }, [lastUpdateAt]);
+
+  const dateRangeActive = !!selectedDateRange.from;
+
+  // Get tracking data from API
+  const trackingRaw = useMemo(
+    () => getTrackingData(selectedMonths, selectedYears, dateRangeActive ? selectedDateRange as any : undefined),
+    [getTrackingData, selectedMonths, selectedYears, selectedDateRange, dateRangeActive]
+  );
+
+  // Apply interactive filters on top
   const filteredOrders = useMemo(() => {
-    let result = orders;
-    if (selectedTipoServico) result = result.filter(o => o.tipoServico === selectedTipoServico);
-    if (selectedModalidade) result = result.filter(o => o.modalidade === selectedModalidade);
-    if (selectedCidade) result = result.filter(o => o.cidade === selectedCidade);
-    if (selectedRegional) result = result.filter(o => o.regional === selectedRegional);
-    if (selectedPrazo !== null) result = result.filter(o => o.noPrazo === selectedPrazo);
-    return result;
-  }, [orders, selectedTipoServico, selectedModalidade, selectedCidade, selectedRegional, selectedPrazo]);
-
-  const totals = useMemo(() => calculateTrackingTotals(filteredOrders), [filteredOrders]);
-  const tipoServicoData = useMemo(() => getOrdersByTipoServico(filteredOrders), [filteredOrders]);
-  const modalidadeData = useMemo(() => getOrdersByModalidade(filteredOrders), [filteredOrders]);
-  const cidadeData = useMemo(() => getOrdersByCidade(filteredOrders), [filteredOrders]);
-  const regionalData = useMemo(() => getOrdersByRegional(filteredOrders), [filteredOrders]);
-
-  const handleRefreshData = () => {
-    setLastUpdate(new Date());
-    toast.success("Dados atualizados com sucesso!");
-  };
-
-  const handleExportExcel = () => {
-    const exportData = filteredOrders.map(order => ({
-      Pedido: order.pedido,
-      Cliente: order.cliente,
-      Regional: order.regional,
-      Cidade: order.cidade,
-      Estado: order.estado,
-      "Tipo Serviço": order.tipoServico,
-      Modalidade: order.modalidade,
-      Status: order.status,
-      "No Prazo": order.noPrazo ? "Sim" : "Não",
-      "Data Pedido": order.dataPedido.toLocaleDateString('pt-BR'),
-      Valor: order.valor,
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Tracking");
-    
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    saveAs(blob, `tracking_${new Date().toISOString().split('T')[0]}.xlsx`);
-    
-    toast.success("Arquivo Excel exportado com sucesso!");
-  };
-
-  // BI Click handlers
-  const handleTipoServicoClick = useCallback((data: any) => {
-    if (data && data.activePayload && data.activePayload[0]) {
-      const tipo = data.activePayload[0].payload.name;
-      setSelectedTipoServico(prev => prev === tipo ? null : tipo);
+    let orders = trackingRaw.filteredOrders;
+    if (selectedPrazo !== null) {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      orders = orders.filter(o => {
+        const dtPrev = o.dt_previsao ? new Date(String(o.dt_previsao).trim().split(/[\sT]/)[0].replace(/(\d{2})\/(\d{2})\/(\d{4})/, "$3-$2-$1")) : null;
+        const dtReal = o.dt_entrega_real ? new Date(String(o.dt_entrega_real).trim().split(/[\sT]/)[0].replace(/(\d{2})\/(\d{2})\/(\d{4})/, "$3-$2-$1")) : null;
+        if (!dtPrev) return false;
+        const isOnTime = dtReal ? dtReal <= dtPrev : now <= dtPrev;
+        return selectedPrazo ? isOnTime : !isOnTime;
+      });
     }
-  }, []);
-
-  const handleModalidadeClick = useCallback((data: any) => {
-    if (data && data.name) {
-      setSelectedModalidade(prev => prev === data.name ? null : data.name);
+    if (selectedTipoServico) orders = orders.filter(o => (o.ds_tipo_servico || "").toUpperCase() === selectedTipoServico);
+    if (selectedModalidade) orders = orders.filter(o => (o.ds_modalidade_transporte || "").toUpperCase() === selectedModalidade);
+    if (selectedCidade) orders = orders.filter(o => (o.ds_cidade_DES || "").toUpperCase() === selectedCidade);
+    if (selectedEstado) orders = orders.filter(o => (o.ds_uf_DES || "").toUpperCase() === selectedEstado);
+    if (selectedStatus) {
+      orders = orders.filter(o => {
+        const st = (o.fl_status_real || "").toUpperCase();
+        if (selectedStatus === "FINALIZADO") return st.includes("FINALIZADO") || st.includes("ENTREGUE");
+        return !st.includes("FINALIZADO") && !st.includes("ENTREGUE");
+      });
     }
-  }, []);
-
-  const handleCidadeClick = useCallback((data: any) => {
-    if (data && data.activePayload && data.activePayload[0]) {
-      const cidade = data.activePayload[0].payload.name;
-      setSelectedCidade(prev => prev === cidade ? null : cidade);
+    if (selectedRegions.length > 0) {
+      // Will need city mappings to filter by regional
     }
-  }, []);
+    return orders;
+  }, [trackingRaw, selectedPrazo, selectedTipoServico, selectedModalidade, selectedCidade, selectedEstado, selectedStatus, selectedRegions]);
 
-  const handleRegionalClick = useCallback((data: any) => {
-    if (data && data.name) {
-      setSelectedRegional(prev => prev === data.name ? null : data.name);
+  // Recalculate KPIs from filtered orders
+  const kpis = useMemo(() => {
+    if (!selectedPrazo && !selectedTipoServico && !selectedModalidade && !selectedCidade && !selectedEstado && !selectedStatus) {
+      return trackingRaw.kpis;
     }
-  }, []);
+    return trackingRaw.kpis; // Use raw KPIs always, filters only affect tables/details
+  }, [trackingRaw]);
+
+  // Filtered produtos for items table
+  const filteredProdutos = useMemo(() => {
+    if (!filteredOrders.length) return produtosData;
+    const orderNumbers = new Set(filteredOrders.map(o => o.nr_pedido));
+    return produtosData.filter(p => orderNumbers.has(p.nr_pedido));
+  }, [produtosData, filteredOrders]);
 
   const handlePrazoClick = useCallback((prazo: boolean) => {
-    setSelectedPrazo(prev => prev === prazo ? null : prazo);
+    startFilterTransition(() => setSelectedPrazo(prev => prev === prazo ? null : prazo));
   }, []);
 
-  const clearAllFilters = useCallback(() => {
+  const handleTipoClick = useCallback((tipo: string) => {
+    startFilterTransition(() => setSelectedTipoServico(prev => prev === tipo ? null : tipo));
+  }, []);
+
+  const handleModalidadeClick = useCallback((mod: string) => {
+    startFilterTransition(() => setSelectedModalidade(prev => prev === mod ? null : mod));
+  }, []);
+
+  const handleCidadeClick = useCallback((cidade: string) => {
+    startFilterTransition(() => setSelectedCidade(prev => prev === cidade.toUpperCase() ? null : cidade.toUpperCase()));
+  }, []);
+
+  const handleRegionalClick = useCallback((regional: string) => {
+    startFilterTransition(() => setSelectedRegional(prev => prev === regional ? null : regional));
+  }, []);
+
+  const handleEstadoClick = useCallback((uf: string) => {
+    startFilterTransition(() => setSelectedEstado(prev => prev === uf ? null : uf));
+  }, []);
+
+  const handleStatusClick = useCallback((status: string) => {
+    startFilterTransition(() => setSelectedStatus(prev => prev === status ? null : status));
+  }, []);
+
+  const clearAllInteractiveFilters = useCallback(() => {
+    setSelectedPrazo(null);
     setSelectedTipoServico(null);
     setSelectedModalidade(null);
     setSelectedCidade(null);
     setSelectedRegional(null);
-    setSelectedPrazo(null);
+    setSelectedEstado(null);
+    setSelectedStatus(null);
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
     setSelectedMonths(allMonthValues);
     setSelectedYears([currentYear]);
-    setSelectedGlobalRegions([]);
-    clearAllFilters();
-  }, []);
+    setSelectedRegions([]);
+    setSelectedDateRange({ from: undefined, to: undefined });
+    clearAllInteractiveFilters();
+  }, [currentYear, clearAllInteractiveFilters]);
 
-  const hasActiveFilters = !!(selectedTipoServico || selectedModalidade || selectedCidade || selectedRegional || selectedPrazo !== null);
-  const hasGlobalFilters = selectedMonths.length !== 1 || selectedMonths[0] !== currentMonth || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedGlobalRegions.length > 0;
+  const handleRefreshData = useCallback(() => {
+    if (codCli && !refreshing) {
+      setShowRefreshProgress(true);
+      setShowError(true);
+      fetchFollowup();
+      setLastUpdate(new Date());
+    }
+  }, [codCli, refreshing, fetchFollowup]);
 
-  const kpis = [
-    { title: "Quantidade de Pedidos", value: formatNumber(totals.quantidadePedidos), icon: Package, color: "text-dashboard-accent" },
-    { title: "Qtde no Prazo", value: formatNumber(totals.qtdeNoPrazo), icon: CheckCircle, color: "text-green-500", onClick: () => handlePrazoClick(true) },
-    { title: "% no Prazo", value: `${totals.percentualNoPrazo.toFixed(1)}%`, icon: TrendingUp, color: "text-green-500" },
-    { title: "Qtde Fora do Prazo", value: formatNumber(totals.qtdeFora), icon: AlertTriangle, color: "text-red-500", onClick: () => handlePrazoClick(false) },
-    { title: "% Fora do Prazo", value: `${totals.percentualFora.toFixed(1)}%`, icon: Percent, color: "text-red-500" },
-    { title: "Finalizados", value: formatNumber(totals.statusFinalizado), icon: CheckCircle, color: "text-dashboard-blue" },
-  ];
+  const handleExportExcel = useCallback(() => {
+    const exportData = filteredOrders.map(order => ({
+      "N Mov": order.cod_conhecimento || "",
+      "Pedido": order.nr_pedido || "",
+      "Tipo Serviço": order.ds_tipo_servico || "",
+      "Modalidade": order.ds_modalidade_transporte || "",
+      "Campanha": order.nm_campanha || "",
+      "Qtde SKU": order.nr_qtde_SKU || "",
+      "Vl. Total": order.vl_total || "",
+      "Prev. Entrega": order.dt_previsao || "",
+      "Entrega Real": order.dt_entrega_real || "",
+      "Status": order.fl_status_real || "",
+      "Cidade": order.ds_cidade_DES || "",
+      "UF": order.ds_uf_DES || "",
+      "Solicitante": order.nm_solicitante || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Tracking");
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, `tracking_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success("Excel exportado!");
+  }, [filteredOrders]);
+
+  const hasInteractiveFilters = !!(selectedPrazo !== null || selectedTipoServico || selectedModalidade || selectedCidade || selectedRegional || selectedEstado || selectedStatus);
+  const hasActiveFilters = hasInteractiveFilters || selectedMonths.length !== 12 || selectedYears.length !== 1 || selectedYears[0] !== currentYear || selectedRegions.length > 0 || dateRangeActive;
+
+  if (!settingsLoading && !codCli) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+          <h2 className="text-lg font-semibold text-foreground">Configuração necessária</h2>
+          <p className="text-sm text-muted-foreground">Configure o código do cliente (cod_cli) para "tracking" em Configurar BI.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const hasData = followupData.length > 0;
+  const showEmptyState = cacheLoaded && !hasData && !refreshing;
 
   return (
-    <div className="min-h-screen bg-dashboard-dark">
-       <DocumentHead pageId="tracking" />
+    <div className="min-h-screen bg-background">
+      <DocumentHead pageId="tracking" />
       <SharedHeader
         pageId="tracking"
         lastUpdate={lastUpdate}
         showFilters={true}
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
-        selectedRegions={selectedGlobalRegions}
-        onMonthsChange={setSelectedMonths}
-        onYearsChange={setSelectedYears}
-        onRegionsChange={setSelectedGlobalRegions}
-        onRefreshData={handleRefreshData}
-        onExportExcel={handleExportExcel}
+        selectedRegions={selectedRegions}
+        onMonthsChange={(v) => startFilterTransition(() => { setSelectedMonths(v); setSelectedDateRange({ from: undefined, to: undefined }); })}
+        onYearsChange={(v) => startFilterTransition(() => { setSelectedYears(v); setSelectedDateRange({ from: undefined, to: undefined }); })}
+        onRegionsChange={(v) => startFilterTransition(() => setSelectedRegions(v))}
+        selectedDateRange={selectedDateRange}
+        onDateRangeChange={(range) => startFilterTransition(() => {
+          setSelectedDateRange(range);
+          if (range.from) { setSelectedMonths([]); setSelectedYears([]); }
+        })}
         onClearAllFilters={clearGlobalFilters}
-        hasActiveFilters={hasGlobalFilters || hasActiveFilters}
+        onExportExcel={handleExportExcel}
+        onRefreshData={handleRefreshData}
+        hasActiveFilters={hasActiveFilters}
+        followupData={followupData}
+        cityMappings={cityMappings}
       />
 
-      {/* Active Filters Bar */}
-      {hasActiveFilters && (
-        <div className="flex items-center gap-2 px-6 py-2 border-b border-dashboard-border bg-dashboard-card/50 animate-fade-in">
+      {showRefreshProgress && (
+        <RefreshProgress stage={refreshStage} recordCount={refreshRecordCount} onDismiss={() => setShowRefreshProgress(false)} />
+      )}
+
+      {/* Interactive filters bar */}
+      {hasInteractiveFilters && (
+        <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-card/50 animate-fade-in">
           <span className="text-xs text-muted-foreground">Filtros:</span>
+          {selectedPrazo !== null && (
+            <Badge variant="outline" className={`cursor-pointer ${selectedPrazo ? "border-green-500 bg-green-500/10 text-green-400" : "border-red-500 bg-red-500/10 text-red-400"}`} onClick={() => setSelectedPrazo(null)}>
+              {selectedPrazo ? "No Prazo" : "Fora do Prazo"} <X className="ml-1 h-3 w-3" />
+            </Badge>
+          )}
           {selectedTipoServico && (
-            <Badge variant="outline" className="border-dashboard-accent bg-dashboard-accent/10 text-dashboard-accent cursor-pointer" onClick={() => setSelectedTipoServico(null)}>
+            <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedTipoServico(null)}>
               Tipo: {selectedTipoServico} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedModalidade && (
-            <Badge variant="outline" className="border-dashboard-blue bg-dashboard-blue/10 text-dashboard-blue cursor-pointer" onClick={() => setSelectedModalidade(null)}>
-              Modalidade: {selectedModalidade} <X className="ml-1 h-3 w-3" />
+            <Badge variant="outline" className="border-blue-500 bg-blue-500/10 text-blue-400 cursor-pointer" onClick={() => setSelectedModalidade(null)}>
+              Mod: {selectedModalidade} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedCidade && (
-            <Badge variant="outline" className="border-dashboard-orange bg-dashboard-orange/10 text-dashboard-orange cursor-pointer" onClick={() => setSelectedCidade(null)}>
+            <Badge variant="outline" className="border-orange-500 bg-orange-500/10 text-orange-400 cursor-pointer" onClick={() => setSelectedCidade(null)}>
               Cidade: {selectedCidade} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
-          {selectedRegional && (
-            <Badge variant="outline" className="border-purple-500 bg-purple-500/10 text-purple-500 cursor-pointer" onClick={() => setSelectedRegional(null)}>
-              Regional: {selectedRegional} <X className="ml-1 h-3 w-3" />
+          {selectedEstado && (
+            <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedEstado(null)}>
+              UF: {selectedEstado} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
-          {selectedPrazo !== null && (
-            <Badge variant="outline" className={`cursor-pointer ${selectedPrazo ? 'border-green-500 bg-green-500/10 text-green-500' : 'border-red-500 bg-red-500/10 text-red-500'}`} onClick={() => setSelectedPrazo(null)}>
-              {selectedPrazo ? 'No Prazo' : 'Fora do Prazo'} <X className="ml-1 h-3 w-3" />
+          {selectedStatus && (
+            <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedStatus(null)}>
+              Status: {selectedStatus} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
-          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
+          <Button variant="ghost" size="sm" onClick={clearAllInteractiveFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
             Limpar todos
           </Button>
         </div>
       )}
 
+      {error && showError && (
+        <div className="mx-6 mt-4 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setShowError(false)} className="p-0.5 rounded hover:bg-destructive/10 transition-colors"><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
+      {cacheLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="rounded-lg border border-border bg-card p-8 shadow-lg flex flex-col items-center gap-4 max-w-sm">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">Carregando dados</h3>
+            <p className="text-sm text-muted-foreground text-center">Recuperando dados da última atualização...</p>
+          </div>
+        </div>
+      )}
+
       <div className="p-6 space-y-4">
-        {/* Tabs B-SIDE / D-SIDE */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-dashboard-card border border-dashboard-border">
-            <TabsTrigger value="bside" className="data-[state=active]:bg-dashboard-accent data-[state=active]:text-dashboard-dark">
-              B-SIDE
-            </TabsTrigger>
-            <TabsTrigger value="dside" className="data-[state=active]:bg-dashboard-accent data-[state=active]:text-dashboard-dark">
-              D-SIDE
-            </TabsTrigger>
+          <TabsList className="bg-card border border-border">
+            <TabsTrigger value="bside" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">B-SIDE</TabsTrigger>
+            <TabsTrigger value="dside" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">D-SIDE</TabsTrigger>
           </TabsList>
 
           <TabsContent value="bside" className="space-y-4 mt-4">
-            {/* KPI Cards - clickable */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {kpis.map((kpi) => (
-                <Card 
-                  key={kpi.title} 
-                  className={`bg-dashboard-card border-dashboard-border ${kpi.onClick ? 'cursor-pointer hover:border-dashboard-accent transition-colors' : ''}`}
-                  onClick={kpi.onClick}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-                      <span className="text-xs text-muted-foreground">{kpi.title}</span>
+            {showEmptyState ? (
+              <div className="flex items-center justify-center h-[60vh]">
+                <div className="text-center space-y-3">
+                  <InboxIcon className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <h2 className="text-lg font-semibold text-foreground">Nenhum dado disponível</h2>
+                  <p className="text-sm text-muted-foreground">Clique no botão <strong>Atualizar</strong> no cabeçalho para buscar os dados.</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* KPI Cards */}
+                <TrackingKPICards kpis={kpis} onPrazoClick={handlePrazoClick} selectedPrazo={selectedPrazo} />
+
+                {/* Main grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                  {/* Left column */}
+                  <div className="lg:col-span-3 space-y-4">
+                    <TrackingGaugeChart
+                      percNoPrazo={kpis.percNoPrazo}
+                      noPrazo={kpis.noPrazo}
+                      foraPrazo={kpis.foraPrazo}
+                      onPrazoClick={handlePrazoClick}
+                      selectedPrazo={selectedPrazo}
+                    />
+                    <TrackingStatusBars
+                      finalizado={kpis.finalizado}
+                      transito={kpis.transito}
+                      onStatusClick={handleStatusClick}
+                      selectedStatus={selectedStatus}
+                    />
+                    <TrackingTipoServicoChart data={trackingRaw.tipoServico} onTipoClick={handleTipoClick} selectedTipo={selectedTipoServico} />
+                  </div>
+
+                  {/* Center column */}
+                  <div className="lg:col-span-5 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <TrackingModalidadeChart data={trackingRaw.modalidade} onModalidadeClick={handleModalidadeClick} selectedModalidade={selectedModalidade} />
+                      <TrackingRegionalPieChart data={trackingRaw.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
                     </div>
-                    <p className="text-xl font-bold text-foreground">{kpi.value}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    <TrackingEstadoChart data={trackingRaw.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
+                    <TrackingCidadeChart data={trackingRaw.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
+                  </div>
 
-            {/* Charts Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Performance Donut - clickable */}
-              <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedPrazo !== null ? 'ring-2 ring-green-500' : ''}`}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-foreground">Performance (clique para filtrar)</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: "No Prazo", value: totals.qtdeNoPrazo },
-                          { name: "Fora do Prazo", value: totals.qtdeFora },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={70}
-                        dataKey="value"
-                        onClick={(data) => {
-                          if (data && data.name) {
-                            handlePrazoClick(data.name === "No Prazo");
-                          }
-                        }}
-                      >
-                        <Cell fill="hsl(142, 76%, 36%)" opacity={selectedPrazo === false ? 0.3 : 1} />
-                        <Cell fill="hsl(0, 84%, 60%)" opacity={selectedPrazo === true ? 0.3 : 1} />
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              {/* Tipo de Serviço */}
-              <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedTipoServico ? 'ring-2 ring-dashboard-accent' : ''}`}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-foreground">Por Tipo de Serviço</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={tipoServicoData} layout="vertical" onClick={handleTipoServicoClick}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
-                      <XAxis type="number" stroke="hsl(0, 0%, 60%)" fontSize={10} />
-                      <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={10} width={80} />
-                      <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} />
-                      <Bar dataKey="value" fill="hsl(45, 100%, 50%)" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              {/* Por Modalidade */}
-              <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedModalidade ? 'ring-2 ring-dashboard-blue' : ''}`}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-foreground">Por Modalidade</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={modalidadeData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={70}
-                        dataKey="value"
-                        label={({ name }) => name}
-                        onClick={handleModalidadeClick}
-                      >
-                        {modalidadeData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={COLORS[index % COLORS.length]} 
-                            opacity={selectedModalidade && selectedModalidade !== entry.name ? 0.3 : 1}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              {/* Por Cidade */}
-              <Card className={`bg-dashboard-card border-dashboard-border col-span-1 md:col-span-2 cursor-pointer transition-all ${selectedCidade ? 'ring-2 ring-dashboard-orange' : ''}`}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-foreground">Top 10 Cidades</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={cidadeData} layout="vertical" onClick={handleCidadeClick}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
-                      <XAxis type="number" stroke="hsl(0, 0%, 60%)" fontSize={10} />
-                      <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={10} width={100} />
-                      <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} />
-                      <Bar dataKey="value" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              {/* Por Regional */}
-              <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedRegional ? 'ring-2 ring-purple-500' : ''}`}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-foreground">Por Regional</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={regionalData.slice(0, 5)}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={70}
-                        dataKey="value"
-                        onClick={handleRegionalClick}
-                      >
-                        {regionalData.slice(0, 5).map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={COLORS[index % COLORS.length]} 
-                            opacity={selectedRegional && selectedRegional !== entry.name ? 0.3 : 1}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Orders Table */}
-            <Card className="bg-dashboard-card border-dashboard-border">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold text-foreground">
-                  Pedidos Consolidados {hasActiveFilters && <span className="text-sm font-normal text-muted-foreground">({filteredOrders.length} resultados)</span>}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="overflow-auto max-h-[400px] custom-scrollbar">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-dashboard-border">
-                      <TableHead className="text-muted-foreground">Pedido</TableHead>
-                      <TableHead className="text-muted-foreground">Cliente</TableHead>
-                      <TableHead className="text-muted-foreground">Regional</TableHead>
-                      <TableHead className="text-muted-foreground">Cidade</TableHead>
-                      <TableHead className="text-muted-foreground">Status</TableHead>
-                      <TableHead className="text-muted-foreground">Prazo</TableHead>
-                      <TableHead className="text-muted-foreground text-right">Valor</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredOrders.slice(0, 20).map((order) => (
-                      <TableRow key={order.id} className="border-dashboard-border hover:bg-dashboard-border/50">
-                        <TableCell className="text-dashboard-accent font-medium">{order.pedido}</TableCell>
-                        <TableCell className="text-foreground">{order.cliente}</TableCell>
-                        <TableCell className="text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => setSelectedRegional(order.regional)}>{order.regional}</TableCell>
-                        <TableCell className="text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => setSelectedCidade(order.cidade)}>{order.cidade}</TableCell>
-                        <TableCell>
-                          <Badge className={
-                            order.status === "Finalizado" 
-                              ? "bg-green-500/20 text-green-400 border-green-500/30"
-                              : order.status === "Em Trânsito"
-                                ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                                : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                          }>
-                            {order.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            className={`cursor-pointer ${order.noPrazo 
-                              ? "bg-green-500/20 text-green-400 border-green-500/30"
-                              : "bg-red-500/20 text-red-400 border-red-500/30"
-                            }`}
-                            onClick={() => handlePrazoClick(order.noPrazo)}
-                          >
-                            {order.noPrazo ? "No Prazo" : "Atrasado"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-foreground text-right">{formatCurrency(order.valor)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                  {/* Right column */}
+                  <div className="lg:col-span-4 space-y-4">
+                    <TrackingBrazilMap estadoData={trackingRaw.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
+                    <TrackingPedidosTable orders={filteredOrders} onCidadeClick={handleCidadeClick} onStatusClick={handleStatusClick} />
+                    <TrackingItensTable items={filteredProdutos} />
+                  </div>
+                </div>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent value="dside" className="mt-4">
-            <Card className="bg-dashboard-card border-dashboard-border">
+            <Card className="bg-card border-border">
               <CardContent className="p-12 text-center">
                 <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-medium text-foreground mb-2">D-SIDE em Desenvolvimento</h3>
