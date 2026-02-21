@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Lock } from "lucide-react";
+import { Lock, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -16,8 +16,17 @@ export const ProtectedRoute = ({
   pageId, 
   requireAuth = true 
 }: ProtectedRouteProps) => {
-  const { isAuthenticated, canView, isPublicAccess, canViewAnyConfig } = useAuth();
+  const { isAuthenticated, canView, isPublicAccess, canViewAnyConfig, loading } = useAuth();
   
+  // Show loading spinner while auth is being determined (prevents redirect on F5)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-dashboard-dark flex items-center justify-center">
+        <Loader2 className="h-8 w-8 text-dashboard-accent animate-spin" />
+      </div>
+    );
+  }
+
   // Se a página tem acesso público, não precisa de auth
   if (isPublicAccess(pageId)) {
     return <>{children}</>;
@@ -58,20 +67,12 @@ export const ProtectedRoute = ({
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/20 flex items-center justify-center">
               <Lock className="w-8 h-8 text-destructive" />
             </div>
-            <h2 className="text-xl font-semibold text-foreground mb-2">
-              Acesso Negado
-            </h2>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Acesso Negado</h2>
             <p className="text-muted-foreground mb-6">
               Você não tem permissão para acessar esta página. 
               Entre em contato com o administrador do sistema.
             </p>
-            <Button
-              onClick={() => window.history.back()}
-              variant="outline"
-              className="border-dashboard-border"
-            >
-              Voltar
-            </Button>
+            <Button onClick={() => window.history.back()} variant="outline" className="border-dashboard-border">Voltar</Button>
           </CardContent>
         </Card>
       </div>
