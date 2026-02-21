@@ -157,6 +157,9 @@ const Tracking = () => {
       if (dtPrevisao) {
         if (dtEntregaReal) { if (dtEntregaReal <= dtPrevisao) noPrazo++; else foraPrazo++; }
         else { if (now <= dtPrevisao) noPrazo++; else foraPrazo++; }
+      } else {
+        // No dt_previsao = Fora do Prazo
+        foraPrazo++;
       }
 
       const tipo = (item.ds_tipo_servico || "OUTROS").toUpperCase();
