@@ -6,12 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, ChevronDown, ChevronRight, Loader2, Plus, Trash2, Link } from "lucide-react";
-import { useBiSettings } from "@/hooks/useBiSettings";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, Loader2, Plus, Trash2, Link, Pencil, Search, ChevronDown, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { useBiSettings, BiSetting } from "@/hooks/useBiSettings";
 import { toast } from "sonner";
 import defaultLogo from "@/assets/logo.jpg";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,190 +33,199 @@ interface ApiIntegration {
   base_url: string | null;
 }
 
+interface Schedule {
+  id: string;
+  update_time: string;
+  is_active: boolean;
+  schedule_type: string;
+  interval_minutes: number | null;
+}
+
 const ConfigurarBI = () => {
   const { settings, loading, uploadLogo, updateSetting, updateDisplayOrder, getSystemSetting, getOrderedBiSettings, refetch } = useBiSettings();
-  const [editingNames, setEditingNames] = useState<Record<string, string>>({});
-  const [editingSlugs, setEditingSlugs] = useState<Record<string, string>>({});
-  const [editingOrders, setEditingOrders] = useState<Record<string, number>>({});
-  const [editingCodCli, setEditingCodCli] = useState<Record<string, string>>({});
-  const [editingCompany, setEditingCompany] = useState<Record<string, string>>({});
-  const [editingRefreshInterval, setEditingRefreshInterval] = useState<Record<string, number>>({});
+
+  // Modal state
+  const [editingSetting, setEditingSetting] = useState<BiSetting | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Modal form state
+  const [formName, setFormName] = useState("");
+  const [formSlug, setFormSlug] = useState("");
+  const [formOrder, setFormOrder] = useState(0);
+  const [formCodCli, setFormCodCli] = useState("");
+  const [formCompany, setFormCompany] = useState("");
+  const [formInterval, setFormInterval] = useState(30);
+
+  // System logo
   const [uploading, setUploading] = useState<string | null>(null);
-  const [saving, setSaving] = useState<string | null>(null);
-  const [savingSlug, setSavingSlug] = useState<string | null>(null);
-  const [savingOrder, setSavingOrder] = useState<string | null>(null);
-  const [duplicating, setDuplicating] = useState<string | null>(null);
-  const [expandedCharts, setExpandedCharts] = useState<Record<string, boolean>>({});
-  const [expandedSchedules, setExpandedSchedules] = useState<Record<string, boolean>>({});
-  const [schedules, setSchedules] = useState<Record<string, { id: string; update_time: string; is_active: boolean; schedule_type: string; interval_minutes: number | null }[]>>({});
-  const [newScheduleTime, setNewScheduleTime] = useState<Record<string, string>>({});
-  const [newScheduleType, setNewScheduleType] = useState<Record<string, string>>({});
-  const [newIntervalMinutes, setNewIntervalMinutes] = useState<Record<string, number>>({});
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [saving, setSaving] = useState(false);
+  const [editingSystemName, setEditingSystemName] = useState("");
   const systemFileInputRef = useRef<HTMLInputElement | null>(null);
+  const modalFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // API integrations linked to BIs
-  const [biApiLinks, setBiApiLinks] = useState<Record<string, Set<string>>>({});
-
-  // Clients and integrations for selects
+  // External data
   const [clients, setClients] = useState<Client[]>([]);
   const [integrations, setIntegrations] = useState<ApiIntegration[]>([]);
+  const [biApiLinks, setBiApiLinks] = useState<Record<string, Set<string>>>({});
+  const [schedules, setSchedules] = useState<Record<string, Schedule[]>>({});
+  const [newScheduleTime, setNewScheduleTime] = useState("");
+  const [newScheduleType, setNewScheduleType] = useState("time");
+  const [newIntervalMinutes, setNewIntervalMinutes] = useState(0);
+  const [expandedCharts, setExpandedCharts] = useState(false);
+  const [expandedSchedules, setExpandedSchedules] = useState(false);
 
   const systemSetting = useMemo(() => getSystemSetting(), [getSystemSetting]);
   const orderedBiSettings = useMemo(() => getOrderedBiSettings(), [getOrderedBiSettings]);
 
   useEffect(() => {
-    const fetchClients = async () => {
-      const { data } = await supabase.from("clients").select("id, cod_cli, nome, logo_url").eq("ativo", true).order("nome");
-      setClients((data as Client[]) || []);
-    };
-    const fetchIntegrations = async () => {
-      const { data } = await supabase.from("api_integrations").select("id, name, base_url").order("name");
-      setIntegrations(data || []);
-    };
-    const fetchBiApiLinks = async () => {
-      const { data } = await supabase.from("bi_api_integrations").select("bi_page_id, api_integration_id");
+    if (systemSetting) setEditingSystemName(systemSetting.display_name);
+  }, [systemSetting]);
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      const [clientsRes, intRes, linksRes, schedRes] = await Promise.all([
+        supabase.from("clients").select("id, cod_cli, nome, logo_url").eq("ativo", true).order("nome"),
+        supabase.from("api_integrations").select("id, name, base_url").order("name"),
+        supabase.from("bi_api_integrations").select("bi_page_id, api_integration_id"),
+        supabase.from("bi_scheduled_updates").select("*").order("update_time"),
+      ]);
+      setClients((clientsRes.data as Client[]) || []);
+      setIntegrations(intRes.data || []);
       const links: Record<string, Set<string>> = {};
-      (data || []).forEach((row: any) => {
-        if (!links[row.bi_page_id]) links[row.bi_page_id] = new Set();
-        links[row.bi_page_id].add(row.api_integration_id);
+      (linksRes.data || []).forEach((r: any) => {
+        if (!links[r.bi_page_id]) links[r.bi_page_id] = new Set();
+        links[r.bi_page_id].add(r.api_integration_id);
       });
       setBiApiLinks(links);
-    };
-    const fetchSchedules = async () => {
-      const { data } = await supabase.from("bi_scheduled_updates").select("*").order("update_time");
-      const grouped: Record<string, { id: string; update_time: string; is_active: boolean; schedule_type: string; interval_minutes: number | null }[]> = {};
-      (data || []).forEach((row: any) => {
-        if (!grouped[row.page_id]) grouped[row.page_id] = [];
-        grouped[row.page_id].push({ id: row.id, update_time: row.update_time, is_active: row.is_active, schedule_type: row.schedule_type || "time", interval_minutes: row.interval_minutes || null });
+      const grouped: Record<string, Schedule[]> = {};
+      (schedRes.data || []).forEach((r: any) => {
+        if (!grouped[r.page_id]) grouped[r.page_id] = [];
+        grouped[r.page_id].push({ id: r.id, update_time: r.update_time, is_active: r.is_active, schedule_type: r.schedule_type || "time", interval_minutes: r.interval_minutes || null });
       });
       setSchedules(grouped);
     };
-    fetchClients();
-    fetchIntegrations();
-    fetchBiApiLinks();
-    fetchSchedules();
+    fetchAll();
   }, []);
 
-  useEffect(() => {
-    const names: Record<string, string> = {};
-    const slugs: Record<string, string> = {};
-    const orders: Record<string, number> = {};
-    const codClis: Record<string, string> = {};
-    const companies: Record<string, string> = {};
-    const intervals: Record<string, number> = {};
-    settings.forEach((s: any) => {
-      names[s.page_id] = s.display_name;
-      slugs[s.page_id] = s.slug || "";
-      orders[s.page_id] = s.display_order;
-      codClis[s.page_id] = s.cod_cli || "";
-      companies[s.page_id] = s.company_name || "";
-      intervals[s.page_id] = s.refresh_interval_minutes ?? 30;
+  const filteredSettings = useMemo(() => {
+    if (!searchQuery) return orderedBiSettings;
+    const q = searchQuery.toLowerCase();
+    return orderedBiSettings.filter(s =>
+      s.display_name.toLowerCase().includes(q) ||
+      s.page_id.toLowerCase().includes(q) ||
+      (s.slug || "").toLowerCase().includes(q) ||
+      (s.company_name || "").toLowerCase().includes(q)
+    );
+  }, [orderedBiSettings, searchQuery]);
+
+  const openEditModal = (setting: BiSetting) => {
+    setEditingSetting(setting);
+    setFormName(setting.display_name);
+    setFormSlug(setting.slug || "");
+    setFormOrder(setting.display_order);
+    setFormCodCli(setting.cod_cli || "");
+    setFormCompany(setting.company_name || "");
+    setFormInterval(setting.refresh_interval_minutes ?? 30);
+    setExpandedCharts(false);
+    setExpandedSchedules(false);
+    setNewScheduleTime("");
+    setNewScheduleType("time");
+    setNewIntervalMinutes(0);
+    setModalOpen(true);
+  };
+
+  const handleModalSave = async () => {
+    if (!editingSetting) return;
+    setSaving(true);
+    const pageId = editingSetting.page_id;
+    const { error } = await supabase.from("bi_settings").update({
+      display_name: formName.trim(),
+      slug: formSlug.trim() || null,
+      display_order: formOrder,
+      cod_cli: formCodCli || null,
+      company_name: formCompany || null,
+      refresh_interval_minutes: formInterval,
+    }).eq("page_id", pageId);
+    setSaving(false);
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success("Configuração salva!");
+    setModalOpen(false);
+    refetch();
+  };
+
+  const handleDelete = async (pageId: string) => {
+    const { error } = await supabase.from("bi_settings").delete().eq("page_id", pageId);
+    if (error) { toast.error("Erro ao deletar: " + error.message); return; }
+    toast.success("BI removido!");
+    setModalOpen(false);
+    refetch();
+  };
+
+  const handleDuplicate = async (setting: BiSetting) => {
+    const newPageId = `${setting.page_id}-copy-${Date.now()}`;
+    const { error } = await supabase.from("bi_settings").insert({
+      page_id: newPageId, display_name: `${setting.display_name} (Cópia)`,
+      logo_url: setting.logo_url, display_order: (setting.display_order || 0) + 1,
+      cod_cli: setting.cod_cli, company_name: setting.company_name,
     });
-    setEditingNames(names);
-    setEditingSlugs(slugs);
-    setEditingOrders(orders);
-    setEditingCodCli(codClis);
-    setEditingCompany(companies);
-    setEditingRefreshInterval(intervals);
-  }, [settings]);
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success("BI duplicado!");
+    refetch();
+  };
 
   const handleFileChange = async (pageId: string, file: File | null) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Por favor, selecione uma imagem"); return; }
-    if (file.size > 2 * 1024 * 1024) { toast.error("A imagem deve ter no máximo 2MB"); return; }
+    if (!file.type.startsWith("image/")) { toast.error("Selecione uma imagem"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Máximo 2MB"); return; }
     setUploading(pageId);
     const result = await uploadLogo(pageId, file);
     setUploading(null);
-    if (result.success) toast.success("Logo atualizado com sucesso!");
+    if (result.success) { toast.success("Logo atualizado!"); refetch(); }
     else toast.error("Erro ao enviar logo");
   };
 
-  const handleNameSave = async (pageId: string) => {
-    const newName = editingNames[pageId];
-    if (!newName?.trim()) { toast.error("O nome não pode ser vazio"); return; }
-    setSaving(pageId);
-    const result = await updateSetting(pageId, { display_name: newName.trim() });
-    setSaving(null);
-    if (result.success) toast.success("Nome atualizado!");
-    else toast.error("Erro ao atualizar nome");
+  const handleSystemNameSave = async () => {
+    if (!editingSystemName?.trim()) return;
+    setSaving(true);
+    await updateSetting("system", { display_name: editingSystemName.trim() });
+    setSaving(false);
+    toast.success("Nome atualizado!");
   };
 
-  const handleSlugSave = async (pageId: string) => {
-    const newSlug = editingSlugs[pageId]?.trim();
-    if (!newSlug) { toast.error("O slug não pode ser vazio"); return; }
-    if (!/^[a-z0-9-]+$/.test(newSlug)) { toast.error("O slug deve conter apenas letras minúsculas, números e hífens"); return; }
-    setSavingSlug(pageId);
-    const result = await updateSetting(pageId, { slug: newSlug });
-    setSavingSlug(null);
-    if (result.success) toast.success("Slug atualizado!");
-    else toast.error("Erro ao atualizar slug");
-  };
-
-  const handleOrderSave = async (pageId: string) => {
-    const order = editingOrders[pageId];
-    if (order === undefined || order < 0) { toast.error("A ordem deve ser um número positivo"); return; }
-    setSavingOrder(pageId);
-    const result = await updateDisplayOrder(pageId, order);
-    setSavingOrder(null);
-    if (result.success) toast.success("Ordem atualizada!");
-    else toast.error("Erro ao atualizar ordem");
-  };
-
-  const handleClientSelect = (pageId: string, codCli: string) => {
+  const handleClientSelect = (codCli: string) => {
     const client = clients.find(c => c.cod_cli === codCli);
     if (client) {
-      setEditingCodCli(prev => ({ ...prev, [pageId]: client.cod_cli }));
-      setEditingCompany(prev => ({ ...prev, [pageId]: client.nome }));
-      // Auto-fill logo if client has one
-      if (client.logo_url) {
-        handleAutoLogo(pageId, client.logo_url);
-      }
+      setFormCodCli(client.cod_cli);
+      setFormCompany(client.nome);
     }
   };
 
-  const handleAutoLogo = async (pageId: string, logoUrl: string) => {
-    const { error } = await supabase.from("bi_settings").update({ logo_url: logoUrl }).eq("page_id", pageId);
-    if (!error) {
-      refetch();
+  const handleToggleApi = async (pageId: string, apiId: string, checked: boolean) => {
+    if (checked) {
+      await supabase.from("bi_api_integrations").insert({ bi_page_id: pageId, api_integration_id: apiId } as any);
+    } else {
+      await supabase.from("bi_api_integrations").delete().eq("bi_page_id", pageId).eq("api_integration_id", apiId);
     }
-  };
-
-  const handleExtraSave = async (pageId: string) => {
-    setSaving(pageId);
-    const { error } = await supabase.from("bi_settings").update({
-      cod_cli: editingCodCli[pageId] || null,
-      company_name: editingCompany[pageId] || null,
-      refresh_interval_minutes: editingRefreshInterval[pageId] ?? 30,
-    }).eq("page_id", pageId);
-    setSaving(null);
-    if (error) toast.error("Erro ao salvar: " + error.message);
-    else { toast.success("Dados atualizados!"); refetch(); }
+    setBiApiLinks(prev => {
+      const next = { ...prev };
+      if (!next[pageId]) next[pageId] = new Set();
+      else next[pageId] = new Set(next[pageId]);
+      if (checked) next[pageId].add(apiId); else next[pageId].delete(apiId);
+      return next;
+    });
   };
 
   const handleAddSchedule = async (pageId: string) => {
-    const schedType = newScheduleType[pageId] || "time";
-    if (schedType === "time") {
-      const time = newScheduleTime[pageId];
-      if (!time) { toast.error("Selecione um horário"); return; }
-      const { error } = await supabase.from("bi_scheduled_updates").insert({ page_id: pageId, update_time: time, schedule_type: "time" } as any);
-      if (error) {
-        if (error.message.includes("unique")) toast.error("Horário já cadastrado");
-        else toast.error("Erro: " + error.message);
-        return;
-      }
-    } else {
-      const mins = newIntervalMinutes[pageId];
-      if (!mins || mins < 1) { toast.error("Informe o intervalo em minutos"); return; }
-      const { error } = await supabase.from("bi_scheduled_updates").insert({ page_id: pageId, update_time: "00:00", schedule_type: "interval", interval_minutes: mins } as any);
-      if (error) {
-        toast.error("Erro: " + error.message);
-        return;
-      }
-    }
+    if (newScheduleType === "time" && !newScheduleTime) { toast.error("Selecione um horário"); return; }
+    if (newScheduleType === "interval" && (!newIntervalMinutes || newIntervalMinutes < 1)) { toast.error("Informe o intervalo"); return; }
+    const insert = newScheduleType === "time"
+      ? { page_id: pageId, update_time: newScheduleTime, schedule_type: "time" }
+      : { page_id: pageId, update_time: "00:00", schedule_type: "interval", interval_minutes: newIntervalMinutes };
+    const { error } = await supabase.from("bi_scheduled_updates").insert(insert as any);
+    if (error) { toast.error("Erro: " + error.message); return; }
     toast.success("Agendamento adicionado!");
-    setNewScheduleTime(prev => ({ ...prev, [pageId]: "" }));
-    setNewIntervalMinutes(prev => ({ ...prev, [pageId]: 0 }));
+    setNewScheduleTime(""); setNewIntervalMinutes(0);
     const { data } = await supabase.from("bi_scheduled_updates").select("*").eq("page_id", pageId).order("update_time");
     setSchedules(prev => ({ ...prev, [pageId]: (data || []).map((r: any) => ({ id: r.id, update_time: r.update_time, is_active: r.is_active, schedule_type: r.schedule_type || "time", interval_minutes: r.interval_minutes || null })) }));
   };
@@ -227,56 +238,21 @@ const ConfigurarBI = () => {
 
   const handleToggleSchedule = async (pageId: string, scheduleId: string, isActive: boolean) => {
     await supabase.from("bi_scheduled_updates").update({ is_active: isActive } as any).eq("id", scheduleId);
-    setSchedules(prev => ({
-      ...prev,
-      [pageId]: (prev[pageId] || []).map(s => s.id === scheduleId ? { ...s, is_active: isActive } : s),
-    }));
-  };
-
-  const handleDuplicate = async (setting: any) => {
-    setDuplicating(setting.page_id);
-    try {
-      const newPageId = `${setting.page_id}-copy-${Date.now()}`;
-      const { error } = await supabase.from("bi_settings").insert({
-        page_id: newPageId,
-        display_name: `${setting.display_name} (Cópia)`,
-        logo_url: setting.logo_url,
-        display_order: (setting.display_order || 0) + 1,
-        cod_cli: setting.cod_cli,
-        company_name: setting.company_name,
-      });
-      if (error) throw error;
-      toast.success("BI duplicado com sucesso!");
-      await refetch();
-    } catch (err: any) {
-      toast.error("Erro ao duplicar: " + err.message);
-    } finally {
-      setDuplicating(null);
-    }
+    setSchedules(prev => ({ ...prev, [pageId]: (prev[pageId] || []).map(s => s.id === scheduleId ? { ...s, is_active: isActive } : s) }));
   };
 
   const getPageLabel = (pageId: string) => {
     const labels: Record<string, string> = {
       minutas: "Minutas", estoque: "Estoque", entregas: "Entregas", tracking: "Tracking",
-      "estoque-consolidado": "Est. Consolidado", faturamento: "Faturamento", analitico: "Analítico", system: "Sistema",
+      "estoque-consolidado": "Est. Consolidado", faturamento: "Faturamento", analitico: "Analítico",
     };
     return labels[pageId] || pageId;
   };
 
-  const getCurrentSetting = (pageId: string) => settings.find(s => s.page_id === pageId);
-
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="bg-dashboard-card border-dashboard-border">
-            <CardContent className="p-4">
-              <Skeleton className="h-12 w-12 rounded-lg mb-4" />
-              <Skeleton className="h-4 w-3/4 mb-2" />
-              <Skeleton className="h-10 w-full" />
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-4">
+        {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
       </div>
     );
   }
@@ -319,11 +295,11 @@ const ConfigurarBI = () => {
             <div className="flex-1 space-y-2">
               <Label className="text-sm text-muted-foreground">Nome do Sistema</Label>
               <div className="flex gap-2">
-                <Input value={editingNames["system"] || ""} onChange={(e) => setEditingNames((prev) => ({ ...prev, system: e.target.value }))}
+                <Input value={editingSystemName} onChange={(e) => setEditingSystemName(e.target.value)}
                   className="bg-dashboard-dark border-dashboard-border text-foreground" placeholder="Nome do sistema" />
                 <Button variant="outline" className="border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
-                  onClick={() => handleNameSave("system")} disabled={saving === "system" || editingNames["system"] === systemSetting?.display_name}>
-                  {saving === "system" ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
+                  onClick={handleSystemNameSave} disabled={saving || editingSystemName === systemSetting?.display_name}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
@@ -331,99 +307,152 @@ const ConfigurarBI = () => {
         </CardContent>
       </Card>
 
-      {/* BI Settings */}
-      <div className="flex items-center gap-3">
-        <LayoutGrid className="h-5 w-5 text-dashboard-accent" />
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Configurações dos BIs</h2>
-          <p className="text-sm text-muted-foreground">Configure logos, nomes, empresa, APIs e gráficos</p>
+      {/* BI Settings DataTable */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <LayoutGrid className="h-5 w-5 text-dashboard-accent" />
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Configurações dos BIs</h2>
+            <p className="text-sm text-muted-foreground">Gerencie BIs em tabela com edição em modal</p>
+          </div>
+        </div>
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar BI..." className="pl-9 bg-dashboard-dark border-dashboard-border text-foreground h-9" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {orderedBiSettings.map((setting) => (
-          <Card key={setting.id} className="bg-dashboard-card border-dashboard-border hover:border-dashboard-accent/50 transition-colors">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <Badge variant="outline" className="text-xs">{getPageLabel(setting.page_id)}</Badge>
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary" className="text-xs bg-dashboard-border">Ordem: {setting.display_order}</Badge>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar BI"
-                    onClick={() => handleDuplicate(setting)} disabled={duplicating === setting.page_id}>
-                    {duplicating === setting.page_id ? <div className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Copy className="h-3 w-3" />}
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="relative group">
-                  <Avatar className="h-14 w-14 rounded-lg border-2 border-dashboard-border">
-                    <AvatarImage src={setting.logo_url || defaultLogo} alt={setting.display_name} className="object-cover" />
+      <Card className="bg-dashboard-card border-dashboard-border">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-dashboard-border">
+                <TableHead className="text-muted-foreground w-16">Ordem</TableHead>
+                <TableHead className="text-muted-foreground w-16">Logo</TableHead>
+                <TableHead className="text-muted-foreground">Nome</TableHead>
+                <TableHead className="text-muted-foreground">Slug</TableHead>
+                <TableHead className="text-muted-foreground">Empresa</TableHead>
+                <TableHead className="text-muted-foreground">Cód. Cliente</TableHead>
+                <TableHead className="text-muted-foreground text-center">Intervalo</TableHead>
+                <TableHead className="text-muted-foreground text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSettings.map((setting) => (
+                <TableRow key={setting.id} className="border-dashboard-border hover:bg-dashboard-border/30">
+                  <TableCell className="text-foreground font-mono text-center">{setting.display_order}</TableCell>
+                  <TableCell>
+                    <Avatar className="h-8 w-8 rounded">
+                      <AvatarImage src={setting.logo_url || defaultLogo} alt={setting.display_name} className="object-cover" />
+                      <AvatarFallback className="rounded bg-dashboard-border text-xs"><ImageIcon className="h-3 w-3" /></AvatarFallback>
+                    </Avatar>
+                  </TableCell>
+                  <TableCell className="text-foreground font-medium">{setting.display_name}</TableCell>
+                  <TableCell className="text-muted-foreground font-mono text-xs">/{setting.slug || setting.page_id}</TableCell>
+                  <TableCell className="text-muted-foreground">{setting.company_name || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground font-mono">{setting.cod_cli || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground text-center">{setting.refresh_interval_minutes}min</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => openEditModal(setting)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar" onClick={() => handleDuplicate(setting)}>
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Deletar">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-dashboard-card border-dashboard-border">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-foreground">Deletar BI</AlertDialogTitle>
+                            <AlertDialogDescription>Tem certeza que deseja deletar "{setting.display_name}"? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="border-dashboard-border">Cancelar</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={() => handleDelete(setting.page_id)}>Deletar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filteredSettings.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum BI encontrado</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Edit Modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="bg-dashboard-card border-dashboard-border max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-dashboard-accent" />
+              Editar: {editingSetting?.display_name}
+            </DialogTitle>
+          </DialogHeader>
+
+          {editingSetting && (
+            <div className="space-y-4">
+              {/* Logo */}
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Avatar className="h-16 w-16 rounded-lg border-2 border-dashboard-border">
+                    <AvatarImage src={editingSetting.logo_url || defaultLogo} className="object-cover" />
                     <AvatarFallback className="rounded-lg bg-dashboard-border"><ImageIcon className="h-6 w-6 text-muted-foreground" /></AvatarFallback>
                   </Avatar>
-                  <input type="file" accept="image/*" className="hidden" ref={(el) => (fileInputRefs.current[setting.page_id] = el)}
-                    onChange={(e) => handleFileChange(setting.page_id, e.target.files?.[0] || null)} />
+                  <input type="file" accept="image/*" className="hidden" ref={modalFileInputRef}
+                    onChange={(e) => handleFileChange(editingSetting.page_id, e.target.files?.[0] || null)} />
                   <Button variant="ghost" size="icon"
-                    className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent/80"
-                    onClick={() => fileInputRefs.current[setting.page_id]?.click()} disabled={uploading === setting.page_id}>
-                    {uploading === setting.page_id ? <div className="h-3 w-3 border-2 border-dashboard-dark border-t-transparent rounded-full animate-spin" /> : <Upload className="h-3 w-3" />}
+                    className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-dashboard-accent text-dashboard-dark"
+                    onClick={() => modalFileInputRef.current?.click()} disabled={uploading === editingSetting.page_id}>
+                    {uploading === editingSetting.page_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
                   </Button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground mb-1">Logo do BI</p>
-                  <p className="text-xs text-muted-foreground/60">PNG, JPG até 2MB</p>
+                <div>
+                  <p className="text-sm text-foreground font-medium">Logo do BI</p>
+                  <p className="text-xs text-muted-foreground">PNG, JPG até 2MB</p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Nome de exibição</Label>
-                <div className="flex gap-2">
-                  <Input value={editingNames[setting.page_id] || ""} onChange={(e) => setEditingNames((prev) => ({ ...prev, [setting.page_id]: e.target.value }))}
-                    className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="Nome do BI" />
-                  <Button variant="outline" size="icon" className="h-9 w-9 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
-                    onClick={() => handleNameSave(setting.page_id)} disabled={saving === setting.page_id || editingNames[setting.page_id] === getCurrentSetting(setting.page_id)?.display_name}>
-                    {saving === setting.page_id ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
-                  </Button>
+              {/* Basic fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Nome de exibição</Label>
+                  <Input value={formName} onChange={(e) => setFormName(e.target.value)}
+                    className="bg-dashboard-dark border-dashboard-border text-foreground h-9" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Ordem no menu</Label>
+                  <Input type="number" min={0} value={formOrder}
+                    onChange={(e) => setFormOrder(parseInt(e.target.value) || 0)}
+                    className="bg-dashboard-dark border-dashboard-border text-foreground h-9" />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Ordem no menu</Label>
-                <div className="flex gap-2">
-                  <Input type="number" min={0} value={editingOrders[setting.page_id] ?? 0}
-                    onChange={(e) => setEditingOrders((prev) => ({ ...prev, [setting.page_id]: parseInt(e.target.value) || 0 }))}
-                    className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9 w-20" />
-                  <Button variant="outline" size="icon" className="h-9 w-9 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
-                    onClick={() => handleOrderSave(setting.page_id)} disabled={savingOrder === setting.page_id || editingOrders[setting.page_id] === getCurrentSetting(setting.page_id)?.display_order}>
-                    {savingOrder === setting.page_id ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
-                  </Button>
-                </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1"><Link className="h-3 w-3" /> Slug (endereço)</Label>
+                <Input value={formSlug}
+                  onChange={(e) => setFormSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                  className="bg-dashboard-dark border-dashboard-border text-foreground h-9" placeholder="ex: entregas" />
+                <p className="text-[10px] text-muted-foreground/60">/{formSlug || editingSetting.page_id}</p>
               </div>
 
-              {/* Slug */}
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Link className="h-3 w-3" />
-                  Slug (endereço)
-                </Label>
-                <div className="flex gap-2">
-                  <Input value={editingSlugs[setting.page_id] || ""}
-                    onChange={(e) => setEditingSlugs((prev) => ({ ...prev, [setting.page_id]: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
-                    className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="ex: entregas" />
-                  <Button variant="outline" size="icon" className="h-9 w-9 border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
-                    onClick={() => handleSlugSave(setting.page_id)} disabled={savingSlug === setting.page_id || editingSlugs[setting.page_id] === (getCurrentSetting(setting.page_id)?.slug || "")}>
-                    {savingSlug === setting.page_id ? <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
-                  </Button>
-                </div>
-                <p className="text-[10px] text-muted-foreground/60">/{editingSlugs[setting.page_id] || setting.page_id}</p>
-              </div>
-
-              {/* Empresa - Select from clients */}
-              <div className="space-y-2">
+              {/* Empresa */}
+              <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Empresa</Label>
-                <Select value={editingCodCli[setting.page_id] || ""} onValueChange={(v) => handleClientSelect(setting.page_id, v)}>
-                  <SelectTrigger className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9">
+                <Select value={formCodCli} onValueChange={handleClientSelect}>
+                  <SelectTrigger className="bg-dashboard-dark border-dashboard-border text-foreground h-9">
                     <SelectValue placeholder="Selecione uma empresa" />
                   </SelectTrigger>
                   <SelectContent className="bg-dashboard-card border-dashboard-border">
@@ -443,146 +472,130 @@ const ConfigurarBI = () => {
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Cód. Cliente</Label>
-                  <Input value={editingCodCli[setting.page_id] || ""} onChange={(e) => setEditingCodCli(prev => ({ ...prev, [setting.page_id]: e.target.value }))}
-                    className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="Ex: PAY" />
+                  <Input value={formCodCli} onChange={(e) => setFormCodCli(e.target.value)}
+                    className="bg-dashboard-dark border-dashboard-border text-foreground h-9" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Nome Empresa</Label>
-                  <Input value={editingCompany[setting.page_id] || ""} onChange={(e) => setEditingCompany(prev => ({ ...prev, [setting.page_id]: e.target.value }))}
-                    className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="Nome da empresa" />
+                  <Input value={formCompany} onChange={(e) => setFormCompany(e.target.value)}
+                    className="bg-dashboard-dark border-dashboard-border text-foreground h-9" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Intervalo (min)</Label>
-                  <Input type="number" min={0} value={editingRefreshInterval[setting.page_id] ?? 30}
-                    onChange={(e) => setEditingRefreshInterval(prev => ({ ...prev, [setting.page_id]: parseInt(e.target.value) || 0 }))}
-                    className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-9" placeholder="30" title="Intervalo mínimo entre atualizações manuais (minutos). 0 = sem limite." />
+                  <Input type="number" min={0} value={formInterval}
+                    onChange={(e) => setFormInterval(parseInt(e.target.value) || 0)}
+                    className="bg-dashboard-dark border-dashboard-border text-foreground h-9" />
                 </div>
               </div>
 
-              <Button variant="outline" size="sm" className="w-full h-7 text-xs border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
-                onClick={() => handleExtraSave(setting.page_id)}>
-                <Save className="h-3 w-3 mr-1" /> Salvar Empresa/Cód/Intervalo
-              </Button>
+              {/* APIs */}
+              <div className="space-y-2">
+                <Button variant="ghost" size="sm" className="w-full h-7 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setExpandedSchedules(false)}>
+                  APIs Utilizadas
+                </Button>
+                <div className="space-y-1 max-h-[120px] overflow-y-auto">
+                  {integrations.map(api => (
+                    <div key={api.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-dashboard-dark/50">
+                      <Checkbox id={`modal-${api.id}`}
+                        checked={biApiLinks[editingSetting.page_id]?.has(api.id) || false}
+                        onCheckedChange={(checked) => handleToggleApi(editingSetting.page_id, api.id, !!checked)} />
+                      <label htmlFor={`modal-${api.id}`} className="text-xs text-foreground cursor-pointer flex-1">{api.name}</label>
+                      <span className="text-xs text-muted-foreground font-mono truncate max-w-[120px]">{api.base_url || ""}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-              {/* APIs usadas - multi-select via checkboxes */}
-              <Collapsible>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full h-7 text-xs text-muted-foreground hover:text-foreground">
-                    <ChevronRight className="h-3 w-3 mr-1" />
-                    APIs Utilizadas
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2 space-y-1">
-                  {integrations.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center">Cadastre integrações primeiro</p>
-                  ) : (
-                    integrations.map(api => {
-                      const isChecked = biApiLinks[setting.page_id]?.has(api.id) || false;
-                      const handleToggle = async (checked: boolean) => {
-                        if (checked) {
-                          await supabase.from("bi_api_integrations").insert({ bi_page_id: setting.page_id, api_integration_id: api.id } as any);
-                        } else {
-                          await supabase.from("bi_api_integrations").delete().eq("bi_page_id", setting.page_id).eq("api_integration_id", api.id);
-                        }
-                        setBiApiLinks(prev => {
-                          const next = { ...prev };
-                          if (!next[setting.page_id]) next[setting.page_id] = new Set();
-                          else next[setting.page_id] = new Set(next[setting.page_id]);
-                          if (checked) next[setting.page_id].add(api.id);
-                          else next[setting.page_id].delete(api.id);
-                          return next;
-                        });
-                      };
-                      return (
-                        <div key={api.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-dashboard-dark/50">
-                          <Checkbox id={`${setting.page_id}-${api.id}`} checked={isChecked} onCheckedChange={handleToggle} />
-                          <label htmlFor={`${setting.page_id}-${api.id}`} className="text-xs text-foreground cursor-pointer flex-1">
-                            {api.name}
-                          </label>
-                          <span className="text-xs text-muted-foreground font-mono truncate max-w-[120px]">{api.base_url || ""}</span>
+              {/* Schedules */}
+              <div className="space-y-2 border-t border-dashboard-border pt-3">
+                <Button variant="ghost" size="sm" className="w-full h-7 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setExpandedSchedules(!expandedSchedules)}>
+                  {expandedSchedules ? <ChevronDown className="h-3 w-3 mr-1" /> : <ChevronRight className="h-3 w-3 mr-1" />}
+                  Atualizações Agendadas
+                </Button>
+                {expandedSchedules && (
+                  <div className="space-y-2">
+                    <div className="flex gap-1 mb-1">
+                      <Button variant={newScheduleType === "time" ? "default" : "outline"} size="sm"
+                        className="h-7 text-xs flex-1" onClick={() => setNewScheduleType("time")}>Por Horário</Button>
+                      <Button variant={newScheduleType === "interval" ? "default" : "outline"} size="sm"
+                        className="h-7 text-xs flex-1" onClick={() => setNewScheduleType("interval")}>Por Intervalo</Button>
+                    </div>
+                    <div className="flex gap-2">
+                      {newScheduleType === "time" ? (
+                        <Input type="time" value={newScheduleTime} onChange={(e) => setNewScheduleTime(e.target.value)}
+                          className="bg-dashboard-dark border-dashboard-border text-foreground h-8 flex-1" />
+                      ) : (
+                        <div className="flex items-center gap-1 flex-1">
+                          <Input type="number" min={1} max={1440} value={newIntervalMinutes || ""}
+                            onChange={(e) => setNewIntervalMinutes(parseInt(e.target.value) || 0)}
+                            className="bg-dashboard-dark border-dashboard-border text-foreground h-8 w-20" placeholder="Min" />
+                          <span className="text-xs text-muted-foreground">minutos</span>
                         </div>
-                      );
-                    })
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
-
-              {/* Scheduled Updates */}
-              <Collapsible open={expandedSchedules[setting.page_id]} onOpenChange={(open) => setExpandedSchedules(prev => ({ ...prev, [setting.page_id]: open }))}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full h-7 text-xs text-muted-foreground hover:text-foreground">
-                    {expandedSchedules[setting.page_id] ? <ChevronDown className="h-3 w-3 mr-1" /> : <ChevronRight className="h-3 w-3 mr-1" />}
-                    Atualizações Agendadas
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2 space-y-2">
-                  {/* Schedule type selector */}
-                  <div className="flex gap-1 mb-1">
-                    <Button variant={(!newScheduleType[setting.page_id] || newScheduleType[setting.page_id] === "time") ? "default" : "outline"} size="sm"
-                      className="h-7 text-xs flex-1" onClick={() => setNewScheduleType(prev => ({ ...prev, [setting.page_id]: "time" }))}>
-                      Por Horário
-                    </Button>
-                    <Button variant={newScheduleType[setting.page_id] === "interval" ? "default" : "outline"} size="sm"
-                      className="h-7 text-xs flex-1" onClick={() => setNewScheduleType(prev => ({ ...prev, [setting.page_id]: "interval" }))}>
-                      Por Intervalo
-                    </Button>
-                  </div>
-                  <div className="flex gap-2">
-                    {(!newScheduleType[setting.page_id] || newScheduleType[setting.page_id] === "time") ? (
-                      <Input type="time" value={newScheduleTime[setting.page_id] || ""}
-                        onChange={(e) => setNewScheduleTime(prev => ({ ...prev, [setting.page_id]: e.target.value }))}
-                        className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-8 flex-1" />
-                    ) : (
-                      <div className="flex items-center gap-1 flex-1">
-                        <Input type="number" min={1} max={1440} value={newIntervalMinutes[setting.page_id] || ""}
-                          onChange={(e) => setNewIntervalMinutes(prev => ({ ...prev, [setting.page_id]: parseInt(e.target.value) || 0 }))}
-                          className="bg-dashboard-dark border-dashboard-border text-foreground text-sm h-8 w-20" placeholder="Min" />
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">minutos</span>
-                      </div>
-                    )}
-                    <Button variant="outline" size="sm" className="h-8 text-xs border-dashboard-border hover:bg-dashboard-accent hover:text-dashboard-dark"
-                      onClick={() => handleAddSchedule(setting.page_id)}>
-                      <Plus className="h-3 w-3 mr-1" /> Adicionar
-                    </Button>
-                  </div>
-                  {(schedules[setting.page_id] || []).length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-1">Nenhum agendamento</p>
-                  ) : (
-                    (schedules[setting.page_id] || []).map(schedule => (
+                      )}
+                      <Button variant="outline" size="sm" className="h-8 text-xs border-dashboard-border"
+                        onClick={() => handleAddSchedule(editingSetting.page_id)}>
+                        <Plus className="h-3 w-3 mr-1" /> Adicionar
+                      </Button>
+                    </div>
+                    {(schedules[editingSetting.page_id] || []).map(schedule => (
                       <div key={schedule.id} className="flex items-center gap-2 px-2 py-1 rounded bg-dashboard-dark/30">
                         <span className="text-sm text-foreground font-mono flex-1">
-                          {schedule.schedule_type === "interval"
-                            ? `A cada ${schedule.interval_minutes} min`
-                            : schedule.update_time.substring(0, 5)}
+                          {schedule.schedule_type === "interval" ? `A cada ${schedule.interval_minutes} min` : schedule.update_time.substring(0, 5)}
                         </span>
-                        <Switch checked={schedule.is_active} onCheckedChange={(checked) => handleToggleSchedule(setting.page_id, schedule.id, checked)} />
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive"
-                          onClick={() => handleRemoveSchedule(setting.page_id, schedule.id)}>
+                        <Switch checked={schedule.is_active} onCheckedChange={(checked) => handleToggleSchedule(editingSetting.page_id, schedule.id, checked)} />
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive"
+                          onClick={() => handleRemoveSchedule(editingSetting.page_id, schedule.id)}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
-                    ))
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-              <Collapsible open={expandedCharts[setting.page_id]} onOpenChange={(open) => setExpandedCharts(prev => ({ ...prev, [setting.page_id]: open }))}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full h-7 text-xs text-muted-foreground hover:text-foreground">
-                    {expandedCharts[setting.page_id] ? <ChevronDown className="h-3 w-3 mr-1" /> : <ChevronRight className="h-3 w-3 mr-1" />}
-                    Configurar Gráficos
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2">
+              {/* Charts */}
+              <div className="space-y-2 border-t border-dashboard-border pt-3">
+                <Button variant="ghost" size="sm" className="w-full h-7 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setExpandedCharts(!expandedCharts)}>
+                  {expandedCharts ? <ChevronDown className="h-3 w-3 mr-1" /> : <ChevronRight className="h-3 w-3 mr-1" />}
+                  Configurar Gráficos
+                </Button>
+                {expandedCharts && (
                   <Suspense fallback={<Loader2 className="h-4 w-4 animate-spin text-dashboard-accent mx-auto" />}>
-                    <BiChartConfigManager pageId={setting.page_id} pageName={setting.display_name} />
+                    <BiChartConfigManager pageId={editingSetting.page_id} pageName={editingSetting.display_name} />
                   </Suspense>
-                </CollapsibleContent>
-              </Collapsible>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm"><Trash2 className="h-3.5 w-3.5 mr-1" /> Deletar</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-dashboard-card border-dashboard-border">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-foreground">Deletar BI</AlertDialogTitle>
+                  <AlertDialogDescription>Tem certeza? Esta ação não pode ser desfeita.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="border-dashboard-border">Cancelar</AlertDialogCancel>
+                  <AlertDialogAction className="bg-destructive text-destructive-foreground"
+                    onClick={() => editingSetting && handleDelete(editingSetting.page_id)}>Deletar</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button variant="outline" className="border-dashboard-border" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button className="bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent/80" onClick={handleModalSave} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
