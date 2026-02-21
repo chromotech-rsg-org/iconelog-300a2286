@@ -461,20 +461,26 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     let filtered = followupData;
     if (hasDateRange) {
       filtered = filtered.filter(item => {
-        const dtPrev = item.dt_previsao ? safeParseDate(String(item.dt_previsao)) : null;
-        const dtEntrega = item.dt_entrega_real ? safeParseDate(String(item.dt_entrega_real)) : null;
-        const dtExp = item.dt_expedicao ? safeParseDate(String(item.dt_expedicao)) : null;
         const from = dateRange.from!;
         const to = dateRange.to || dateRange.from!;
-        return (dtPrev && isDateInDateRange(String(item.dt_previsao), from, to)) ||
-               (dtEntrega && isDateInDateRange(String(item.dt_entrega_real), from, to)) ||
-               (dtExp && isDateInDateRange(String(item.dt_expedicao), from, to));
+        return isDateInDateRange(item.dt_previsao, from, to) ||
+               isDateInDateRange(item.dt_entrega_real, from, to) ||
+               isDateInDateRange(item.dt_expedicao, from, to);
       });
     } else if (months.length || years.length) {
+      const ms = months || [];
+      const ys = years || [];
       filtered = filtered.filter(item => {
-        return dateMatchesMonthYear(item.dt_previsao, months, years) ||
-               dateMatchesMonthYear(item.dt_entrega_real, months, years) ||
-               dateMatchesMonthYear(item.dt_expedicao, months, years);
+        // Prefer _fetch_month/_fetch_year tags for accurate filtering (same as getEntregasData)
+        if (item._fetch_month != null && item._fetch_year != null) {
+          const matchYear = ys.length === 0 || ys.includes(item._fetch_year);
+          const matchMonth = ms.length === 0 || ms.includes(item._fetch_month);
+          return matchYear && matchMonth;
+        }
+        // Fallback for legacy cached data without tags
+        return dateMatchesMonthYear(item.dt_previsao, ms, ys) ||
+               dateMatchesMonthYear(item.dt_entrega_real, ms, ys) ||
+               dateMatchesMonthYear(item.dt_expedicao, ms, ys);
       });
     }
 

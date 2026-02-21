@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useMemo, useState, useRef } from "react";
-import BrazilHeatmap from "react-brazil-heatmap";
+import { useMemo } from "react";
+import BrazilHeatmap, { Tooltip } from "react-brazil-heatmap";
 import "react-brazil-heatmap/dist/style.css";
-import type { GeographyType } from "react-brazil-heatmap";
+import type { GeographyType, MetaItem } from "react-brazil-heatmap";
 
 interface EstadoStats {
   name: string;
@@ -30,14 +30,27 @@ const UF_NAMES: Record<string, string> = {
 };
 
 export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }: Props) => {
-  const [hoveredState, setHoveredState] = useState<string | null>(null);
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const heatmapData = useMemo(() => {
     const d: Record<string, number> = {};
     estadoData.forEach(e => { d[e.name] = e.value; });
     return d;
+  }, [estadoData]);
+
+  const metadata = useMemo(() => {
+    const m: Record<string, Record<string, string | number>> = {};
+    estadoData.forEach(e => {
+      const percNoPrazo = e.value > 0 ? ((e.noPrazo / e.value) * 100).toFixed(1) : "0.0";
+      const percForaPrazo = e.value > 0 ? ((e.foraPrazo / e.value) * 100).toFixed(1) : "0.0";
+      m[e.name] = {
+        nomeEstado: UF_NAMES[e.name] || e.name,
+        pedidos: e.value,
+        semOcorrencia: e.semOcorrencia,
+        comOcorrencia: e.comOcorrencia,
+        percNoPrazo: `${percNoPrazo}%`,
+        percForaPrazo: `${percForaPrazo}%`,
+      };
+    });
+    return m;
   }, [estadoData]);
 
   const handleClick = (geo: GeographyType) => {
@@ -45,32 +58,45 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
     if (uf) onEstadoClick(uf);
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-      const target = e.target as SVGElement;
-      const uf = target?.getAttribute?.("data-uf") || target?.closest?.("[data-uf]")?.getAttribute("data-uf");
-      if (uf) setHoveredState(uf);
-    }
+  const renderTooltipContent = (meta: MetaItem) => {
+    return (
+      <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-xl p-2.5 min-w-[220px]">
+        <div className="text-xs font-bold text-primary mb-1.5 border-b border-border pb-1">
+          {meta.nomeEstado}
+        </div>
+        <div className="space-y-0.5 text-[10px]">
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Contagem de Cod Conhecimento</span>
+            <span className="text-foreground font-semibold">{Number(meta.pedidos).toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Sem Ocorrência</span>
+            <span className="text-foreground font-semibold">{Number(meta.semOcorrencia).toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Com Ocorrência</span>
+            <span className="text-foreground font-semibold">{Number(meta.comOcorrencia).toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">% No Prazo</span>
+            <span className="text-green-400 font-semibold">{meta.percNoPrazo}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">% Fora do Prazo</span>
+            <span className="text-red-400 font-semibold">{meta.percForaPrazo}</span>
+          </div>
+        </div>
+      </div>
+    );
   };
-
-  const hoveredData = useMemo(() => {
-    if (!hoveredState) return null;
-    return estadoData.find(e => e.name === hoveredState) || null;
-  }, [hoveredState, estadoData]);
 
   return (
     <Card className="bg-card border-border h-full flex flex-col">
-      <CardHeader className="pb-1 pt-2">
+      <CardHeader className="pb-0 pt-2 px-2">
         <CardTitle className="text-sm font-medium text-foreground">Pedidos | Estado</CardTitle>
       </CardHeader>
-      <CardContent className="p-2 relative flex-1 min-h-0" ref={containerRef} onMouseMove={handleMouseMove}>
-        <div
-          className="brazil-map-container h-full"
-          onMouseLeave={() => setHoveredState(null)}
-          style={{ position: "relative" }}
-        >
+      <CardContent className="p-1 relative flex-1 min-h-0">
+        <div className="brazil-map-container h-full" style={{ position: "relative" }}>
           <style>{`
             .react-brazil-heatmap__state {
               cursor: pointer;
@@ -83,47 +109,20 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
               stroke: hsl(45, 100%, 50%);
               stroke-width: 1.5;
             }
-            ${selectedEstado ? `.react-brazil-heatmap__state { opacity: 0.3; }
-            .react-brazil-heatmap__state[data-uf="${selectedEstado}"] { opacity: 1; }` : ""}
+            ${selectedEstado ? `
+            .react-brazil-heatmap__state { opacity: 0.3; }
+            .react-brazil-heatmap__state--${selectedEstado.toLowerCase()} { opacity: 1; stroke: hsl(45, 100%, 50%); stroke-width: 2; }
+            ` : ""}
           `}</style>
           <BrazilHeatmap
             data={heatmapData}
+            metadata={metadata}
             colorRange={["hsl(45, 30%, 20%)", "hsl(45, 100%, 50%)"]}
             onClick={handleClick}
-          />
-        </div>
-
-        {hoveredData && (
-          <div
-            className="absolute z-50 pointer-events-none bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-xl p-2.5 min-w-[200px]"
-            style={{
-              left: Math.min(tooltipPos.x + 12, 160),
-              top: tooltipPos.y - 10,
-            }}
           >
-            <div className="text-xs font-bold text-primary mb-1.5 border-b border-border pb-1">
-              {UF_NAMES[hoveredData.name] || hoveredData.name}
-            </div>
-            <div className="space-y-0.5 text-[10px]">
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Pedidos</span>
-                <span className="text-foreground font-semibold">{hoveredData.value.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">% No Prazo</span>
-                <span className="text-green-400 font-semibold">
-                  {hoveredData.value > 0 ? ((hoveredData.noPrazo / hoveredData.value) * 100).toFixed(1) : "0.0"}%
-                </span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">% Fora do Prazo</span>
-                <span className="text-red-400 font-semibold">
-                  {hoveredData.value > 0 ? ((hoveredData.foraPrazo / hoveredData.value) * 100).toFixed(1) : "0.0"}%
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+            <Tooltip trigger="hover" float tooltipContent={renderTooltipContent} />
+          </BrazilHeatmap>
+        </div>
       </CardContent>
     </Card>
   );
