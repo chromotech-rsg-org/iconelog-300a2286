@@ -1,85 +1,163 @@
 
 
-## Tracking Consolidado - Correcao de Valores e Mapa Interativo
+## Plano: Estoque Consolidado com APIs Reais + Correcoes de Roteamento + Refatoracao ConfigurarBI
 
-### Problemas Identificados
-
-1. **Valores nao batem com o Power BI**: A funcao `getTrackingData` filtra por campos de data (`dt_previsao`, `dt_entrega_real`, `dt_expedicao`) em vez de usar os tags `_fetch_month`/`_fetch_year` que ja foram corrigidos no modulo de Entregas. Isso causa a mesma discrepancia de valores.
-
-2. **Mapa do Brasil - Hover/Tooltip nao funciona**: O codigo atual tenta detectar estados via atributo `data-uf` nos elementos SVG, mas a biblioteca `react-brazil-heatmap` NAO renderiza esse atributo. Por isso, o tooltip nunca aparece ao passar o mouse.
-
-3. **Mapa do Brasil - Clique para filtrar**: O `onClick` do componente ja esta conectado, mas a deteccao de estado no hover esta quebrada. A biblioteca tem um componente `Tooltip` proprio que pode ser usado como child do `BrazilHeatmap`.
-
-4. **Tamanho do mapa pequeno**: O mapa esta dentro de um container com `h-1/2` (metade de 480px = 240px), e o card tem padding/header que reduzem ainda mais o espaco.
+Este plano cobre 3 grandes blocos de trabalho.
 
 ---
 
-### Plano de Implementacao
+### Bloco 1: Conectar Estoque Consolidado com APIs Reais
 
-#### 1. Corrigir filtro de dados do Tracking (`src/hooks/useFollowupData.ts`)
+**Objetivo**: Substituir dados mock por dados reais das APIs MAPALOGISTICO e SALDOBASE.
 
-Na funcao `getTrackingData`, aplicar a mesma logica de `_fetch_month`/`_fetch_year` que ja funciona em `getEntregasData`:
+#### 1.1 Criar hook `useEstoqueConsolidadoData`
 
-- Quando `months`/`years` estiverem ativos (sem dateRange), priorizar os tags `_fetch_month` e `_fetch_year` dos registros
-- Manter fallback para parsing de campos de data para dados de cache antigos
+Novo hook em `src/hooks/useEstoqueConsolidadoData.ts` que:
 
-#### 2. Reescrever o componente do Mapa (`src/components/tracking/TrackingBrazilMap.tsx`)
+- Usa `useApiProxy` para chamar **MAPALOGISTICO** (dados da matriz) e **SALDOBASE** (dados das bases)
+- Implementa cache-first com `bi_data_cache` (page_id: `estoque-consolidado`, cache_keys: `mapalogistico_{codCli}` e `saldobase_{codCli}`)
+- Controla refresh com stages: `requesting_mapalogistico` -> `receiving_mapalogistico` -> `requesting_saldobase` -> `receiving_saldobase` -> `saving` -> `done`
+- **NAO** aplica filtro de whitelist (diferente do B-Side Estoque, aqui mostra todos os produtos)
+- Processa dados da MAPALOGISTICO para gerar items da tabela Estoque Matriz com todos os campos necessarios
+- Processa dados da SALDOBASE para gerar items da tabela Estoque Base
 
-**Substituir a logica de hover customizada** (que depende de `data-uf` inexistente) pelo componente `Tooltip` nativo da biblioteca:
+#### 1.2 Campos da Tabela Estoque Matriz (conforme imagens 2 e 3)
 
-- Usar `metadata` prop do `BrazilHeatmap` para passar dados de cada estado (Nome Estado, Contagem de Cod Conhecimento, Sem/Com Ocorrencia, % No Prazo, % Fora do Prazo)
-- Usar o componente `<Tooltip>` como child do `<BrazilHeatmap>` com `trigger="hover"` e `float` habilitado
-- Customizar o `tooltipContent` para renderizar o layout igual ao Power BI (imagem 2): tabela com "Nome Estado", "Contagem de Cod Conhecimento", "Sem Ocorrencia", "Com Ocorrencia", "% No Prazo", "% Fora do Prazo"
-- Manter o `onClick` para filtrar todo o BI pelo estado clicado
-- Manter o destaque visual (opacity/stroke) para o estado selecionado
+A tabela Estoque Matriz combina dados das duas APIs. Os campos serao:
 
-#### 3. Aumentar tamanho do mapa no layout (`src/pages/Tracking.tsx`)
+| Campo | Fonte | Campo API |
+|---|---|---|
+| Base | MAPALOGISTICO | `base` ou valor fixo (ex: "BARUERI") |
+| Codigo | MAPALOGISTICO | `produto` |
+| Descricao | MAPALOGISTICO | `Descricao` / `nm_produto` |
+| Grupo | MAPALOGISTICO | `Grupo` |
+| SubGrupo | MAPALOGISTICO | `SubGrupo` |
+| Categoria | MAPALOGISTICO | `Categoria` |
+| Qtde. Entrada | MAPALOGISTICO | `nr_qtde_total_entrada` |
+| Qtde. Saida | MAPALOGISTICO | `nr_qtde_saida` |
+| Estoque | MAPALOGISTICO | `nr_qtde_saldo` |
+| Vl. Item | MAPALOGISTICO | calculado (`vl_total / nr_qtde_saldo`) |
+| Vl. Total | MAPALOGISTICO | `vl_total` |
+| M3 Unitario | MAPALOGISTICO | `m3` |
+| M3 Total | MAPALOGISTICO | `m3_total` |
+| Data Ultima Entrada | MAPALOGISTICO | `dt_ultima_entrada` |
+| Qtde. Ultima Entrada | MAPALOGISTICO | `nr_qtde_Ultima_entrada` |
+| Data Ultima Saida | MAPALOGISTICO | `dt_ultima_saida` |
+| Qtde. Ultima Saida | MAPALOGISTICO | `nr_qrde_ultima_saida` |
+| Dias s/ Movto. | MAPALOGISTICO | `nr_qtde_dias_ultima_mov` |
+| Tempo Parado | Calculado | Faixa baseada em dias (Antes que 30 dias, Entre 31 e 60 dias, Entre 61 e 90 dias, Mais que 91 dias) |
 
-- Alterar a proporcao do bloco que contem Regional Pie + Mapa: em vez de `h-1/2` cada, dar mais espaco ao mapa (ex: `h-[40%]` para pie e `h-[60%]` para mapa)
-- Reduzir padding interno do card do mapa para maximizar area util
-- Aumentar a `height` fixa do Bloco 2 de 480px para ~520px
+#### 1.3 Campos da Tabela Estoque Base (conforme imagem 4)
+
+| Campo | Fonte | Campo API |
+|---|---|---|
+| Base | SALDOBASE | campo de base da API |
+| Cidade | SALDOBASE | campo de cidade |
+| UF | SALDOBASE | campo de UF |
+| Codigo | SALDOBASE | codigo do produto |
+| M3 | SALDOBASE | m3 |
+| Produto | SALDOBASE | descricao do produto |
+| Qtde. Entrada | SALDOBASE | qtde entrada |
+| Qtde. Saida | SALDOBASE | qtde saida |
+| Regiao | SALDOBASE | regiao (via city_regional_mapping ou campo direto) |
+| Saldo | SALDOBASE | saldo |
+| Vl. Total | SALDOBASE | valor total |
+
+#### 1.4 KPI Cards
+
+- **ESTOQUE MATRIZ** (Valor, M3, Qtde SKUs): calculados a partir dos dados processados da MAPALOGISTICO
+- **ESTOQUE BASE** (Valor, M3, Qtde SKUs): calculados a partir dos dados processados da SALDOBASE
+
+#### 1.5 Graficos (nova ordem + tipos)
+
+1. **Representacao do Estoque | Grupo** - tipo **Pizza** (ja esta como pizza, manter)
+2. **Valor Estoque | Grupo** - tipo **Barra horizontal** (manter, dados do Grupo da MAPALOGISTICO)
+3. **Tempo Parado | SKU** - mudar para tipo **Pizza** (faixas: Antes que 30 dias, Entre 31 e 60 dias, Entre 61 e 90 dias, Mais que 91 dias)
+4. **Tempo Parado Medio | Grupo** - tipo **Barra horizontal** (manter)
+
+Todos os graficos sao clicaveis e filtram o BI inteiro.
+
+#### 1.6 Filtragem Interativa
+
+Ao clicar em qualquer elemento (grafico, linha de tabela, badge), filtra todos os componentes:
+- Filtro por Grupo (graficos + tabelas)
+- Filtro por SKU/Codigo (tabelas)
+- Filtro por Base (tabela base)
+- Filtro por Faixa de Tempo Parado (grafico pizza tempo parado)
+
+#### 1.7 Exportacao Excel
+
+Botao de exportar gera um arquivo .xlsx com 3 abas:
+1. **Estoque Matriz** - dados filtrados da tabela matriz
+2. **Estoque Base** - dados filtrados da tabela base
+3. **BI Consolidado** - resumo com KPIs + dados dos graficos
 
 ---
 
-### Detalhes Tecnicos
+### Bloco 2: Corrigir Roteamento ao Recarregar Pagina
 
-**`getTrackingData` - filtro corrigido:**
-```typescript
-// Usar _fetch_month/_fetch_year tags (mesmo padrao do getEntregasData)
-if (item._fetch_month != null && item._fetch_year != null) {
-  const matchYear = years.length === 0 || years.includes(item._fetch_year);
-  const matchMonth = months.length === 0 || months.includes(item._fetch_month);
-  return matchYear && matchMonth;
-}
-// Fallback para dados sem tags
-```
+**Problema**: Ao recarregar a pagina (F5) em /admin ou em qualquer BI, o usuario e redirecionado para /auth e depois para /minutas.
 
-**`TrackingBrazilMap` - tooltip nativo:**
-```typescript
-import BrazilHeatmap, { Tooltip } from "react-brazil-heatmap";
+**Causa**: O `SmartRedirect` so atua em `/`, mas o problema pode estar no componente `ProtectedRoute` ou no carregamento do `AuthContext` que durante o `loading=true` pode causar flash de redirecionamento.
 
-// Usar metadata para passar dados extras por UF
-const metadata = { SP: { name: "Sao Paulo", pedidos: 1392, ... }, ... };
+**Solucao**:
 
-<BrazilHeatmap data={heatmapData} metadata={metadata} onClick={handleClick}>
-  <Tooltip float trigger="hover" tooltipContent={(meta) => (
-    <div>/* Layout igual Power BI */</div>
-  )} />
-</BrazilHeatmap>
-```
+- No `ProtectedRoute`, durante `loading === true`, renderizar um loading spinner em vez de redirecionar
+- Garantir que rotas individuais (`/admin`, `/estoque-consolidado`, etc.) nao redirecionem enquanto o auth esta carregando
+- O `SmartRedirect` ja funciona corretamente para `/` - nao precisa ser alterado
+- Verificar se as paginas individuais (como Admin, EstoqueConsolidado) nao fazem redirecionamento proprio durante loading
 
-### Arquivos a Modificar
+**Arquivos a modificar:**
+- `src/components/auth/ProtectedRoute.tsx` - Adicionar estado de loading
+- Verificar cada pagina que faz redirect proprio
 
-| Arquivo | Alteracao |
+---
+
+### Bloco 3: Refatorar ConfigurarBI para DataTable com Modal
+
+**Objetivo**: Substituir o layout de cards por uma DataTable e editar em modal.
+
+#### 3.1 DataTable
+
+Tabela com colunas:
+- Ordem | Logo (miniatura) | Nome | Slug | Empresa | Cod. Cliente | Intervalo | Acoes (Editar/Deletar/Ocultar)
+
+Funcionalidades:
+- Paginacao
+- Busca textual
+- Ordenacao por qualquer coluna
+
+#### 3.2 Modal de Edicao
+
+Ao clicar em "Editar", abre um Dialog/Modal com TODOS os campos existentes hoje no card:
+- Logo (upload)
+- Nome de exibicao
+- Ordem no menu
+- Slug
+- Empresa (select)
+- Cod. Cliente / Nome Empresa / Intervalo
+- APIs Utilizadas (checkboxes)
+- Atualizacoes Agendadas
+- Configurar Graficos
+
+#### 3.3 Botao Deletar/Ocultar
+
+- Deletar: remove o registro de `bi_settings` (com confirmacao)
+- Ocultar: futura feature - pode ser implementado com um campo `hidden` na tabela (requer migracao)
+
+---
+
+### Arquivos a Criar/Modificar
+
+| Arquivo | Acao |
 |---|---|
-| `src/hooks/useFollowupData.ts` | Corrigir `getTrackingData` para usar `_fetch_month`/`_fetch_year` |
-| `src/components/tracking/TrackingBrazilMap.tsx` | Reescrever tooltip com componente nativo da biblioteca + aumentar mapa |
-| `src/pages/Tracking.tsx` | Ajustar proporcoes do layout do Bloco 2 para mapa maior |
+| `src/hooks/useEstoqueConsolidadoData.ts` | **Criar** - Hook para dados reais com MAPALOGISTICO + SALDOBASE |
+| `src/pages/EstoqueConsolidado.tsx` | **Reescrever** - Usar hook real, tabelas com colunas corretas, graficos reordenados, exportacao multi-aba |
+| `src/data/estoqueConsolidadoData.ts` | **Remover uso** - Dados mock nao serao mais usados |
+| `src/components/auth/ProtectedRoute.tsx` | **Modificar** - Adicionar loading state para evitar redirect prematuro |
+| `src/components/admin/ConfigurarBI.tsx` | **Reescrever** - De cards para DataTable + Modal de edicao |
 
-### Resultado Esperado
+### Observacao sobre SALDOBASE
 
-- Valores do Tracking batem com o Power BI (15.160 pedidos, 90.67% no prazo)
-- Mapa do Brasil maior e mais visivel
-- Ao passar o mouse em um estado, tooltip aparece com: Nome Estado, Contagem, Sem/Com Ocorrencia, % No Prazo, % Fora do Prazo
-- Ao clicar em um estado, filtra todo o dashboard pelo estado selecionado (ja funciona, so o feedback visual melhora)
+A API SALDOBASE precisa estar cadastrada na tabela `api_integrations` com o `base_url` correto. O hook usara `callMainApi("SALDOBASE", codCli)` que busca automaticamente a URL da integracao cadastrada.
 
