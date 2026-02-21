@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { DollarSign, Box, Package, X, RefreshCw } from "lucide-react";
+import { EstoqueMatrizHoverCard, EstoqueBaseHoverCard } from "@/components/stock/EstoqueProductHoverCard";
 
 const COLORS = ['hsl(45, 100%, 50%)', 'hsl(217, 91%, 60%)', 'hsl(25, 95%, 53%)', 'hsl(142, 76%, 36%)', 'hsl(280, 65%, 60%)', 'hsl(340, 82%, 52%)', 'hsl(190, 80%, 50%)', 'hsl(60, 90%, 45%)'];
 const TEMPO_PARADO_COLORS: Record<string, string> = {
@@ -423,8 +424,16 @@ const EstoqueConsolidado = () => {
                       className={`border-border hover:bg-muted/50 cursor-pointer text-xs ${selectedSKU === item.codigo ? 'bg-primary/10' : ''}`}
                       onClick={() => setSelectedSKU(prev => prev === item.codigo ? null : item.codigo)}>
                       <TableCell className="text-foreground">{item.base}</TableCell>
-                      <TableCell className="text-primary font-medium">{item.codigo}</TableCell>
-                      <TableCell className="text-foreground truncate max-w-[150px]">{item.descricao}</TableCell>
+                      <TableCell className="text-primary font-medium">
+                        <EstoqueMatrizHoverCard product={item}>
+                          <span className="cursor-help underline decoration-dotted">{item.codigo}</span>
+                        </EstoqueMatrizHoverCard>
+                      </TableCell>
+                      <TableCell className="text-foreground truncate max-w-[150px]">
+                        <EstoqueMatrizHoverCard product={item}>
+                          <span className="cursor-help">{item.descricao}</span>
+                        </EstoqueMatrizHoverCard>
+                      </TableCell>
                       <TableCell className="text-muted-foreground cursor-pointer hover:text-foreground"
                         onClick={(e) => { e.stopPropagation(); setSelectedGrupo(prev => prev === item.grupo ? null : item.grupo); }}>
                         {item.grupo}
@@ -489,9 +498,17 @@ const EstoqueConsolidado = () => {
                       <TableCell className="text-foreground">{item.base}</TableCell>
                       <TableCell className="text-foreground">{item.cidade}</TableCell>
                       <TableCell className="text-foreground">{item.uf}</TableCell>
-                      <TableCell className="text-primary font-medium">{item.codigo}</TableCell>
+                      <TableCell className="text-primary font-medium">
+                        <EstoqueBaseHoverCard product={item}>
+                          <span className="cursor-help underline decoration-dotted">{item.codigo}</span>
+                        </EstoqueBaseHoverCard>
+                      </TableCell>
                       <TableCell className="text-foreground text-right">{item.m3.toFixed(4)}</TableCell>
-                      <TableCell className="text-foreground truncate max-w-[150px]">{item.produto}</TableCell>
+                      <TableCell className="text-foreground truncate max-w-[150px]">
+                        <EstoqueBaseHoverCard product={item}>
+                          <span className="cursor-help">{item.produto}</span>
+                        </EstoqueBaseHoverCard>
+                      </TableCell>
                       <TableCell className="text-foreground text-right">{formatNumber(item.qtdeEntrada)}</TableCell>
                       <TableCell className="text-foreground text-right">{formatNumber(item.qtdeSaida)}</TableCell>
                       <TableCell className="text-foreground">{item.regiao}</TableCell>
