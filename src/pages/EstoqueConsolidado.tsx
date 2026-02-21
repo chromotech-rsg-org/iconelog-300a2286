@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { useEstoqueConsolidadoData, EstoqueMatrizItem, EstoqueBaseItem } from "@/hooks/useEstoqueConsolidadoData";
 import { useBiSettings } from "@/hooks/useBiSettings";
@@ -26,6 +26,8 @@ const TEMPO_PARADO_COLORS: Record<string, string> = {
   "Entre 61 e 90 dias": "hsl(25, 95%, 53%)",
   "Mais que 91 dias": "hsl(340, 82%, 52%)",
 };
+
+const renderPercentLabel = ({ name, percent }: any) => `${(percent * 100).toFixed(1)}%`;
 
 const EstoqueConsolidado = () => {
   const { getSettingByPageId } = useBiSettings();
@@ -55,7 +57,7 @@ const EstoqueConsolidado = () => {
 
   const filteredBase = useMemo(() => {
     let result = estoqueBase;
-    if (selectedGrupo) result = result.filter(i => i.produto.includes(selectedGrupo)); // base doesn't have grupo directly
+    if (selectedGrupo) result = result.filter(i => i.produto.includes(selectedGrupo));
     if (selectedBase) result = result.filter(i => i.base === selectedBase);
     return result;
   }, [estoqueBase, selectedGrupo, selectedBase]);
@@ -73,11 +75,14 @@ const EstoqueConsolidado = () => {
     qtdeSKUs: new Set(filteredBase.map(i => i.codigo)).size,
   }), [filteredBase]);
 
-  // Chart data
+  // Chart data - Pie charts as percentages
   const estoqueByGrupo = useMemo(() => {
     const grouped = new Map<string, number>();
     filteredMatriz.forEach(i => grouped.set(i.grupo, (grouped.get(i.grupo) || 0) + i.estoque));
-    return Array.from(grouped.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const total = filteredMatriz.reduce((s, i) => s + i.estoque, 0);
+    return Array.from(grouped.entries()).map(([name, value]) => ({
+      name, value, percent: total > 0 ? (value / total) * 100 : 0,
+    })).sort((a, b) => b.value - a.value);
   }, [filteredMatriz]);
 
   const valorByGrupo = useMemo(() => {
@@ -89,7 +94,10 @@ const EstoqueConsolidado = () => {
   const tempoParadoPie = useMemo(() => {
     const grouped = new Map<string, number>();
     filteredMatriz.forEach(i => grouped.set(i.tempoParado, (grouped.get(i.tempoParado) || 0) + 1));
-    return Array.from(grouped.entries()).map(([name, value]) => ({ name, value }));
+    const total = filteredMatriz.length;
+    return Array.from(grouped.entries()).map(([name, value]) => ({
+      name, value, percent: total > 0 ? (value / total) * 100 : 0,
+    }));
   }, [filteredMatriz]);
 
   const tempoParadoMedioGrupo = useMemo(() => {
@@ -184,7 +192,7 @@ const EstoqueConsolidado = () => {
   };
 
   return (
-    <div className="min-h-screen bg-dashboard-dark">
+    <div className="min-h-screen bg-background">
       <DocumentHead pageId="estoque-consolidado" />
       <SharedHeader
         pageId="estoque-consolidado"
@@ -198,28 +206,28 @@ const EstoqueConsolidado = () => {
 
       {/* Refresh progress */}
       {refreshStage && (
-        <div className="flex items-center gap-2 px-6 py-2 border-b border-dashboard-border bg-dashboard-card/50 animate-fade-in">
-          <RefreshCw className="h-4 w-4 text-dashboard-accent animate-spin" />
-          <span className="text-sm text-dashboard-accent">{getRefreshText()}</span>
+        <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-card/50 animate-fade-in">
+          <RefreshCw className="h-4 w-4 text-primary animate-spin" />
+          <span className="text-sm text-primary">{getRefreshText()}</span>
         </div>
       )}
 
       {/* Active Filters Bar */}
       {hasActiveFilters && (
-        <div className="flex items-center gap-2 px-6 py-2 border-b border-dashboard-border bg-dashboard-card/50 animate-fade-in">
+        <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-card/50 animate-fade-in">
           <span className="text-xs text-muted-foreground">Filtros:</span>
           {selectedGrupo && (
-            <Badge variant="outline" className="border-dashboard-accent bg-dashboard-accent/10 text-dashboard-accent cursor-pointer" onClick={() => setSelectedGrupo(null)}>
+            <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedGrupo(null)}>
               Grupo: {selectedGrupo} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedSKU && (
-            <Badge variant="outline" className="border-dashboard-blue bg-dashboard-blue/10 text-dashboard-blue cursor-pointer" onClick={() => setSelectedSKU(null)}>
+            <Badge variant="outline" className="border-blue-500 bg-blue-500/10 text-blue-400 cursor-pointer" onClick={() => setSelectedSKU(null)}>
               SKU: {selectedSKU} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedBase && (
-            <Badge variant="outline" className="border-dashboard-orange bg-dashboard-orange/10 text-dashboard-orange cursor-pointer" onClick={() => setSelectedBase(null)}>
+            <Badge variant="outline" className="border-orange-500 bg-orange-500/10 text-orange-400 cursor-pointer" onClick={() => setSelectedBase(null)}>
               Base: {selectedBase} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
@@ -237,51 +245,51 @@ const EstoqueConsolidado = () => {
       <div className="p-6 space-y-4">
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="bg-dashboard-card border-dashboard-border">
+          <Card className="bg-card border-primary/60 border-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-dashboard-accent">ESTOQUE MATRIZ</CardTitle>
+              <CardTitle className="text-base font-semibold text-primary">ESTOQUE MATRIZ</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
-                  <DollarSign className="h-5 w-5 mx-auto mb-1 text-green-500" />
-                  <p className="text-xs text-muted-foreground">Valor</p>
-                  <p className="text-lg font-bold text-foreground">{formatCurrency(filteredMatrizTotals.valor)}</p>
+                  <DollarSign className="h-6 w-6 mx-auto mb-1 text-green-500" />
+                  <p className="text-sm text-muted-foreground">Valor</p>
+                  <p className="text-2xl font-bold text-foreground">{formatCurrency(filteredMatrizTotals.valor)}</p>
                 </div>
                 <div className="text-center">
-                  <Box className="h-5 w-5 mx-auto mb-1 text-dashboard-blue" />
-                  <p className="text-xs text-muted-foreground">M³</p>
-                  <p className="text-lg font-bold text-foreground">{filteredMatrizTotals.m3.toFixed(1)}</p>
+                  <Box className="h-6 w-6 mx-auto mb-1 text-blue-500" />
+                  <p className="text-sm text-muted-foreground">M³</p>
+                  <p className="text-2xl font-bold text-foreground">{filteredMatrizTotals.m3.toFixed(1)}</p>
                 </div>
                 <div className="text-center">
-                  <Package className="h-5 w-5 mx-auto mb-1 text-dashboard-accent" />
-                  <p className="text-xs text-muted-foreground">Qtde SKUs</p>
-                  <p className="text-lg font-bold text-foreground">{formatNumber(filteredMatrizTotals.qtdeSKUs)}</p>
+                  <Package className="h-6 w-6 mx-auto mb-1 text-primary" />
+                  <p className="text-sm text-muted-foreground">Qtde SKUs</p>
+                  <p className="text-2xl font-bold text-foreground">{formatNumber(filteredMatrizTotals.qtdeSKUs)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-dashboard-card border-dashboard-border">
+          <Card className="bg-card border-blue-500/60 border-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-dashboard-blue">ESTOQUE BASE</CardTitle>
+              <CardTitle className="text-base font-semibold text-blue-400">ESTOQUE BASE</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
-                  <DollarSign className="h-5 w-5 mx-auto mb-1 text-green-500" />
-                  <p className="text-xs text-muted-foreground">Valor</p>
-                  <p className="text-lg font-bold text-foreground">{formatCurrency(filteredBaseTotals.valor)}</p>
+                  <DollarSign className="h-6 w-6 mx-auto mb-1 text-green-500" />
+                  <p className="text-sm text-muted-foreground">Valor</p>
+                  <p className="text-2xl font-bold text-foreground">{formatCurrency(filteredBaseTotals.valor)}</p>
                 </div>
                 <div className="text-center">
-                  <Box className="h-5 w-5 mx-auto mb-1 text-dashboard-blue" />
-                  <p className="text-xs text-muted-foreground">M³</p>
-                  <p className="text-lg font-bold text-foreground">{filteredBaseTotals.m3.toFixed(1)}</p>
+                  <Box className="h-6 w-6 mx-auto mb-1 text-blue-500" />
+                  <p className="text-sm text-muted-foreground">M³</p>
+                  <p className="text-2xl font-bold text-foreground">{filteredBaseTotals.m3.toFixed(1)}</p>
                 </div>
                 <div className="text-center">
-                  <Package className="h-5 w-5 mx-auto mb-1 text-dashboard-accent" />
-                  <p className="text-xs text-muted-foreground">Qtde SKUs</p>
-                  <p className="text-lg font-bold text-foreground">{formatNumber(filteredBaseTotals.qtdeSKUs)}</p>
+                  <Package className="h-6 w-6 mx-auto mb-1 text-primary" />
+                  <p className="text-sm text-muted-foreground">Qtde SKUs</p>
+                  <p className="text-2xl font-bold text-foreground">{formatNumber(filteredBaseTotals.qtdeSKUs)}</p>
                 </div>
               </div>
             </CardContent>
@@ -290,79 +298,85 @@ const EstoqueConsolidado = () => {
 
         {/* Charts - 4 in order */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* 1. Representação do Estoque | Grupo - Pizza */}
-          <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-dashboard-accent' : ''}`}>
-            <CardHeader className="pb-2">
+          {/* 1. Representação do Estoque | Grupo - Pizza com % */}
+          <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
+            <CardHeader className="pb-1">
               <CardTitle className="text-sm font-medium text-foreground">Representação do Estoque | Grupo</CardTitle>
             </CardHeader>
-            <CardContent className="h-[200px]">
+            <CardContent className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={estoqueByGrupo} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" onClick={handleGrupoPieClick}>
+                  <Pie data={estoqueByGrupo} cx="50%" cy="45%" innerRadius={35} outerRadius={60} dataKey="value" onClick={handleGrupoPieClick}
+                    label={renderPercentLabel} labelLine={false}>
                     {estoqueByGrupo.map((entry, index) => (
                       <Cell key={index} fill={COLORS[index % COLORS.length]}
                         opacity={selectedGrupo && selectedGrupo !== entry.name ? 0.3 : 1}
                         stroke={selectedGrupo === entry.name ? '#fff' : 'none'} strokeWidth={2} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatNumber(value)} />
+                  <Tooltip formatter={(value: number, name: string, props: any) => `${props.payload.percent?.toFixed(1)}%`} />
+                  <Legend wrapperStyle={{ fontSize: 9, color: 'hsl(0, 0%, 65%)' }} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
           {/* 2. Valor Estoque | Grupo - Barra horizontal */}
-          <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-dashboard-accent' : ''}`}>
-            <CardHeader className="pb-2">
+          <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
+            <CardHeader className="pb-1">
               <CardTitle className="text-sm font-medium text-foreground">Valor Estoque | Grupo</CardTitle>
             </CardHeader>
-            <CardContent className="h-[200px]">
+            <CardContent className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={valorByGrupo} layout="vertical" onClick={handleGrupoBarClick}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
                   <XAxis type="number" stroke="hsl(0, 0%, 60%)" fontSize={10} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                   <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={9} width={70} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="value" fill="hsl(45, 100%, 50%)" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="value" fill="hsl(45, 100%, 50%)" radius={[0, 4, 4, 0]}
+                    label={{ position: "right", fill: "hsl(0, 0%, 75%)", fontSize: 9, formatter: (v: number) => `${(v / 1000).toFixed(0)}k` }} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          {/* 3. Tempo Parado | SKU - Pizza (faixas) */}
-          <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedTempoParado ? 'ring-2 ring-destructive' : ''}`}>
-            <CardHeader className="pb-2">
+          {/* 3. Tempo Parado | SKU - Pizza com % */}
+          <Card className={`bg-card border-border cursor-pointer transition-all ${selectedTempoParado ? 'ring-2 ring-destructive' : ''}`}>
+            <CardHeader className="pb-1">
               <CardTitle className="text-sm font-medium text-foreground">Tempo Parado | SKU</CardTitle>
             </CardHeader>
-            <CardContent className="h-[200px]">
+            <CardContent className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={tempoParadoPie} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" onClick={handleTempoParadoClick}>
+                  <Pie data={tempoParadoPie} cx="50%" cy="45%" innerRadius={35} outerRadius={60} dataKey="value" onClick={handleTempoParadoClick}
+                    label={renderPercentLabel} labelLine={false}>
                     {tempoParadoPie.map((entry, index) => (
                       <Cell key={index} fill={TEMPO_PARADO_COLORS[entry.name] || COLORS[index % COLORS.length]}
                         opacity={selectedTempoParado && selectedTempoParado !== entry.name ? 0.3 : 1}
                         stroke={selectedTempoParado === entry.name ? '#fff' : 'none'} strokeWidth={2} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => `${value} SKUs`} />
+                  <Tooltip formatter={(value: number, name: string, props: any) => `${props.payload.percent?.toFixed(1)}%`} />
+                  <Legend wrapperStyle={{ fontSize: 9, color: 'hsl(0, 0%, 65%)' }} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
           {/* 4. Tempo Parado Médio | Grupo - Barra horizontal */}
-          <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-dashboard-accent' : ''}`}>
-            <CardHeader className="pb-2">
+          <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
+            <CardHeader className="pb-1">
               <CardTitle className="text-sm font-medium text-foreground">Tempo Parado Médio | Grupo</CardTitle>
             </CardHeader>
-            <CardContent className="h-[200px]">
+            <CardContent className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={tempoParadoMedioGrupo} layout="vertical" onClick={handleGrupoBarClick}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
                   <XAxis type="number" stroke="hsl(0, 0%, 60%)" fontSize={10} />
                   <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={9} width={70} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} formatter={(value: number) => `${value} dias`} />
-                  <Bar dataKey="value" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="value" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]}
+                    label={{ position: "right", fill: "hsl(0, 0%, 75%)", fontSize: 9, formatter: (v: number) => `${v} dias` }} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -372,7 +386,7 @@ const EstoqueConsolidado = () => {
         {/* Tables */}
         <div className="space-y-4">
           {/* Estoque Matriz Table - Full width */}
-          <Card className="bg-dashboard-card border-dashboard-border">
+          <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-foreground">
                 Estoque Matriz <span className="text-sm font-normal text-muted-foreground">({filteredMatriz.length} itens)</span>
@@ -381,7 +395,7 @@ const EstoqueConsolidado = () => {
             <CardContent className="overflow-auto max-h-[400px] custom-scrollbar">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-dashboard-border">
+                  <TableRow className="border-border">
                     <TableHead className="text-muted-foreground">Base</TableHead>
                     <TableHead className="text-muted-foreground">Código</TableHead>
                     <TableHead className="text-muted-foreground">Descrição</TableHead>
@@ -406,10 +420,10 @@ const EstoqueConsolidado = () => {
                 <TableBody>
                   {filteredMatriz.map((item) => (
                     <TableRow key={item.id}
-                      className={`border-dashboard-border hover:bg-dashboard-border/50 cursor-pointer text-xs ${selectedSKU === item.codigo ? 'bg-dashboard-accent/10' : ''}`}
+                      className={`border-border hover:bg-muted/50 cursor-pointer text-xs ${selectedSKU === item.codigo ? 'bg-primary/10' : ''}`}
                       onClick={() => setSelectedSKU(prev => prev === item.codigo ? null : item.codigo)}>
                       <TableCell className="text-foreground">{item.base}</TableCell>
-                      <TableCell className="text-dashboard-accent font-medium">{item.codigo}</TableCell>
+                      <TableCell className="text-primary font-medium">{item.codigo}</TableCell>
                       <TableCell className="text-foreground truncate max-w-[150px]">{item.descricao}</TableCell>
                       <TableCell className="text-muted-foreground cursor-pointer hover:text-foreground"
                         onClick={(e) => { e.stopPropagation(); setSelectedGrupo(prev => prev === item.grupo ? null : item.grupo); }}>
@@ -444,7 +458,7 @@ const EstoqueConsolidado = () => {
           </Card>
 
           {/* Estoque Base Table - Full width */}
-          <Card className="bg-dashboard-card border-dashboard-border">
+          <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-foreground">
                 Estoque Base <span className="text-sm font-normal text-muted-foreground">({filteredBase.length} itens)</span>
@@ -453,7 +467,7 @@ const EstoqueConsolidado = () => {
             <CardContent className="overflow-auto max-h-[400px] custom-scrollbar">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-dashboard-border">
+                  <TableRow className="border-border">
                     <TableHead className="text-muted-foreground">Base</TableHead>
                     <TableHead className="text-muted-foreground">Cidade</TableHead>
                     <TableHead className="text-muted-foreground">UF</TableHead>
@@ -470,12 +484,12 @@ const EstoqueConsolidado = () => {
                 <TableBody>
                   {filteredBase.map((item) => (
                     <TableRow key={item.id}
-                      className={`border-dashboard-border hover:bg-dashboard-border/50 cursor-pointer text-xs ${selectedBase === item.base ? 'bg-dashboard-accent/10' : ''}`}
+                      className={`border-border hover:bg-muted/50 cursor-pointer text-xs ${selectedBase === item.base ? 'bg-primary/10' : ''}`}
                       onClick={() => setSelectedBase(prev => prev === item.base ? null : item.base)}>
                       <TableCell className="text-foreground">{item.base}</TableCell>
                       <TableCell className="text-foreground">{item.cidade}</TableCell>
                       <TableCell className="text-foreground">{item.uf}</TableCell>
-                      <TableCell className="text-dashboard-accent font-medium">{item.codigo}</TableCell>
+                      <TableCell className="text-primary font-medium">{item.codigo}</TableCell>
                       <TableCell className="text-foreground text-right">{item.m3.toFixed(4)}</TableCell>
                       <TableCell className="text-foreground truncate max-w-[150px]">{item.produto}</TableCell>
                       <TableCell className="text-foreground text-right">{formatNumber(item.qtdeEntrada)}</TableCell>

@@ -7,10 +7,12 @@ interface Props {
   selectedTipo: string | null;
 }
 
-const ALLOWED_TYPES = ["ENTREGA", "REENTREGA"];
+const ALLOWED_TYPES = ["ENTREGA", "REENTREGA", "COLETA", "RETIRA MATRIZ", "REVERSA"];
 
 export const TrackingTipoServicoChart = ({ data, onTipoClick, selectedTipo }: Props) => {
-  const filtered = data.filter(d => ALLOWED_TYPES.includes(d.name));
+  // Ensure all allowed types appear even if zero
+  const dataMap = new Map(data.map(d => [d.name, d.value]));
+  const filtered = ALLOWED_TYPES.map(name => ({ name, value: dataMap.get(name) || 0 }));
   const chartHeight = Math.max(filtered.length * 45, 100);
 
   return (

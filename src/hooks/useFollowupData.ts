@@ -504,7 +504,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       if (isFinalizado) finalizado++;
       else transito++;
 
-      // On-time logic
+      // On-time logic: orders without dt_previsao count as "Fora do Prazo"
       const dtPrevisao = item.dt_previsao ? safeParseDate(String(item.dt_previsao)) : null;
       const dtEntregaReal = item.dt_entrega_real ? safeParseDate(String(item.dt_entrega_real)) : null;
 
@@ -516,6 +516,9 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           if (now <= dtPrevisao) noPrazo++;
           else foraPrazo++;
         }
+      } else {
+        // No dt_previsao = Fora do Prazo
+        foraPrazo++;
       }
 
       // Tipo servico
