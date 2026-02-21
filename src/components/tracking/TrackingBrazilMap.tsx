@@ -59,6 +59,7 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
   };
 
   const renderTooltipContent = (meta: MetaItem) => {
+    if (!meta) return null;
     return (
       <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-xl p-2.5 min-w-[220px]">
         <div className="text-xs font-bold text-primary mb-1.5 border-b border-border pb-1">
