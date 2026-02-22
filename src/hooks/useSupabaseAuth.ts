@@ -88,6 +88,14 @@ export const useSupabaseAuth = () => {
   const [publicAccess, setPublicAccessState] = useState<Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }>>({});
   const [loading, setLoading] = useState(true);
 
+  const isRetryableError = (error: any) => {
+    return error?.name === 'AbortError' || 
+      error?.message?.includes('Failed to fetch') ||
+      error?.message?.includes('upstream request timeout') ||
+      error?.message?.includes('timeout') ||
+      error?.code === '504';
+  };
+
   const fetchProfile = useCallback(async (userId: string, retryCount = 0): Promise<Profile | null> => {
     try {
       const { data, error } = await supabase
@@ -100,8 +108,9 @@ export const useSupabaseAuth = () => {
       return data as Profile | null;
     } catch (error: any) {
       console.error("Error fetching profile:", error);
-      if (retryCount < 2 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
-        await new Promise(r => setTimeout(r, 1500 * (retryCount + 1)));
+      if (retryCount < 3 && isRetryableError(error)) {
+        console.log(`Retrying profile fetch (attempt ${retryCount + 2}/4)...`);
+        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
         return fetchProfile(userId, retryCount + 1);
       }
       return null;
@@ -119,66 +128,79 @@ export const useSupabaseAuth = () => {
       return data?.map((ur: any) => ur.roles).filter(Boolean) as Role[] || [];
     } catch (error: any) {
       console.error("Error fetching user roles:", error);
-      if (retryCount < 2 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
-        await new Promise(r => setTimeout(r, 1500 * (retryCount + 1)));
+      if (retryCount < 3 && isRetryableError(error)) {
+        console.log(`Retrying user roles fetch (attempt ${retryCount + 2}/4)...`);
+        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
         return fetchUserRoles(userId, retryCount + 1);
       }
       return [];
     }
   }, []);
 
-  const fetchPagePermissions = useCallback(async (roleIds: string[]) => {
+  const fetchPagePermissions = useCallback(async (roleIds: string[], retryCount = 0): Promise<Record<string, PagePermission>> => {
     if (roleIds.length === 0) return {};
 
-    const { data, error } = await supabase
-      .from("page_permissions")
-      .select("*")
-      .in("role_id", roleIds);
+    try {
+      const { data, error } = await supabase
+        .from("page_permissions")
+        .select("*")
+        .in("role_id", roleIds);
 
-    if (error) {
+      if (error) throw error;
+
+      const perms: Record<string, PagePermission> = {};
+      data?.forEach((p) => {
+        if (!perms[p.page_id]) {
+          perms[p.page_id] = { visualizar: false, exportar: false, atualizar: false, apenas_dev: false };
+        }
+        perms[p.page_id].visualizar = perms[p.page_id].visualizar || p.visualizar;
+        perms[p.page_id].exportar = perms[p.page_id].exportar || p.exportar;
+        perms[p.page_id].atualizar = perms[p.page_id].atualizar || p.atualizar;
+        perms[p.page_id].apenas_dev = perms[p.page_id].apenas_dev || p.apenas_dev;
+      });
+      return perms;
+    } catch (error: any) {
       console.error("Error fetching page permissions:", error);
+      if (retryCount < 3 && isRetryableError(error)) {
+        console.log(`Retrying page permissions fetch (attempt ${retryCount + 2}/4)...`);
+        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+        return fetchPagePermissions(roleIds, retryCount + 1);
+      }
       return {};
     }
-
-    const perms: Record<string, PagePermission> = {};
-    data?.forEach((p) => {
-      if (!perms[p.page_id]) {
-        perms[p.page_id] = { visualizar: false, exportar: false, atualizar: false, apenas_dev: false };
-      }
-      perms[p.page_id].visualizar = perms[p.page_id].visualizar || p.visualizar;
-      perms[p.page_id].exportar = perms[p.page_id].exportar || p.exportar;
-      perms[p.page_id].atualizar = perms[p.page_id].atualizar || p.atualizar;
-      perms[p.page_id].apenas_dev = perms[p.page_id].apenas_dev || p.apenas_dev;
-    });
-    return perms;
   }, []);
 
-  const fetchAdminPermissions = useCallback(async (roleIds: string[]) => {
+  const fetchAdminPermissions = useCallback(async (roleIds: string[], retryCount = 0): Promise<AdminPermissionsState> => {
     if (roleIds.length === 0) return defaultAdminPermissions();
 
-    const { data, error } = await supabase
-      .from("admin_permissions")
-      .select("*")
-      .in("role_id", roleIds);
+    try {
+      const { data, error } = await supabase
+        .from("admin_permissions")
+        .select("*")
+        .in("role_id", roleIds);
 
-    if (error) {
+      if (error) throw error;
+
+      const result = defaultAdminPermissions();
+      data?.forEach((p) => {
+        const sectionKey = dbTypeToSection[p.permission_type] || p.permission_type;
+        if (result[sectionKey]) {
+          result[sectionKey].ver = result[sectionKey].ver || p.ver;
+          result[sectionKey].editar = result[sectionKey].editar || p.editar;
+          result[sectionKey].criar = result[sectionKey].criar || p.criar;
+          result[sectionKey].excluir = result[sectionKey].excluir || p.excluir;
+        }
+      });
+      return result;
+    } catch (error: any) {
       console.error("Error fetching admin permissions:", error);
+      if (retryCount < 3 && isRetryableError(error)) {
+        console.log(`Retrying admin permissions fetch (attempt ${retryCount + 2}/4)...`);
+        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+        return fetchAdminPermissions(roleIds, retryCount + 1);
+      }
       return defaultAdminPermissions();
     }
-
-    const result = defaultAdminPermissions();
-
-    data?.forEach((p) => {
-      const sectionKey = dbTypeToSection[p.permission_type] || p.permission_type;
-      if (result[sectionKey]) {
-        result[sectionKey].ver = result[sectionKey].ver || p.ver;
-        result[sectionKey].editar = result[sectionKey].editar || p.editar;
-        result[sectionKey].criar = result[sectionKey].criar || p.criar;
-        result[sectionKey].excluir = result[sectionKey].excluir || p.excluir;
-      }
-    });
-
-    return result;
   }, []);
 
   const fetchPublicAccess = useCallback(async (retryCount = 0): Promise<Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }>> => {
@@ -190,8 +212,8 @@ export const useSupabaseAuth = () => {
       return result;
     } catch (error: any) {
       console.error("Error fetching public access:", error);
-      if (retryCount < 3 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
-        console.log(`Retrying public access fetch (attempt ${retryCount + 2})...`);
+      if (retryCount < 3 && isRetryableError(error)) {
+        console.log(`Retrying public access fetch (attempt ${retryCount + 2}/4)...`);
         await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
         return fetchPublicAccess(retryCount + 1);
       }
