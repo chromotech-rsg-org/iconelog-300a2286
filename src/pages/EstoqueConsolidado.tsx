@@ -22,18 +22,28 @@ import { saveAs } from "file-saver";
 import { DollarSign, Box, Package, X, RefreshCw, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { EstoqueMatrizHoverCard, EstoqueBaseHoverCard } from "@/components/stock/EstoqueProductHoverCard";
 
-// Blue tones for Matriz charts
-const BLUE_COLORS = [
+// Yellow tones for Matriz charts (swapped)
+const MATRIZ_COLORS = [
+  'hsl(45, 100%, 50%)', 'hsl(40, 90%, 45%)', 'hsl(50, 95%, 55%)',
+  'hsl(35, 85%, 50%)', 'hsl(55, 80%, 45%)', 'hsl(30, 90%, 50%)',
+];
+
+// Blue tones for Base charts (swapped)
+const BASE_COLORS = [
   'hsl(217, 91%, 60%)', 'hsl(217, 80%, 50%)', 'hsl(200, 85%, 55%)',
   'hsl(230, 70%, 55%)', 'hsl(190, 75%, 50%)', 'hsl(210, 65%, 45%)',
   'hsl(240, 60%, 60%)', 'hsl(205, 90%, 65%)',
 ];
 
-// Yellow tones for Base charts
-const YELLOW_COLORS = [
-  'hsl(45, 100%, 50%)', 'hsl(40, 90%, 45%)', 'hsl(50, 95%, 55%)',
-  'hsl(35, 85%, 50%)', 'hsl(55, 80%, 45%)', 'hsl(30, 90%, 50%)',
-];
+// Darker blue for B-Side in Representação
+const GRUPO_PIE_COLORS: Record<string, string> = {
+  "FOCO B SIDE": "hsl(217, 80%, 35%)",
+  "FOCO D SIDE": "hsl(217, 91%, 60%)",
+  "B SIDE": "hsl(217, 80%, 35%)",
+  "D SIDE": "hsl(217, 91%, 60%)",
+  "B-SIDE": "hsl(217, 80%, 35%)",
+  "D-SIDE": "hsl(217, 91%, 60%)",
+};
 
 const TEMPO_PARADO_COLORS: Record<string, string> = {
   "Antes que 30 dias": "hsl(142, 60%, 45%)",
@@ -42,7 +52,14 @@ const TEMPO_PARADO_COLORS: Record<string, string> = {
   "Mais que 91 dias": "hsl(0, 55%, 50%)",
 };
 
-const renderPercentLabel = ({ percent }: any) => `${(percent * 100).toFixed(1)}%`;
+// Use a custom label that avoids conflict with data's own fields
+const renderPercentLabel = (props: any) => {
+  // Recharts passes percent as 0-1, but if data has 'percent' field it overwrites
+  // So we calculate from the Pie's total instead
+  const { cx, cy, midAngle, innerRadius, outerRadius, value, name, payload } = props;
+  // Use payload.pct which we calculate ourselves
+  return `${(payload.pct || 0).toFixed(1)}%`;
+};
 
 const EstoqueConsolidado = () => {
   const { getSettingByPageId } = useBiSettings();
@@ -136,7 +153,7 @@ const EstoqueConsolidado = () => {
     });
     const total = Array.from(grouped.values()).reduce((s, v) => s + v, 0);
     return Array.from(grouped.entries()).map(([name, value]) => ({
-      name, value, percent: total > 0 ? (value / total) * 100 : 0,
+      name, value, pct: total > 0 ? (value / total) * 100 : 0,
     })).sort((a, b) => b.value - a.value);
   }, [filteredMatriz]);
 
@@ -154,7 +171,7 @@ const EstoqueConsolidado = () => {
     return TEMPO_PARADO_ORDER
       .map(name => {
         const value = grouped.get(name) || 0;
-        return { name, value, percent: total > 0 ? (value / total) * 100 : 0 };
+        return { name, value, pct: total > 0 ? (value / total) * 100 : 0 };
       })
       .filter(d => d.value > 0);
   }, [filteredMatriz]);
@@ -297,9 +314,9 @@ const EstoqueConsolidado = () => {
       <div className="p-6 space-y-4">
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="bg-card border-primary/60 border-2">
+          <Card className="bg-card border-yellow-500/60 border-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-primary">ESTOQUE MATRIZ</CardTitle>
+              <CardTitle className="text-lg font-bold text-yellow-400">ESTOQUE MATRIZ</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-4">
@@ -361,12 +378,12 @@ const EstoqueConsolidado = () => {
                   <Pie data={estoqueByGrupo} cx="50%" cy="45%" innerRadius={35} outerRadius={65} dataKey="value" onClick={handleGrupoPieClick}
                     label={renderPercentLabel} labelLine={false}>
                     {estoqueByGrupo.map((entry, index) => (
-                      <Cell key={index} fill={BLUE_COLORS[index % BLUE_COLORS.length]}
+                      <Cell key={index} fill={GRUPO_PIE_COLORS[entry.name.toUpperCase()] || MATRIZ_COLORS[index % MATRIZ_COLORS.length]}
                         opacity={selectedGrupo && selectedGrupo !== entry.name ? 0.3 : 1}
                         stroke={selectedGrupo === entry.name ? '#fff' : 'none'} strokeWidth={2} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number, name: string, props: any) => `${props.payload.percent?.toFixed(1)}%`} />
+                   <Tooltip formatter={(value: number, name: string, props: any) => `${props.payload.pct?.toFixed(1)}%`} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -388,8 +405,8 @@ const EstoqueConsolidado = () => {
                   <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={9} width={70} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }}
                     formatter={(value: number) => `R$ ${Math.round(value).toLocaleString('pt-BR')}`} />
-                  <Bar dataKey="value" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]}
-                    label={{ position: "right", fill: "hsl(217, 91%, 70%)", fontSize: 11, fontWeight: 700,
+                  <Bar dataKey="value" fill="hsl(45, 100%, 50%)" radius={[0, 4, 4, 0]}
+                    label={{ position: "right", fill: "hsl(45, 100%, 60%)", fontSize: 11, fontWeight: 700,
                       formatter: (v: number) => `R$ ${Math.round(v).toLocaleString('pt-BR')}` }} />
                 </BarChart>
               </ResponsiveContainer>
@@ -407,12 +424,12 @@ const EstoqueConsolidado = () => {
                   <Pie data={tempoParadoPie} cx="60%" cy="50%" innerRadius={35} outerRadius={65} dataKey="value" onClick={handleTempoParadoClick}
                     label={renderPercentLabel} labelLine={false}>
                     {tempoParadoPie.map((entry, index) => (
-                      <Cell key={index} fill={TEMPO_PARADO_COLORS[entry.name] || YELLOW_COLORS[index % YELLOW_COLORS.length]}
+                      <Cell key={index} fill={TEMPO_PARADO_COLORS[entry.name] || MATRIZ_COLORS[index % MATRIZ_COLORS.length]}
                         opacity={selectedTempoParado && selectedTempoParado !== entry.name ? 0.3 : 1}
                         stroke={selectedTempoParado === entry.name ? '#fff' : 'none'} strokeWidth={2} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number, name: string, props: any) => `${props.payload.percent?.toFixed(1)}%`} />
+                  <Tooltip formatter={(value: number, name: string, props: any) => `${props.payload.pct?.toFixed(1)}%`} />
                   <Legend layout="vertical" align="left" verticalAlign="middle"
                     wrapperStyle={{ fontSize: 9, paddingRight: 4 }}
                     formatter={(value: string) => {
@@ -437,8 +454,8 @@ const EstoqueConsolidado = () => {
                   <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={9} width={70} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }}
                     formatter={(value: number) => `${value} dias`} />
-                  <Bar dataKey="value" fill="hsl(45, 100%, 50%)" radius={[0, 4, 4, 0]}
-                    label={{ position: "right", fill: "hsl(45, 100%, 60%)", fontSize: 11, fontWeight: 700,
+                  <Bar dataKey="value" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]}
+                    label={{ position: "right", fill: "hsl(217, 91%, 70%)", fontSize: 11, fontWeight: 700,
                       formatter: (v: number) => `${v} dias` }} />
                 </BarChart>
               </ResponsiveContainer>
