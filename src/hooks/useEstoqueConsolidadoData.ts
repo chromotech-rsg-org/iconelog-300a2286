@@ -199,11 +199,11 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
   const estoqueBase = useMemo((): EstoqueBaseItem[] => {
     return saldoData.map((item, index) => ({
       id: `base-${index}`,
-      base: item.base || item.nm_base || "",
-      cidade: item.cidade || item.nm_cidade || "",
-      uf: item.uf || item.sg_uf || "",
+      base: item.base || item.ds_base || item.nm_base || "",
+      cidade: item.cidade || item.ds_cidade || item.nm_cidade || "",
+      uf: item.uf || item.ds_uf || item.sg_uf || "",
       codigo: item.produto || item.cd_produto || "",
-      m3: parseFloat(item.m3 || item.nr_m3 || "0"),
+      m3: parseFloat(item.M3 || item.m3 || item.nr_m3 || "0"),
       produto: item.Descricao || item.nm_produto || item.descricao || "",
       qtdeEntrada: parseInt(item.nr_qtde_total_entrada || item.qtde_entrada || "0"),
       qtdeSaida: parseInt(item.nr_qtde_saida || item.qtde_saida || "0"),
