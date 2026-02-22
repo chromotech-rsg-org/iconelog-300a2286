@@ -19,21 +19,27 @@ export interface BiSetting {
    const [settings, setSettings] = useState<BiSetting[]>([]);
    const [loading, setLoading] = useState(true);
  
-   const fetchSettings = useCallback(async () => {
-     try {
-       const { data, error } = await supabase
-         .from("bi_settings")
-         .select("*")
-         .order("page_id");
- 
-       if (error) throw error;
-       setSettings(data || []);
-     } catch (error) {
-       console.error("Error fetching BI settings:", error);
-     } finally {
-       setLoading(false);
-     }
-   }, []);
+    const fetchSettings = useCallback(async (retryCount = 0) => {
+      try {
+        const { data, error } = await supabase
+          .from("bi_settings")
+          .select("*")
+          .order("page_id");
+
+        if (error) throw error;
+        setSettings(data || []);
+      } catch (error: any) {
+        console.error("Error fetching BI settings:", error);
+        // Retry up to 2 times on abort/network errors
+        if (retryCount < 2 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
+          console.log(`Retrying BI settings fetch (attempt ${retryCount + 2})...`);
+          setTimeout(() => fetchSettings(retryCount + 1), 1500 * (retryCount + 1));
+          return;
+        }
+      } finally {
+        setLoading(false);
+      }
+    }, []);
  
    useEffect(() => {
      fetchSettings();

@@ -88,31 +88,43 @@ export const useSupabaseAuth = () => {
   const [publicAccess, setPublicAccessState] = useState<Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }>>({});
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
+  const fetchProfile = useCallback(async (userId: string, retryCount = 0): Promise<Profile | null> => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
 
-    if (error) {
+      if (error) throw error;
+      return data as Profile | null;
+    } catch (error: any) {
       console.error("Error fetching profile:", error);
+      if (retryCount < 2 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
+        await new Promise(r => setTimeout(r, 1500 * (retryCount + 1)));
+        return fetchProfile(userId, retryCount + 1);
+      }
       return null;
     }
-    return data as Profile | null;
   }, []);
 
-  const fetchUserRoles = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select(`role_id, roles (id, nome, descricao)`)
-      .eq("user_id", userId);
+  const fetchUserRoles = useCallback(async (userId: string, retryCount = 0): Promise<Role[]> => {
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select(`role_id, roles (id, nome, descricao)`)
+        .eq("user_id", userId);
 
-    if (error) {
+      if (error) throw error;
+      return data?.map((ur: any) => ur.roles).filter(Boolean) as Role[] || [];
+    } catch (error: any) {
       console.error("Error fetching user roles:", error);
+      if (retryCount < 2 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
+        await new Promise(r => setTimeout(r, 1500 * (retryCount + 1)));
+        return fetchUserRoles(userId, retryCount + 1);
+      }
       return [];
     }
-    return data?.map((ur: any) => ur.roles).filter(Boolean) as Role[] || [];
   }, []);
 
   const fetchPagePermissions = useCallback(async (roleIds: string[]) => {
@@ -169,15 +181,22 @@ export const useSupabaseAuth = () => {
     return result;
   }, []);
 
-  const fetchPublicAccess = useCallback(async () => {
-    const { data, error } = await supabase.from("public_page_settings").select("*");
-    if (error) {
+  const fetchPublicAccess = useCallback(async (retryCount = 0): Promise<Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }>> => {
+    try {
+      const { data, error } = await supabase.from("public_page_settings").select("*");
+      if (error) throw error;
+      const result: Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }> = {};
+      data?.forEach((p) => { result[p.page_id] = { is_public: p.is_public, allow_export: p.allow_export, allow_refresh: p.allow_refresh }; });
+      return result;
+    } catch (error: any) {
       console.error("Error fetching public access:", error);
+      if (retryCount < 2 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
+        console.log(`Retrying public access fetch (attempt ${retryCount + 2})...`);
+        await new Promise(r => setTimeout(r, 1500 * (retryCount + 1)));
+        return fetchPublicAccess(retryCount + 1);
+      }
       return {};
     }
-    const result: Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }> = {};
-    data?.forEach((p) => { result[p.page_id] = { is_public: p.is_public, allow_export: p.allow_export, allow_refresh: p.allow_refresh }; });
-    return result;
   }, []);
 
   const loadUserData = useCallback(async (userId: string) => {
