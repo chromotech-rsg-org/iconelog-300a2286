@@ -93,7 +93,9 @@ export const useSupabaseAuth = () => {
       error?.message?.includes('Failed to fetch') ||
       error?.message?.includes('upstream request timeout') ||
       error?.message?.includes('timeout') ||
-      error?.code === '504';
+      error?.message?.includes('statement timeout') ||
+      error?.code === '504' ||
+      error?.code === '57014';
   };
 
   const fetchProfile = useCallback(async (userId: string, retryCount = 0): Promise<Profile | null> => {

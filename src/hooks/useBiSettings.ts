@@ -19,6 +19,16 @@ export interface BiSetting {
    const [settings, setSettings] = useState<BiSetting[]>([]);
    const [loading, setLoading] = useState(true);
  
+    const isRetryableError = (error: any) => {
+      return error?.name === 'AbortError' || 
+        error?.message?.includes('Failed to fetch') ||
+        error?.message?.includes('upstream request timeout') ||
+        error?.message?.includes('timeout') ||
+        error?.message?.includes('statement timeout') ||
+        error?.code === '504' ||
+        error?.code === '57014';
+    };
+
     const fetchSettings = useCallback(async (retryCount = 0) => {
       try {
         const { data, error } = await supabase
@@ -31,8 +41,8 @@ export interface BiSetting {
         setLoading(false);
       } catch (error: any) {
         console.error("Error fetching BI settings:", error);
-        if (retryCount < 3 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
-          console.log(`Retrying BI settings fetch (attempt ${retryCount + 2})...`);
+        if (retryCount < 4 && isRetryableError(error)) {
+          console.log(`Retrying BI settings fetch (attempt ${retryCount + 2}/5)...`);
           await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
           return fetchSettings(retryCount + 1);
         }

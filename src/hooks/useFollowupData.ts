@@ -124,7 +124,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     fetchLastUpdate();
   }, [pageId]);
 
-  // Load cached data on mount
+  // Load cached data on mount - uses shared cache (one extraction per API)
   useEffect(() => {
     const loadCache = async () => {
       if (!codCli || cacheLoaded || cacheLoading) return;
@@ -133,7 +133,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
         const { data: followupCache } = await supabase
           .from("bi_data_cache")
           .select("data")
-          .eq("page_id", pageId)
+          .eq("page_id", "_shared")
           .eq("cache_key", `followup_${codCli}`)
           .maybeSingle();
 
@@ -143,8 +143,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           const { data: produtosCache } = await supabase
             .from("bi_data_cache")
             .select("data")
-            .eq("page_id", pageId)
-            .eq("cache_key", `produtos_${codCli}`)
+            .eq("page_id", "_shared")
+            .eq("cache_key", `produtosdistribuidos_${codCli}`)
             .maybeSingle();
           if (produtosCache?.data) setProdutosData(produtosCache.data as FollowupItem[]);
         }
@@ -172,10 +172,10 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     await supabase
       .from("bi_data_cache")
       .upsert(
-        { page_id: pageId, cache_key: `${cacheKey}_${codCli}`, data: data as any, cached_at: new Date().toISOString() },
+        { page_id: "_shared", cache_key: `${cacheKey}_${codCli}`, data: data as any, cached_at: new Date().toISOString() },
         { onConflict: "page_id,cache_key" }
       );
-  }, [codCli, pageId]);
+  }, [codCli]);
 
   const fetchFollowup = useCallback(async (_months?: number[], _years?: number[]) => {
     if (!codCli) return;
@@ -243,7 +243,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     if (session) {
       if (allFollowup.length > 0) await saveToCache("followup", allFollowup);
       if ((pageId === "minutas" || pageId === "tracking") && allProdutos.length > 0) {
-        await saveToCache("produtos", allProdutos);
+        await saveToCache("produtosdistribuidos", allProdutos);
       }
       await saveLastUpdate();
     } else {

@@ -90,8 +90,8 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
       setCacheLoading(true);
       try {
         const [mapaCache, saldoCache] = await Promise.all([
-          supabase.from("bi_data_cache").select("data").eq("page_id", "estoque-consolidado").eq("cache_key", `mapalogistico_${codCli}`).maybeSingle(),
-          supabase.from("bi_data_cache").select("data").eq("page_id", "estoque-consolidado").eq("cache_key", `saldobase_${codCli}`).maybeSingle(),
+          supabase.from("bi_data_cache").select("data").eq("page_id", "_shared").eq("cache_key", `mapalogistico_${codCli}`).maybeSingle(),
+          supabase.from("bi_data_cache").select("data").eq("page_id", "_shared").eq("cache_key", `saldobase_${codCli}`).maybeSingle(),
         ]);
         if (mapaCache.data?.data) setMapaData(mapaCache.data.data as any[]);
         if (saldoCache.data?.data) setSaldoData(saldoCache.data.data as any[]);
@@ -107,7 +107,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
     await supabase
       .from("bi_data_cache")
       .upsert(
-        { page_id: "estoque-consolidado", cache_key: `${cacheKey}_${codCli}`, data: data as any, cached_at: new Date().toISOString() },
+        { page_id: "_shared", cache_key: `${cacheKey}_${codCli}`, data: data as any, cached_at: new Date().toISOString() },
         { onConflict: "page_id,cache_key" }
       );
   }, [codCli]);
