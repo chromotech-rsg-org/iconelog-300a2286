@@ -482,10 +482,10 @@ const Tracking = () => {
                   </div>
                   {/* Região + Mapa stacked — 1/3 width, 35/65 split */}
                   <div className="col-span-1 flex flex-col gap-3 h-full overflow-hidden">
-                    <div className="h-[35%] min-h-0 overflow-hidden">
+                    <div className="h-[40%] min-h-0 overflow-hidden">
                       <TrackingRegionalPieChart data={chartData.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
                     </div>
-                    <div className="h-[65%] min-h-0 overflow-hidden">
+                    <div className="h-[60%] min-h-0 overflow-hidden">
                       <TrackingBrazilMap estadoData={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
                     </div>
                   </div>

@@ -4,6 +4,8 @@ import { SharedHeader } from "@/components/shared/SharedHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -17,18 +19,30 @@ import { formatNumber, formatCurrency } from "@/data/mockData";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { DollarSign, Box, Package, X, RefreshCw } from "lucide-react";
+import { DollarSign, Box, Package, X, RefreshCw, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { EstoqueMatrizHoverCard, EstoqueBaseHoverCard } from "@/components/stock/EstoqueProductHoverCard";
 
-const COLORS = ['hsl(45, 100%, 50%)', 'hsl(217, 91%, 60%)', 'hsl(25, 95%, 53%)', 'hsl(142, 76%, 36%)', 'hsl(280, 65%, 60%)', 'hsl(340, 82%, 52%)', 'hsl(190, 80%, 50%)', 'hsl(60, 90%, 45%)'];
+// Blue tones for Matriz charts
+const BLUE_COLORS = [
+  'hsl(217, 91%, 60%)', 'hsl(217, 80%, 50%)', 'hsl(200, 85%, 55%)',
+  'hsl(230, 70%, 55%)', 'hsl(190, 75%, 50%)', 'hsl(210, 65%, 45%)',
+  'hsl(240, 60%, 60%)', 'hsl(205, 90%, 65%)',
+];
+
+// Yellow tones for Base charts
+const YELLOW_COLORS = [
+  'hsl(45, 100%, 50%)', 'hsl(40, 90%, 45%)', 'hsl(50, 95%, 55%)',
+  'hsl(35, 85%, 50%)', 'hsl(55, 80%, 45%)', 'hsl(30, 90%, 50%)',
+];
+
 const TEMPO_PARADO_COLORS: Record<string, string> = {
-  "Antes que 30 dias": "hsl(142, 76%, 36%)",
+  "Antes que 30 dias": "hsl(142, 60%, 45%)",
   "Entre 31 e 60 dias": "hsl(45, 100%, 50%)",
   "Entre 61 e 90 dias": "hsl(25, 95%, 53%)",
-  "Mais que 91 dias": "hsl(340, 82%, 52%)",
+  "Mais que 91 dias": "hsl(0, 55%, 50%)",
 };
 
-const renderPercentLabel = ({ name, percent }: any) => `${(percent * 100).toFixed(1)}%`;
+const renderPercentLabel = ({ percent }: any) => `${(percent * 100).toFixed(1)}%`;
 
 const EstoqueConsolidado = () => {
   const { getSettingByPageId } = useBiSettings();
@@ -47,6 +61,16 @@ const EstoqueConsolidado = () => {
   const [selectedBase, setSelectedBase] = useState<string | null>(null);
   const [selectedTempoParado, setSelectedTempoParado] = useState<string | null>(null);
 
+  // Table pagination states - Matriz
+  const [matrizSearch, setMatrizSearch] = useState("");
+  const [matrizPage, setMatrizPage] = useState(0);
+  const [matrizPerPage, setMatrizPerPage] = useState(10);
+
+  // Table pagination states - Base
+  const [baseSearch, setBaseSearch] = useState("");
+  const [basePage, setBasePage] = useState(0);
+  const [basePerPage, setBasePerPage] = useState(10);
+
   // Filtered data
   const filteredMatriz = useMemo(() => {
     let result = estoqueMatriz;
@@ -63,6 +87,32 @@ const EstoqueConsolidado = () => {
     return result;
   }, [estoqueBase, selectedGrupo, selectedBase]);
 
+  // Search filtered for tables
+  const searchedMatriz = useMemo(() => {
+    if (!matrizSearch.trim()) return filteredMatriz;
+    const s = matrizSearch.toLowerCase();
+    return filteredMatriz.filter(i =>
+      i.codigo.toLowerCase().includes(s) || i.descricao.toLowerCase().includes(s) ||
+      i.grupo.toLowerCase().includes(s) || i.base.toLowerCase().includes(s)
+    );
+  }, [filteredMatriz, matrizSearch]);
+
+  const searchedBase = useMemo(() => {
+    if (!baseSearch.trim()) return filteredBase;
+    const s = baseSearch.toLowerCase();
+    return filteredBase.filter(i =>
+      i.codigo.toLowerCase().includes(s) || i.produto.toLowerCase().includes(s) ||
+      i.base.toLowerCase().includes(s) || i.cidade.toLowerCase().includes(s)
+    );
+  }, [filteredBase, baseSearch]);
+
+  // Paginated data
+  const matrizTotalPages = Math.ceil(searchedMatriz.length / matrizPerPage);
+  const pagedMatriz = searchedMatriz.slice(matrizPage * matrizPerPage, (matrizPage + 1) * matrizPerPage);
+
+  const baseTotalPages = Math.ceil(searchedBase.length / basePerPage);
+  const pagedBase = searchedBase.slice(basePage * basePerPage, (basePage + 1) * basePerPage);
+
   // Filtered KPIs
   const filteredMatrizTotals = useMemo(() => ({
     valor: filteredMatriz.reduce((s, i) => s + i.vlTotal, 0),
@@ -76,7 +126,7 @@ const EstoqueConsolidado = () => {
     qtdeSKUs: new Set(filteredBase.map(i => i.codigo)).size,
   }), [filteredBase]);
 
-  // Chart data - Pie charts as percentages
+  // Chart data
   const estoqueByGrupo = useMemo(() => {
     const grouped = new Map<string, number>();
     filteredMatriz.forEach(i => grouped.set(i.grupo, (grouped.get(i.grupo) || 0) + i.estoque));
@@ -122,10 +172,7 @@ const EstoqueConsolidado = () => {
   }, []);
 
   const handleRefreshData = useCallback(() => {
-    if (!codCli) {
-      toast.error("Configure o Cód. Cliente no painel Admin primeiro");
-      return;
-    }
+    if (!codCli) { toast.error("Configure o Cód. Cliente no painel Admin primeiro"); return; }
     refreshData();
   }, [codCli, refreshData]);
 
@@ -154,7 +201,6 @@ const EstoqueConsolidado = () => {
       { Indicador: "Estoque Base - M³", Valor: filteredBaseTotals.m3 },
       { Indicador: "Estoque Base - SKUs", Valor: filteredBaseTotals.qtdeSKUs },
     ];
-
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(matrizSheet), "Estoque Matriz");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(baseSheet), "Estoque Base");
@@ -179,7 +225,6 @@ const EstoqueConsolidado = () => {
     if (data?.name) setSelectedTempoParado(prev => prev === data.name ? null : data.name);
   }, []);
 
-  // Refresh progress text
   const getRefreshText = () => {
     switch (refreshStage) {
       case "requesting_mapalogistico": return "Consultando MAPALOGÍSTICO...";
@@ -205,7 +250,6 @@ const EstoqueConsolidado = () => {
         hasActiveFilters={hasActiveFilters}
       />
 
-      {/* Refresh progress */}
       {refreshStage && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-card/50 animate-fade-in">
           <RefreshCw className="h-4 w-4 text-primary animate-spin" />
@@ -213,7 +257,6 @@ const EstoqueConsolidado = () => {
         </div>
       )}
 
-      {/* Active Filters Bar */}
       {hasActiveFilters && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-card/50 animate-fade-in">
           <span className="text-xs text-muted-foreground">Filtros:</span>
@@ -248,24 +291,24 @@ const EstoqueConsolidado = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="bg-card border-primary/60 border-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold text-primary">ESTOQUE MATRIZ</CardTitle>
+              <CardTitle className="text-lg font-bold text-primary">ESTOQUE MATRIZ</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
-                  <DollarSign className="h-6 w-6 mx-auto mb-1 text-green-500" />
-                  <p className="text-sm text-muted-foreground">Valor</p>
-                  <p className="text-2xl font-bold text-foreground">{formatCurrency(filteredMatrizTotals.valor)}</p>
+                  <DollarSign className="h-7 w-7 mx-auto mb-1 text-green-500" />
+                  <p className="text-sm font-medium text-muted-foreground">Valor</p>
+                  <p className="text-3xl font-black text-foreground">{formatCurrency(filteredMatrizTotals.valor)}</p>
                 </div>
                 <div className="text-center">
-                  <Box className="h-6 w-6 mx-auto mb-1 text-blue-500" />
-                  <p className="text-sm text-muted-foreground">M³</p>
-                  <p className="text-2xl font-bold text-foreground">{filteredMatrizTotals.m3.toFixed(1)}</p>
+                  <Box className="h-7 w-7 mx-auto mb-1 text-blue-500" />
+                  <p className="text-sm font-medium text-muted-foreground">M³</p>
+                  <p className="text-3xl font-black text-foreground">{filteredMatrizTotals.m3.toFixed(1)}</p>
                 </div>
                 <div className="text-center">
-                  <Package className="h-6 w-6 mx-auto mb-1 text-primary" />
-                  <p className="text-sm text-muted-foreground">Qtde SKUs</p>
-                  <p className="text-2xl font-bold text-foreground">{formatNumber(filteredMatrizTotals.qtdeSKUs)}</p>
+                  <Package className="h-7 w-7 mx-auto mb-1 text-primary" />
+                  <p className="text-sm font-medium text-muted-foreground">Qtde SKUs</p>
+                  <p className="text-3xl font-black text-foreground">{formatNumber(filteredMatrizTotals.qtdeSKUs)}</p>
                 </div>
               </div>
             </CardContent>
@@ -273,111 +316,117 @@ const EstoqueConsolidado = () => {
 
           <Card className="bg-card border-blue-500/60 border-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold text-blue-400">ESTOQUE BASE</CardTitle>
+              <CardTitle className="text-lg font-bold text-blue-400">ESTOQUE BASE</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
-                  <DollarSign className="h-6 w-6 mx-auto mb-1 text-green-500" />
-                  <p className="text-sm text-muted-foreground">Valor</p>
-                  <p className="text-2xl font-bold text-foreground">{formatCurrency(filteredBaseTotals.valor)}</p>
+                  <DollarSign className="h-7 w-7 mx-auto mb-1 text-green-500" />
+                  <p className="text-sm font-medium text-muted-foreground">Valor</p>
+                  <p className="text-3xl font-black text-foreground">{formatCurrency(filteredBaseTotals.valor)}</p>
                 </div>
                 <div className="text-center">
-                  <Box className="h-6 w-6 mx-auto mb-1 text-blue-500" />
-                  <p className="text-sm text-muted-foreground">M³</p>
-                  <p className="text-2xl font-bold text-foreground">{filteredBaseTotals.m3.toFixed(1)}</p>
+                  <Box className="h-7 w-7 mx-auto mb-1 text-blue-500" />
+                  <p className="text-sm font-medium text-muted-foreground">M³</p>
+                  <p className="text-3xl font-black text-foreground">{filteredBaseTotals.m3.toFixed(1)}</p>
                 </div>
                 <div className="text-center">
-                  <Package className="h-6 w-6 mx-auto mb-1 text-primary" />
-                  <p className="text-sm text-muted-foreground">Qtde SKUs</p>
-                  <p className="text-2xl font-bold text-foreground">{formatNumber(filteredBaseTotals.qtdeSKUs)}</p>
+                  <Package className="h-7 w-7 mx-auto mb-1 text-primary" />
+                  <p className="text-sm font-medium text-muted-foreground">Qtde SKUs</p>
+                  <p className="text-3xl font-black text-foreground">{formatNumber(filteredBaseTotals.qtdeSKUs)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Charts - 4 in order */}
+        {/* Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* 1. Representação do Estoque | Grupo - Pizza com % */}
+          {/* 1. Representação do Estoque | Grupo - Blue Pie */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
             <CardHeader className="pb-1">
               <CardTitle className="text-sm font-medium text-foreground">Representação do Estoque | Grupo</CardTitle>
             </CardHeader>
-            <CardContent className="h-[240px]">
+            <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={estoqueByGrupo} cx="50%" cy="45%" innerRadius={35} outerRadius={60} dataKey="value" onClick={handleGrupoPieClick}
+                  <Pie data={estoqueByGrupo} cx="50%" cy="45%" innerRadius={35} outerRadius={65} dataKey="value" onClick={handleGrupoPieClick}
                     label={renderPercentLabel} labelLine={false}>
                     {estoqueByGrupo.map((entry, index) => (
-                      <Cell key={index} fill={COLORS[index % COLORS.length]}
+                      <Cell key={index} fill={BLUE_COLORS[index % BLUE_COLORS.length]}
                         opacity={selectedGrupo && selectedGrupo !== entry.name ? 0.3 : 1}
                         stroke={selectedGrupo === entry.name ? '#fff' : 'none'} strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value: number, name: string, props: any) => `${props.payload.percent?.toFixed(1)}%`} />
-                  <Legend wrapperStyle={{ fontSize: 9, color: 'hsl(0, 0%, 65%)' }} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          {/* 2. Valor Estoque | Grupo - Barra horizontal */}
+          {/* 2. Valor Estoque | Grupo - Blue Bar */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
             <CardHeader className="pb-1">
               <CardTitle className="text-sm font-medium text-foreground">Valor Estoque | Grupo</CardTitle>
             </CardHeader>
-            <CardContent className="h-[240px]">
+            <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={valorByGrupo} layout="vertical" onClick={handleGrupoBarClick}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
-                  <XAxis type="number" stroke="hsl(0, 0%, 60%)" fontSize={10} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <XAxis type="number" stroke="hsl(0, 0%, 60%)" fontSize={10}
+                    tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`} />
                   <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={9} width={70} />
-                  <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} formatter={(value: number) => formatCurrency(value)} />
-                  <Bar dataKey="value" fill="hsl(45, 100%, 50%)" radius={[0, 4, 4, 0]}
-                    label={{ position: "right", fill: "hsl(0, 0%, 75%)", fontSize: 9, formatter: (v: number) => `${(v / 1000).toFixed(0)}k` }} />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }}
+                    formatter={(value: number) => formatCurrency(value)} />
+                  <Bar dataKey="value" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]}
+                    label={{ position: "right", fill: "hsl(217, 91%, 70%)", fontSize: 11, fontWeight: 700,
+                      formatter: (v: number) => `R$ ${(v / 1000).toFixed(1)}k` }} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          {/* 3. Tempo Parado | SKU - Pizza com % */}
+          {/* 3. Tempo Parado | SKU - Yellow/Red Pie */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedTempoParado ? 'ring-2 ring-destructive' : ''}`}>
             <CardHeader className="pb-1">
               <CardTitle className="text-sm font-medium text-foreground">Tempo Parado | SKU</CardTitle>
             </CardHeader>
-            <CardContent className="h-[240px]">
+            <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={tempoParadoPie} cx="50%" cy="45%" innerRadius={35} outerRadius={60} dataKey="value" onClick={handleTempoParadoClick}
+                  <Pie data={tempoParadoPie} cx="60%" cy="50%" innerRadius={35} outerRadius={65} dataKey="value" onClick={handleTempoParadoClick}
                     label={renderPercentLabel} labelLine={false}>
                     {tempoParadoPie.map((entry, index) => (
-                      <Cell key={index} fill={TEMPO_PARADO_COLORS[entry.name] || COLORS[index % COLORS.length]}
+                      <Cell key={index} fill={TEMPO_PARADO_COLORS[entry.name] || YELLOW_COLORS[index % YELLOW_COLORS.length]}
                         opacity={selectedTempoParado && selectedTempoParado !== entry.name ? 0.3 : 1}
                         stroke={selectedTempoParado === entry.name ? '#fff' : 'none'} strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value: number, name: string, props: any) => `${props.payload.percent?.toFixed(1)}%`} />
-                  <Legend wrapperStyle={{ fontSize: 9, color: 'hsl(0, 0%, 65%)' }} />
+                  <Legend layout="vertical" align="left" verticalAlign="middle"
+                    wrapperStyle={{ fontSize: 9, paddingRight: 4 }} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          {/* 4. Tempo Parado Médio | Grupo - Barra horizontal */}
+          {/* 4. Tempo Parado Médio | Grupo - Yellow Bar */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
             <CardHeader className="pb-1">
               <CardTitle className="text-sm font-medium text-foreground">Tempo Parado Médio | Grupo</CardTitle>
             </CardHeader>
-            <CardContent className="h-[240px]">
+            <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={tempoParadoMedioGrupo} layout="vertical" onClick={handleGrupoBarClick}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
                   <XAxis type="number" stroke="hsl(0, 0%, 60%)" fontSize={10} />
                   <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={9} width={70} />
-                  <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} formatter={(value: number) => `${value} dias`} />
-                  <Bar dataKey="value" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]}
-                    label={{ position: "right", fill: "hsl(0, 0%, 75%)", fontSize: 9, formatter: (v: number) => `${v} dias` }} />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }}
+                    formatter={(value: number) => `${value} dias`} />
+                  <Bar dataKey="value" fill="hsl(45, 100%, 50%)" radius={[0, 4, 4, 0]}
+                    label={{ position: "right", fill: "hsl(45, 100%, 60%)", fontSize: 11, fontWeight: 700,
+                      formatter: (v: number) => `${v} dias` }} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -386,138 +435,226 @@ const EstoqueConsolidado = () => {
 
         {/* Tables */}
         <div className="space-y-4">
-          {/* Estoque Matriz Table - Full width */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">
-                Estoque Matriz <span className="text-sm font-normal text-muted-foreground">({filteredMatriz.length} itens)</span>
-              </CardTitle>
+          {/* Estoque Matriz Table */}
+          <Card className="bg-card border-border flex flex-col">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Estoque Matriz <span className="text-sm font-normal text-muted-foreground">({searchedMatriz.length} itens)</span>
+                </CardTitle>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input placeholder="Pesquisar código, descrição, grupo..." value={matrizSearch}
+                    onChange={e => { setMatrizSearch(e.target.value); setMatrizPage(0); }}
+                    className="h-7 text-xs pl-7 bg-muted/20 border-border" />
+                </div>
+                <Select value={String(matrizPerPage)} onValueChange={v => { setMatrizPerPage(Number(v)); setMatrizPage(0); }}>
+                  <SelectTrigger className="h-7 w-20 text-xs bg-muted/20 border-border"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
-            <CardContent className="overflow-auto max-h-[400px] custom-scrollbar">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border">
-                    <TableHead className="text-muted-foreground">Base</TableHead>
-                    <TableHead className="text-muted-foreground">Código</TableHead>
-                    <TableHead className="text-muted-foreground">Descrição</TableHead>
-                    <TableHead className="text-muted-foreground">Grupo</TableHead>
-                    <TableHead className="text-muted-foreground">SubGrupo</TableHead>
-                    <TableHead className="text-muted-foreground">Categoria</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Qtde. Entrada</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Qtde. Saída</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Estoque</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Vl. Item</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Vl. Total</TableHead>
-                    <TableHead className="text-muted-foreground text-right">M3 Unit.</TableHead>
-                    <TableHead className="text-muted-foreground text-right">M3 Total</TableHead>
-                    <TableHead className="text-muted-foreground">Dt. Últ. Entrada</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Qtde. Últ. Entrada</TableHead>
-                    <TableHead className="text-muted-foreground">Dt. Últ. Saída</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Qtde. Últ. Saída</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Dias s/ Movto.</TableHead>
-                    <TableHead className="text-muted-foreground">Tempo Parado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMatriz.map((item) => (
-                    <TableRow key={item.id}
-                      className={`border-border hover:bg-muted/50 cursor-pointer text-xs ${selectedSKU === item.codigo ? 'bg-primary/10' : ''}`}
-                      onClick={() => setSelectedSKU(prev => prev === item.codigo ? null : item.codigo)}>
-                      <TableCell className="text-foreground">{item.base}</TableCell>
-                      <TableCell className="text-primary font-medium">
-                        <EstoqueMatrizHoverCard product={item}>
-                          <span className="cursor-help underline decoration-dotted">{item.codigo}</span>
-                        </EstoqueMatrizHoverCard>
-                      </TableCell>
-                      <TableCell className="text-foreground truncate max-w-[150px]">
-                        <EstoqueMatrizHoverCard product={item}>
-                          <span className="cursor-help">{item.descricao}</span>
-                        </EstoqueMatrizHoverCard>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground cursor-pointer hover:text-foreground"
-                        onClick={(e) => { e.stopPropagation(); setSelectedGrupo(prev => prev === item.grupo ? null : item.grupo); }}>
-                        {item.grupo}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{item.subGrupo}</TableCell>
-                      <TableCell className="text-muted-foreground">{item.categoria}</TableCell>
-                      <TableCell className="text-foreground text-right">{formatNumber(item.qtdeEntrada)}</TableCell>
-                      <TableCell className="text-foreground text-right">{formatNumber(item.qtdeSaida)}</TableCell>
-                      <TableCell className="text-foreground text-right font-medium">{formatNumber(item.estoque)}</TableCell>
-                      <TableCell className="text-foreground text-right">{formatCurrency(item.vlItem)}</TableCell>
-                      <TableCell className="text-foreground text-right">{formatCurrency(item.vlTotal)}</TableCell>
-                      <TableCell className="text-foreground text-right">{item.m3Unitario.toFixed(4)}</TableCell>
-                      <TableCell className="text-foreground text-right">{item.m3Total.toFixed(2)}</TableCell>
-                      <TableCell className="text-foreground">{item.dtUltimaEntrada}</TableCell>
-                      <TableCell className="text-foreground text-right">{formatNumber(item.qtdeUltimaEntrada)}</TableCell>
-                      <TableCell className="text-foreground">{item.dtUltimaSaida}</TableCell>
-                      <TableCell className="text-foreground text-right">{formatNumber(item.qtdeUltimaSaida)}</TableCell>
-                      <TableCell className="text-foreground text-right">{item.diasSemMovto}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs cursor-pointer"
-                          onClick={(e) => { e.stopPropagation(); setSelectedTempoParado(prev => prev === item.tempoParado ? null : item.tempoParado); }}
-                          style={{ borderColor: TEMPO_PARADO_COLORS[item.tempoParado], color: TEMPO_PARADO_COLORS[item.tempoParado] }}>
-                          {item.tempoParado}
-                        </Badge>
-                      </TableCell>
+            <CardContent className="p-0 flex-1 flex flex-col">
+              <style>{`
+                .estoque-matriz-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+                .estoque-matriz-scroll::-webkit-scrollbar-track { background: hsl(0, 0%, 14%); border-radius: 3px; }
+                .estoque-matriz-scroll::-webkit-scrollbar-thumb { background: hsl(0, 0%, 35%); border-radius: 3px; }
+                .estoque-matriz-scroll::-webkit-scrollbar-thumb:hover { background: hsl(0, 0%, 50%); }
+                .estoque-matriz-scroll { overflow: scroll !important; }
+              `}</style>
+              <div className="estoque-matriz-scroll flex-1" style={{ overflow: "scroll", maxHeight: 400 }}>
+                <Table className="min-w-[1400px]">
+                  <TableHeader>
+                    <TableRow className="border-border bg-muted/20 sticky top-0 z-10">
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Base</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Código</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Descrição</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Grupo</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">SubGrupo</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Categoria</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Entrada</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Saída</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Estoque</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Vl. Item</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Vl. Total</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M3 Unit.</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M3 Total</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Dt. Últ. Entrada</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Últ. Entrada</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Dt. Últ. Saída</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Últ. Saída</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Dias s/ Movto.</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Tempo Parado</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedMatriz.map((item) => (
+                      <TableRow key={item.id}
+                        className={`border-border hover:bg-muted/50 cursor-pointer text-xs ${selectedSKU === item.codigo ? 'bg-primary/10' : ''}`}
+                        onClick={() => setSelectedSKU(prev => prev === item.codigo ? null : item.codigo)}>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.base}</TableCell>
+                        <TableCell className="text-primary font-medium text-[11px] px-2 py-1 whitespace-nowrap">
+                          <EstoqueMatrizHoverCard product={item}>
+                            <span className="cursor-help underline decoration-dotted">{item.codigo}</span>
+                          </EstoqueMatrizHoverCard>
+                        </TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap truncate max-w-[150px]">
+                          <EstoqueMatrizHoverCard product={item}>
+                            <span className="cursor-help">{item.descricao}</span>
+                          </EstoqueMatrizHoverCard>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-[11px] px-2 py-1 whitespace-nowrap cursor-pointer hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); setSelectedGrupo(prev => prev === item.grupo ? null : item.grupo); }}>
+                          {item.grupo}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.subGrupo}</TableCell>
+                        <TableCell className="text-muted-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.categoria}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeEntrada)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeSaida)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap font-medium">{formatNumber(item.estoque)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(item.vlItem)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(item.vlTotal)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3Unitario.toFixed(4)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3Total.toFixed(2)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.dtUltimaEntrada}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeUltimaEntrada)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.dtUltimaSaida}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeUltimaSaida)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.diasSemMovto}</TableCell>
+                        <TableCell className="px-2 py-1 whitespace-nowrap">
+                          <Badge variant="outline" className="text-[10px] cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); setSelectedTempoParado(prev => prev === item.tempoParado ? null : item.tempoParado); }}
+                            style={{ borderColor: TEMPO_PARADO_COLORS[item.tempoParado], color: TEMPO_PARADO_COLORS[item.tempoParado] }}>
+                            {item.tempoParado}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
+                <span className="text-[10px] text-muted-foreground">
+                  {searchedMatriz.length > 0 ? `${matrizPage * matrizPerPage + 1}–${Math.min((matrizPage + 1) * matrizPerPage, searchedMatriz.length)} de ${searchedMatriz.length}` : "0 registros"}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={matrizPage === 0} onClick={() => setMatrizPage(p => p - 1)}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-[10px] text-muted-foreground min-w-[60px] text-center">
+                    {matrizTotalPages > 0 ? `${matrizPage + 1} / ${matrizTotalPages}` : "—"}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={matrizPage >= matrizTotalPages - 1} onClick={() => setMatrizPage(p => p + 1)}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Estoque Base Table - Full width */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">
-                Estoque Base <span className="text-sm font-normal text-muted-foreground">({filteredBase.length} itens)</span>
-              </CardTitle>
+          {/* Estoque Base Table */}
+          <Card className="bg-card border-border flex flex-col">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Estoque Base <span className="text-sm font-normal text-muted-foreground">({searchedBase.length} itens)</span>
+                </CardTitle>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input placeholder="Pesquisar código, produto, base..." value={baseSearch}
+                    onChange={e => { setBaseSearch(e.target.value); setBasePage(0); }}
+                    className="h-7 text-xs pl-7 bg-muted/20 border-border" />
+                </div>
+                <Select value={String(basePerPage)} onValueChange={v => { setBasePerPage(Number(v)); setBasePage(0); }}>
+                  <SelectTrigger className="h-7 w-20 text-xs bg-muted/20 border-border"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
-            <CardContent className="overflow-auto max-h-[400px] custom-scrollbar">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border">
-                    <TableHead className="text-muted-foreground">Base</TableHead>
-                    <TableHead className="text-muted-foreground">Cidade</TableHead>
-                    <TableHead className="text-muted-foreground">UF</TableHead>
-                    <TableHead className="text-muted-foreground">Código</TableHead>
-                    <TableHead className="text-muted-foreground text-right">M3</TableHead>
-                    <TableHead className="text-muted-foreground">Produto</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Qtde. Entrada</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Qtde. Saída</TableHead>
-                    <TableHead className="text-muted-foreground">Região</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Saldo</TableHead>
-                    <TableHead className="text-muted-foreground text-right">Vl. Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredBase.map((item) => (
-                    <TableRow key={item.id}
-                      className={`border-border hover:bg-muted/50 cursor-pointer text-xs ${selectedBase === item.base ? 'bg-primary/10' : ''}`}
-                      onClick={() => setSelectedBase(prev => prev === item.base ? null : item.base)}>
-                      <TableCell className="text-foreground">{item.base}</TableCell>
-                      <TableCell className="text-foreground">{item.cidade}</TableCell>
-                      <TableCell className="text-foreground">{item.uf}</TableCell>
-                      <TableCell className="text-primary font-medium">
-                        <EstoqueBaseHoverCard product={item}>
-                          <span className="cursor-help underline decoration-dotted">{item.codigo}</span>
-                        </EstoqueBaseHoverCard>
-                      </TableCell>
-                      <TableCell className="text-foreground text-right">{item.m3.toFixed(4)}</TableCell>
-                      <TableCell className="text-foreground truncate max-w-[150px]">
-                        <EstoqueBaseHoverCard product={item}>
-                          <span className="cursor-help">{item.produto}</span>
-                        </EstoqueBaseHoverCard>
-                      </TableCell>
-                      <TableCell className="text-foreground text-right">{formatNumber(item.qtdeEntrada)}</TableCell>
-                      <TableCell className="text-foreground text-right">{formatNumber(item.qtdeSaida)}</TableCell>
-                      <TableCell className="text-foreground">{item.regiao}</TableCell>
-                      <TableCell className="text-foreground text-right font-medium">{formatNumber(item.saldo)}</TableCell>
-                      <TableCell className="text-foreground text-right">{formatCurrency(item.vlTotal)}</TableCell>
+            <CardContent className="p-0 flex-1 flex flex-col">
+              <style>{`
+                .estoque-base-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+                .estoque-base-scroll::-webkit-scrollbar-track { background: hsl(0, 0%, 14%); border-radius: 3px; }
+                .estoque-base-scroll::-webkit-scrollbar-thumb { background: hsl(0, 0%, 35%); border-radius: 3px; }
+                .estoque-base-scroll::-webkit-scrollbar-thumb:hover { background: hsl(0, 0%, 50%); }
+                .estoque-base-scroll { overflow: scroll !important; }
+              `}</style>
+              <div className="estoque-base-scroll flex-1" style={{ overflow: "scroll", maxHeight: 400 }}>
+                <Table className="min-w-[900px]">
+                  <TableHeader>
+                    <TableRow className="border-border bg-muted/20 sticky top-0 z-10">
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Base</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Cidade</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">UF</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Código</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M3</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Produto</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Entrada</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Saída</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Região</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Saldo</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Vl. Total</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedBase.map((item) => (
+                      <TableRow key={item.id}
+                        className={`border-border hover:bg-muted/50 cursor-pointer text-xs ${selectedBase === item.base ? 'bg-primary/10' : ''}`}
+                        onClick={() => setSelectedBase(prev => prev === item.base ? null : item.base)}>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.base}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.cidade}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.uf}</TableCell>
+                        <TableCell className="text-primary font-medium text-[11px] px-2 py-1 whitespace-nowrap">
+                          <EstoqueBaseHoverCard product={item}>
+                            <span className="cursor-help underline decoration-dotted">{item.codigo}</span>
+                          </EstoqueBaseHoverCard>
+                        </TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3.toFixed(4)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap truncate max-w-[150px]">
+                          <EstoqueBaseHoverCard product={item}>
+                            <span className="cursor-help">{item.produto}</span>
+                          </EstoqueBaseHoverCard>
+                        </TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeEntrada)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeSaida)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.regiao}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap font-medium">{formatNumber(item.saldo)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(item.vlTotal)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
+                <span className="text-[10px] text-muted-foreground">
+                  {searchedBase.length > 0 ? `${basePage * basePerPage + 1}–${Math.min((basePage + 1) * basePerPage, searchedBase.length)} de ${searchedBase.length}` : "0 registros"}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={basePage === 0} onClick={() => setBasePage(p => p - 1)}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-[10px] text-muted-foreground min-w-[60px] text-center">
+                    {baseTotalPages > 0 ? `${basePage + 1} / ${baseTotalPages}` : "—"}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={basePage >= baseTotalPages - 1} onClick={() => setBasePage(p => p + 1)}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

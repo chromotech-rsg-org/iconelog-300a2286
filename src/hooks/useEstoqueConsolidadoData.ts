@@ -169,7 +169,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
     return mapaData.map((item, index) => {
       const estoque = parseInt(item.nr_qtde_saldo || "0");
       const vlTotal = parseFloat(item.vl_total || "0");
-      const dias = parseInt(item.nr_qtde_dias_ultima_mov || "0");
+      const dias = parseInt(item.nr_qtde_dias_ultima || item.nr_qtde_dias_ultima_mov || "0");
       return {
         id: `matriz-${index}`,
         base: item.base || "BARUERI",
