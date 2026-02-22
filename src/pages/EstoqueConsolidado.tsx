@@ -129,26 +129,34 @@ const EstoqueConsolidado = () => {
   // Chart data
   const estoqueByGrupo = useMemo(() => {
     const grouped = new Map<string, number>();
-    filteredMatriz.forEach(i => grouped.set(i.grupo, (grouped.get(i.grupo) || 0) + i.estoque));
-    const total = filteredMatriz.reduce((s, i) => s + i.estoque, 0);
+    filteredMatriz.forEach(i => {
+      // Use grupo field (e.g. "FOCO B SIDE", "FOCO D SIDE")
+      const grupo = i.grupo || "Outros";
+      grouped.set(grupo, (grouped.get(grupo) || 0) + i.vlTotal);
+    });
+    const total = Array.from(grouped.values()).reduce((s, v) => s + v, 0);
     return Array.from(grouped.entries()).map(([name, value]) => ({
       name, value, percent: total > 0 ? (value / total) * 100 : 0,
     })).sort((a, b) => b.value - a.value);
   }, [filteredMatriz]);
 
-  const valorByGrupo = useMemo(() => {
-    const grouped = new Map<string, number>();
-    filteredMatriz.forEach(i => grouped.set(i.grupo, (grouped.get(i.grupo) || 0) + i.vlTotal));
-    return Array.from(grouped.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [filteredMatriz]);
+  // valorByGrupo reuses estoqueByGrupo data (same grouping by vlTotal)
+  const valorByGrupo = estoqueByGrupo;
+
+  // Tempo Parado with fixed order matching the reference
+  const TEMPO_PARADO_ORDER = ["Antes que 30 dias", "Entre 31 e 60 dias", "Entre 61 e 90 dias", "Mais que 91 dias"];
 
   const tempoParadoPie = useMemo(() => {
     const grouped = new Map<string, number>();
     filteredMatriz.forEach(i => grouped.set(i.tempoParado, (grouped.get(i.tempoParado) || 0) + 1));
     const total = filteredMatriz.length;
-    return Array.from(grouped.entries()).map(([name, value]) => ({
-      name, value, percent: total > 0 ? (value / total) * 100 : 0,
-    }));
+    // Return in fixed order
+    return TEMPO_PARADO_ORDER
+      .map(name => {
+        const value = grouped.get(name) || 0;
+        return { name, value, percent: total > 0 ? (value / total) * 100 : 0 };
+      })
+      .filter(d => d.value > 0);
   }, [filteredMatriz]);
 
   const tempoParadoMedioGrupo = useMemo(() => {
@@ -372,16 +380,17 @@ const EstoqueConsolidado = () => {
             </CardHeader>
             <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={valorByGrupo} layout="vertical" onClick={handleGrupoBarClick}>
+                <BarChart data={valorByGrupo} layout="vertical" onClick={handleGrupoBarClick}
+                  margin={{ right: 120 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
                   <XAxis type="number" stroke="hsl(0, 0%, 60%)" fontSize={10}
-                    tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`} />
+                    tickFormatter={(v) => `R$ ${Math.round(v).toLocaleString('pt-BR')}`} />
                   <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={9} width={70} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }}
-                    formatter={(value: number) => formatCurrency(value)} />
+                    formatter={(value: number) => `R$ ${Math.round(value).toLocaleString('pt-BR')}`} />
                   <Bar dataKey="value" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]}
                     label={{ position: "right", fill: "hsl(217, 91%, 70%)", fontSize: 11, fontWeight: 700,
-                      formatter: (v: number) => `R$ ${(v / 1000).toFixed(1)}k` }} />
+                      formatter: (v: number) => `R$ ${Math.round(v).toLocaleString('pt-BR')}` }} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -405,7 +414,11 @@ const EstoqueConsolidado = () => {
                   </Pie>
                   <Tooltip formatter={(value: number, name: string, props: any) => `${props.payload.percent?.toFixed(1)}%`} />
                   <Legend layout="vertical" align="left" verticalAlign="middle"
-                    wrapperStyle={{ fontSize: 9, paddingRight: 4 }} />
+                    wrapperStyle={{ fontSize: 9, paddingRight: 4 }}
+                    formatter={(value: string) => {
+                      const item = tempoParadoPie.find(d => d.name === value);
+                      return <span className="text-muted-foreground text-[9px]">{value}</span>;
+                    }} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
