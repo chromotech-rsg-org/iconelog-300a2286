@@ -201,10 +201,10 @@ Deno.serve(async (req) => {
 
           const execTime = Date.now() - startTime;
 
-          // Save to cache
+          // Save to shared cache (one extraction per API, shared by all BIs)
           await supabase.from("bi_data_cache").upsert(
             {
-              page_id: pageId,
+              page_id: "_shared",
               cache_key: cacheKey,
               data: allDataArray as any,
               cached_at: new Date().toISOString(),

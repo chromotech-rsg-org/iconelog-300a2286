@@ -97,7 +97,7 @@ export const useEstoqueData = (codCli: string) => {
         const mapaCache = await supabase
           .from("bi_data_cache")
           .select("data")
-          .eq("page_id", "estoque")
+          .eq("page_id", "_shared")
           .eq("cache_key", `mapalogistico_${codCli}`)
           .maybeSingle();
 
@@ -114,7 +114,7 @@ export const useEstoqueData = (codCli: string) => {
     await supabase
       .from("bi_data_cache")
       .upsert(
-        { page_id: "estoque", cache_key: `${cacheKey}_${codCli}`, data: data as any, cached_at: new Date().toISOString() },
+        { page_id: "_shared", cache_key: `${cacheKey}_${codCli}`, data: data as any, cached_at: new Date().toISOString() },
         { onConflict: "page_id,cache_key" }
       );
   }, [codCli]);
