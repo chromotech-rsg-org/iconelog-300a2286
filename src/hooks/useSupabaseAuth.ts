@@ -190,9 +190,9 @@ export const useSupabaseAuth = () => {
       return result;
     } catch (error: any) {
       console.error("Error fetching public access:", error);
-      if (retryCount < 2 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
+      if (retryCount < 3 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
         console.log(`Retrying public access fetch (attempt ${retryCount + 2})...`);
-        await new Promise(r => setTimeout(r, 1500 * (retryCount + 1)));
+        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
         return fetchPublicAccess(retryCount + 1);
       }
       return {};

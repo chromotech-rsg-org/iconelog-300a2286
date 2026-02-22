@@ -28,15 +28,14 @@ export interface BiSetting {
 
         if (error) throw error;
         setSettings(data || []);
+        setLoading(false);
       } catch (error: any) {
         console.error("Error fetching BI settings:", error);
-        // Retry up to 2 times on abort/network errors
-        if (retryCount < 2 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
+        if (retryCount < 3 && (error?.name === 'AbortError' || error?.message?.includes('Failed to fetch'))) {
           console.log(`Retrying BI settings fetch (attempt ${retryCount + 2})...`);
-          setTimeout(() => fetchSettings(retryCount + 1), 1500 * (retryCount + 1));
-          return;
+          await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+          return fetchSettings(retryCount + 1);
         }
-      } finally {
         setLoading(false);
       }
     }, []);
