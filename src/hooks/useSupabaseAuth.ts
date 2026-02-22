@@ -227,12 +227,16 @@ export const useSupabaseAuth = () => {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          setTimeout(() => { loadUserData(session.user.id); }, 0);
+          setLoading(true);
+          setTimeout(() => { 
+            loadUserData(session.user.id).finally(() => setLoading(false)); 
+          }, 0);
         } else {
           setProfile(null);
           setUserRoles([]);
           setPagePermissions({});
           setAdminPermissions(defaultAdminPermissions());
+          setLoading(false);
         }
       }
     );
