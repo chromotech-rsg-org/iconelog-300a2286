@@ -50,7 +50,7 @@ export const TrackingGaugeChart = ({ percNoPrazo, noPrazo, foraPrazo, onPrazoCli
           <Button
             variant="outline"
             size="sm"
-            className={`flex-1 text-[10px] h-7 ${selectedPrazo === true ? "bg-green-500/20 border-green-500 text-green-400" : "border-border text-muted-foreground hover:text-green-400 hover:border-green-500"}`}
+            className={`flex-1 text-[10px] h-7 ${selectedPrazo === true ? "bg-green-500/20 border-green-500 text-green-400" : "border-border text-muted-foreground hover:bg-green-500/30 hover:text-green-300 hover:border-green-500"}`}
             onClick={() => onPrazoClick(true)}
           >
             No Prazo
@@ -58,7 +58,7 @@ export const TrackingGaugeChart = ({ percNoPrazo, noPrazo, foraPrazo, onPrazoCli
           <Button
             variant="outline"
             size="sm"
-            className={`flex-1 text-[10px] h-7 ${selectedPrazo === false ? "bg-red-500/20 border-red-500 text-red-400" : "border-border text-muted-foreground hover:text-red-400 hover:border-red-500"}`}
+            className={`flex-1 text-[10px] h-7 ${selectedPrazo === false ? "bg-red-500/20 border-red-500 text-red-400" : "border-border text-muted-foreground hover:bg-red-500/30 hover:text-red-300 hover:border-red-500"}`}
             onClick={() => onPrazoClick(false)}
           >
             Fora do Prazo

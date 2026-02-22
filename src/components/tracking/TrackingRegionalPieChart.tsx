@@ -41,10 +41,10 @@ export const TrackingRegionalPieChart = ({ data, onRegionalClick, selectedRegion
           <PieChart>
             <Pie
               data={withPercent}
-              cx="50%"
-              cy="45%"
-              outerRadius={55}
-              innerRadius={22}
+              cx="65%"
+              cy="50%"
+              outerRadius="80%"
+              innerRadius="35%"
               dataKey="value"
               nameKey="name"
               label={renderLabel}
@@ -66,7 +66,10 @@ export const TrackingRegionalPieChart = ({ data, onRegionalClick, selectedRegion
             </Pie>
             <Tooltip content={<CustomTooltip />} />
             <Legend
-              wrapperStyle={{ fontSize: 9, paddingTop: 2 }}
+              layout="vertical"
+              align="left"
+              verticalAlign="middle"
+              wrapperStyle={{ fontSize: 9, paddingRight: 4 }}
               formatter={(value) => <span className="text-muted-foreground text-[9px]">{value}</span>}
             />
           </PieChart>
