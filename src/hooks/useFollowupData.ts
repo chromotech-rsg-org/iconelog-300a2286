@@ -578,6 +578,99 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     };
   }, [followupData, cityMappings]);
 
+  const getFaturamentoData = useCallback((months: number[], years: number[]) => {
+    // Filter by _fetch_month/_fetch_year tags (same pattern as other getters)
+    const filtered = (months?.length || years?.length)
+      ? followupData.filter(item => {
+          const ms = months || [];
+          const ys = years || [];
+          if (item._fetch_month != null && item._fetch_year != null) {
+            const matchYear = ys.length === 0 || ys.includes(item._fetch_year);
+            const matchMonth = ms.length === 0 || ms.includes(item._fetch_month);
+            return matchYear && matchMonth;
+          }
+          return dateMatchesMonthYear(item.dt_expedicao, ms, ys) ||
+                 dateMatchesMonthYear(item.dt_emissao, ms, ys);
+        })
+      : followupData;
+
+    // Monthly breakdown
+    const monthlyMap = new Map<string, { mes: string; mesNum: number; ano: number; faturamento: number; armazenagem: number; transporte: number }>();
+    const tipoServicoMap = new Map<string, number>();
+    const modalidadeMap = new Map<string, number>();
+    const campanhaMap = new Map<string, number>();
+    const regionalMap = new Map<string, number>();
+
+    const mesesNomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+    filtered.forEach(item => {
+      // Use vl_frete as the billing value; fallback to vl_total
+      const valor = parseFloat(item.vl_frete || item.vl_total || "0") || 0;
+      if (valor === 0) return;
+
+      const tipoServico = (item.ds_tipo_servico || "OUTROS").toUpperCase();
+      const isArmazenagem = tipoServico.includes("ARMAZENAGEM") || tipoServico.includes("ARMAZENA");
+
+      // Monthly aggregation - use _fetch_month/_fetch_year when available
+      const fetchMonth = item._fetch_month;
+      const fetchYear = item._fetch_year;
+      if (fetchMonth && fetchYear) {
+        const key = `${fetchYear}-${fetchMonth}`;
+        if (!monthlyMap.has(key)) {
+          monthlyMap.set(key, {
+            mes: mesesNomes[fetchMonth - 1] || `Mês ${fetchMonth}`,
+            mesNum: fetchMonth,
+            ano: fetchYear,
+            faturamento: 0,
+            armazenagem: 0,
+            transporte: 0,
+          });
+        }
+        const m = monthlyMap.get(key)!;
+        m.faturamento += valor;
+        if (isArmazenagem) m.armazenagem += valor;
+        else m.transporte += valor;
+      }
+
+      // Tipo de Serviço
+      tipoServicoMap.set(tipoServico, (tipoServicoMap.get(tipoServico) || 0) + valor);
+
+      // Modalidade
+      const mod = (item.ds_modalidade_transporte || "OUTROS").toUpperCase();
+      modalidadeMap.set(mod, (modalidadeMap.get(mod) || 0) + valor);
+
+      // Campanha
+      const campanha = (item.nm_campanha || item.ds_campanha || item.campanha || "OUTROS").toUpperCase();
+      campanhaMap.set(campanha, (campanhaMap.get(campanha) || 0) + valor);
+
+      // Regional
+      const cidade = item.ds_cidade_DES || item.ds_cidade || "";
+      const regional = resolveRegional(cidade, cityMappings);
+      regionalMap.set(regional, (regionalMap.get(regional) || 0) + valor);
+    });
+
+    const mensal = Array.from(monthlyMap.values()).sort((a, b) => a.ano - b.ano || a.mesNum - b.mesNum);
+
+    const totalFaturamento = mensal.reduce((s, m) => s + m.faturamento, 0);
+    const totalArmazenagem = mensal.reduce((s, m) => s + m.armazenagem, 0);
+    const totalTransporte = mensal.reduce((s, m) => s + m.transporte, 0);
+
+    return {
+      mensal,
+      totals: {
+        faturamento: totalFaturamento,
+        armazenagem: totalArmazenagem,
+        transporte: totalTransporte,
+        percentArmazenagem: totalFaturamento > 0 ? (totalArmazenagem / totalFaturamento) * 100 : 0,
+        percentTransporte: totalFaturamento > 0 ? (totalTransporte / totalFaturamento) * 100 : 0,
+      },
+      tipoServico: Array.from(tipoServicoMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+      modalidade: Array.from(modalidadeMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+      campanha: Array.from(campanhaMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+      regional: Array.from(regionalMap.entries()).map(([name, value]) => ({ name, value })).filter(r => r.name !== "Sem Regional").sort((a, b) => b.value - a.value),
+    };
+  }, [followupData, cityMappings]);
+
   return {
     followupData,
     produtosData,
@@ -594,6 +687,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     getTotalValue,
     getEntregasData,
     getTrackingData,
+    getFaturamentoData,
     cityMappings,
     lastUpdateAt,
   };
