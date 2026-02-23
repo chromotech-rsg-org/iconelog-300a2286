@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface DeliveryData {
   id: string;
   regional: string;
+  uf?: string;
   entregaFinalizado: number;
   entregaEmTransito: number;
   entregaTotal: number;
@@ -26,34 +27,6 @@ interface EntregasTablesProps {
   onRegionalClick?: (regional: string) => void;
   selectedRegional?: string | null;
 }
-
-// UF mapping for regionals
-const getUF = (regional: string): string => {
-  const ufMap: Record<string, string> = {
-    "São Paulo": "SP",
-    "Piracicaba": "SP",
-    "Campinas": "SP",
-    "Rio de Janeiro": "RJ",
-    "Niterói": "RJ",
-    "Belo Horizonte": "MG",
-    "Curitiba": "PR",
-    "Porto Alegre": "RS",
-    "Salvador": "BA",
-    "Fortaleza": "CE",
-    "Recife": "PE",
-    "Brasília": "DF",
-    "Goiânia": "GO",
-    "Manaus": "AM",
-    "Belém": "PA",
-    "Maceió": "AL",
-    "Sorocaba": "SP",
-    "São José dos Campos": "SP",
-    "Botucatu": "SP",
-    "Poços de Caldas": "MG",
-    "Macapá": "AP",
-  };
-  return ufMap[regional] || "BR";
-};
 
 export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: EntregasTablesProps) => {
   // Sort data by total descending
@@ -107,7 +80,7 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
                         {item.regional}
                       </TableCell>
                       <TableCell className="text-sm py-2 text-muted-foreground">
-                        {getUF(item.regional)}
+                        {item.uf || "BR"}
                       </TableCell>
                       <TableCell className="text-sm py-2 text-right text-foreground">
                         {formatNumber(item.entregaFinalizado)}
@@ -175,7 +148,7 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
                         {item.regional}
                       </TableCell>
                       <TableCell className="text-sm py-2 text-muted-foreground">
-                        {getUF(item.regional)}
+                        {item.uf || "BR"}
                       </TableCell>
                       <TableCell className="text-sm py-2 text-right text-foreground">
                         {formatNumber(item.reposicaoFinalizado)}

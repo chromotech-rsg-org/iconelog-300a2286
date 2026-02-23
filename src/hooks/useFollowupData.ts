@@ -16,11 +16,15 @@ interface FollowupItem {
 const normalize = (str: string): string =>
   str.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 
-const resolveRegional = (cidade: string, mappings: CityRegionalMapping[]): string => {
-  if (!cidade) return "Sem Regional";
+const resolveRegionalAndUf = (cidade: string, mappings: CityRegionalMapping[]): { regional: string; uf: string } => {
+  if (!cidade) return { regional: "Sem Regional", uf: "" };
   const normalized = normalize(cidade);
   const found = mappings.find(m => normalize(m.cidade) === normalized);
-  return found?.regional || "Sem Regional";
+  return { regional: found?.regional || "Sem Regional", uf: found?.uf || "" };
+};
+
+const resolveRegional = (cidade: string, mappings: CityRegionalMapping[]): string => {
+  return resolveRegionalAndUf(cidade, mappings).regional;
 };
 
 const parseDateStr = (dt: any): { month: number; year: number; date: Date | null } | null => {
@@ -408,11 +412,12 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     const regionMap = new Map<string, {
       entregaFinalizado: number; entregaEmTransito: number;
       reposicaoFinalizado: number; reposicaoEmTransito: number;
+      uf: string;
     }>();
 
     filtered.forEach(item => {
       const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
-      const regional = resolveRegional(cidade, cityMappings);
+      const { regional, uf } = resolveRegionalAndUf(cidade, cityMappings);
       const tipoServico = (item.ds_tipo_servico || "").toLowerCase();
       const campanhaNorm = normalize(item.nm_campanha || item.ds_campanha || item.campanha || "");
       const statusReal = (item.fl_status_real || "").toLowerCase();
@@ -431,6 +436,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
         regionMap.set(regional, {
           entregaFinalizado: 0, entregaEmTransito: 0,
           reposicaoFinalizado: 0, reposicaoEmTransito: 0,
+          uf,
         });
       }
       const totals = regionMap.get(regional)!;
@@ -449,6 +455,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     return Array.from(regionMap.entries()).map(([regional, totals]) => ({
       id: `delivery-${regional}`,
       regional,
+      uf: totals.uf,
       ...totals,
       entregaTotal: totals.entregaFinalizado + totals.entregaEmTransito,
       reposicaoTotal: totals.reposicaoFinalizado + totals.reposicaoEmTransito,
