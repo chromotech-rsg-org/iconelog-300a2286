@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,7 +74,14 @@ const Admin = () => {
   const { roles, loading: rolesLoading, createRole, updateRole, deleteRole } = useRolesManagement();
   const { users, loading: usersLoading, createUser, updateUser } = useUsersManagement();
 
-  const [activeSection, setActiveSection] = useState<AdminSection>("usuarios");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialSection = (searchParams.get("tab") as AdminSection) || "usuarios";
+  const [activeSection, setActiveSection] = useState<AdminSection>(initialSection);
+
+  const handleSectionChange = (section: AdminSection) => {
+    setActiveSection(section);
+    setSearchParams({ tab: section }, { replace: true });
+  };
 
   // User dialog state
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
@@ -536,7 +544,7 @@ const Admin = () => {
 
       {/* Layout with sidebar */}
       <div className="flex">
-        <AdminSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+        <AdminSidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
         <main className="flex-1 p-6">
           <div className="mb-6">
             <h1 className="text-xl font-bold text-foreground">{systemName}</h1>

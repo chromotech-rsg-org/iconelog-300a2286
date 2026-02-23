@@ -2,7 +2,9 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Define page order for redirect priority
+// Admin first so users with admin access land there after login
 const PAGE_ORDER = [
+  { id: "admin_panel", path: "/admin" },
   { id: "minutas", path: "/minutas" },
   { id: "estoque", path: "/estoque" },
   { id: "entregas", path: "/entregas" },
@@ -10,11 +12,10 @@ const PAGE_ORDER = [
   { id: "estoque-consolidado", path: "/estoque-consolidado" },
   { id: "faturamento", path: "/faturamento" },
   { id: "analitico", path: "/analitico" },
-  { id: "admin", path: "/admin" },
 ];
 
 export const SmartRedirect = () => {
-  const { isAuthenticated, loading, canView, isPublicAccess } = useAuth();
+  const { isAuthenticated, loading, canView, isPublicAccess, canViewAnyConfig } = useAuth();
 
   if (loading) {
     return (
@@ -31,6 +32,11 @@ export const SmartRedirect = () => {
 
   // Find first page user has access to
   for (const page of PAGE_ORDER) {
+    // Admin panel uses canViewAnyConfig instead of canView
+    if (page.id === "admin_panel") {
+      if (canViewAnyConfig()) return <Navigate to={page.path} replace />;
+      continue;
+    }
     if (canView(page.id) || isPublicAccess(page.id)) {
       return <Navigate to={page.path} replace />;
     }
