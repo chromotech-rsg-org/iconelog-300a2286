@@ -42,7 +42,7 @@ export interface PainelControlePermission {
 
 export type AdminSectionType = 
   | "usuarios" | "perfis" | "acessoPublico" | "painelControle" | "cadastroCidades"
-  | "configurarBi" | "empresasClientes" | "integracao" | "testesApi" | "logsApi";
+  | "configurarBi" | "empresasClientes" | "integracao" | "produtosEstoque" | "testesApi" | "logsApi" | "dadosApi";
 
 // Maps camelCase keys to snake_case DB values
 const adminSectionToDbType: Record<string, string> = {
@@ -54,8 +54,10 @@ const adminSectionToDbType: Record<string, string> = {
   configurarBi: "configurar_bi",
   empresasClientes: "empresas_clientes",
   integracao: "integracao",
+  produtosEstoque: "produtos_estoque",
   testesApi: "testes_api",
   logsApi: "logs_api",
+  dadosApi: "dados_api",
 };
 
 const dbTypeToSection: Record<string, string> = Object.fromEntries(
@@ -64,7 +66,7 @@ const dbTypeToSection: Record<string, string> = Object.fromEntries(
 
 const allAdminSections = [
   "usuarios", "perfis", "acesso_publico", "painel_controle", "cadastro_cidades",
-  "configurar_bi", "empresas_clientes", "integracao", "testes_api", "logs_api",
+  "configurar_bi", "empresas_clientes", "integracao", "produtos_estoque", "testes_api", "logs_api", "dados_api",
 ];
 
 type AdminPermissionsState = Record<string, AdminPermission>;
@@ -368,7 +370,7 @@ export const useSupabaseAuth = () => {
 
   // Check if user has any config sub-permission
   const canViewAnyConfig = useCallback(() => {
-    const configSections: AdminSectionType[] = ["configurarBi", "empresasClientes", "integracao", "testesApi", "logsApi"];
+    const configSections: AdminSectionType[] = ["configurarBi", "empresasClientes", "integracao", "produtosEstoque", "testesApi", "logsApi", "dadosApi"];
     return configSections.some(s => adminPermissions[s]?.ver);
   }, [adminPermissions]);
 

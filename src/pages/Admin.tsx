@@ -56,8 +56,10 @@ const ALL_ADMIN_TYPES = [
   { key: "configurar_bi", label: "Configurar BI", hasCrud: true },
   { key: "empresas_clientes", label: "Empresas / Clientes", hasCrud: true },
   { key: "integracao", label: "Integração", hasCrud: true },
+  { key: "produtos_estoque", label: "Produtos & Kits", hasCrud: true },
   { key: "testes_api", label: "Testes de API", hasCrud: false },
   { key: "logs_api", label: "Logs", hasCrud: false },
+  { key: "dados_api", label: "Dados das APIs", hasCrud: false },
 ];
 
 const Admin = () => {

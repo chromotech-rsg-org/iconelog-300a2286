@@ -31,7 +31,7 @@ export interface AdminPermission {
 // All admin permission types in DB snake_case
 const ALL_ADMIN_TYPES = [
   "usuarios", "perfis", "acesso_publico", "painel_controle", "cadastro_cidades",
-  "configurar_bi", "empresas_clientes", "integracao", "testes_api", "logs_api",
+  "configurar_bi", "empresas_clientes", "integracao", "produtos_estoque", "testes_api", "logs_api", "dados_api",
 ];
 
 export interface RoleWithPermissions extends Role {
