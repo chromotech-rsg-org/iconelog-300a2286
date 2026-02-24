@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Pencil, Trash2, Loader2, Upload, Building2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Upload, Building2, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -152,6 +152,15 @@ const ClientsCRUD = () => {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right space-x-1">
+                  {c.logo_url && (
+                    <Button variant="ghost" size="icon" title="Baixar logo" onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = c.logo_url!;
+                      link.target = "_blank";
+                      link.download = `${c.cod_cli}-logo`;
+                      link.click();
+                    }}><Download className="h-4 w-4" /></Button>
+                  )}
                   {canEditAdmin("empresasClientes") && (
                     <>
                       <Button variant="ghost" size="icon" onClick={() => handleOpen(c)}><Pencil className="h-4 w-4" /></Button>
