@@ -343,10 +343,16 @@ const ConfigurarBI = () => {
                 <TableRow key={setting.id} className="border-dashboard-border hover:bg-dashboard-border/30">
                   <TableCell className="text-foreground font-mono text-center">{setting.display_order}</TableCell>
                   <TableCell>
-                    <Avatar className="h-8 w-8 rounded">
-                      <AvatarImage src={setting.logo_url || defaultLogo} alt={setting.display_name} className="object-cover" />
-                      <AvatarFallback className="rounded bg-dashboard-border text-xs"><ImageIcon className="h-3 w-3" /></AvatarFallback>
-                    </Avatar>
+                    {(() => {
+                      const client = setting.cod_cli ? clients.find(c => c.cod_cli === setting.cod_cli) : null;
+                      const logoSrc = setting.logo_url || client?.logo_url || defaultLogo;
+                      return (
+                        <Avatar className="h-8 w-8 rounded">
+                          <AvatarImage src={logoSrc} alt={setting.display_name} className="object-cover" />
+                          <AvatarFallback className="rounded bg-dashboard-border text-xs"><ImageIcon className="h-3 w-3" /></AvatarFallback>
+                        </Avatar>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="text-foreground font-medium">{setting.display_name}</TableCell>
                   <TableCell className="text-muted-foreground font-mono text-xs">/{setting.slug || setting.page_id}</TableCell>
