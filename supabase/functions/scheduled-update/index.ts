@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     // Find active schedules
     const { data: schedules, error: schedError } = await supabase
       .from("bi_scheduled_updates")
-      .select("page_id, update_time, schedule_type, interval_minutes, last_executed_at")
+      .select("id, page_id, update_time, schedule_type, interval_minutes, last_executed_at")
       .eq("is_active", true);
 
     if (schedError) {
@@ -40,15 +40,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Filter schedules: time-based match HH:MM, interval-based check elapsed minutes
+    // Filter schedules that should run now
     const matchingSchedules = (schedules || []).filter((s: any) => {
       if (s.schedule_type === "interval" && s.interval_minutes) {
-        if (!s.last_executed_at) return true; // never executed
+        if (!s.last_executed_at) return true;
         const lastExec = new Date(s.last_executed_at).getTime();
         const elapsed = (now.getTime() - lastExec) / 60000;
         return elapsed >= s.interval_minutes;
       }
-      // Default: time-based
+      // Time-based: match HH:MM
       const schedTime = (s.update_time || "").substring(0, 5);
       return schedTime === currentTime;
     });
@@ -60,75 +60,86 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Found ${matchingSchedules.length} schedules to execute`);
+    const matchingPageIds = [...new Set(matchingSchedules.map((s: any) => s.page_id))];
+    console.log(`Found ${matchingSchedules.length} schedules for pages: ${matchingPageIds.join(", ")}`);
+
+    // ── Collect all unique API+cod_cli combinations across all matching pages ──
+    // Get BI settings for all matching pages
+    const { data: biSettings } = await supabase
+      .from("bi_settings")
+      .select("page_id, cod_cli")
+      .in("page_id", matchingPageIds);
+
+    // Get all API links for matching pages
+    const { data: allApiLinks } = await supabase
+      .from("bi_api_integrations")
+      .select("bi_page_id, api_integration_id")
+      .in("bi_page_id", matchingPageIds);
+
+    if (!allApiLinks || allApiLinks.length === 0) {
+      console.log("No API integrations linked to any matching pages");
+      return new Response(JSON.stringify({ message: "No API integrations found", time: currentTime }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Get unique integration IDs
+    const uniqueIntegrationIds = [...new Set(allApiLinks.map((l) => l.api_integration_id))];
+    const { data: integrations } = await supabase
+      .from("api_integrations")
+      .select("id, name, base_url, auth_token, auth_type, headers_json, default_body")
+      .in("id", uniqueIntegrationIds);
+
+    if (!integrations || integrations.length === 0) {
+      console.log("No integration details found");
+      return new Response(JSON.stringify({ message: "No integrations", time: currentTime }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Collect unique cod_cli values
+    const codCliSet = new Set<string>();
+    (biSettings || []).forEach((bs: any) => { if (bs.cod_cli) codCliSet.add(bs.cod_cli); });
+    const codClis = [...codCliSet];
+
+    if (codClis.length === 0) {
+      console.log("No cod_cli configured for matching pages");
+      return new Response(JSON.stringify({ message: "No cod_cli", time: currentTime }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Deduplicated fetch: one call per unique (API, cod_cli) pair ──
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const currentYear = brtTime.getFullYear();
+    const currentMonth = brtTime.getMonth() + 1;
+
+    const monthChunks: { data_inicial: string; data_final: string }[] = [];
+    for (let m = 1; m <= currentMonth; m++) {
+      const firstDay = new Date(currentYear, m - 1, 1);
+      const lastDay = new Date(currentYear, m, 0);
+      monthChunks.push({
+        data_inicial: `${fmt(firstDay)} 00:00`,
+        data_final: `${fmt(lastDay)} 23:59`,
+      });
+    }
 
     const results: any[] = [];
+    const fetchedKeys = new Set<string>(); // track already fetched api+codcli
 
-    for (const schedule of matchingSchedules) {
-      const pageId = schedule.page_id;
+    for (const integration of integrations) {
+      if (!integration.base_url) continue;
 
-      // Get BI settings for this page (cod_cli needed for API call)
-      const { data: biSetting } = await supabase
-        .from("bi_settings")
-        .select("cod_cli")
-        .eq("page_id", pageId)
-        .maybeSingle();
+      for (const codCli of codClis) {
+        const cacheKey = `${integration.name.toLowerCase()}_${codCli}`;
 
-      if (!biSetting?.cod_cli) {
-        console.log(`No cod_cli for page ${pageId}, skipping`);
-        results.push({ page_id: pageId, status: "skipped", reason: "no cod_cli" });
-        continue;
-      }
-
-      // Get API integrations for this page
-      const { data: apiLinks } = await supabase
-        .from("bi_api_integrations")
-        .select("api_integration_id")
-        .eq("bi_page_id", pageId);
-
-      if (!apiLinks || apiLinks.length === 0) {
-        console.log(`No API integrations for page ${pageId}, skipping`);
-        results.push({ page_id: pageId, status: "skipped", reason: "no api_integrations" });
-        continue;
-      }
-
-      // Get integration details
-      const integrationIds = apiLinks.map((l) => l.api_integration_id);
-      const { data: integrations } = await supabase
-        .from("api_integrations")
-        .select("name, base_url, auth_token, auth_type, headers_json")
-        .in("id", integrationIds);
-
-      if (!integrations || integrations.length === 0) {
-        results.push({ page_id: pageId, status: "skipped", reason: "no integration details" });
-        continue;
-      }
-
-      // Determine if this page needs date range params
-      const needsDateRange = ["minutas", "entregas", "tracking"].includes(pageId) ||
-        integrations.some(i => ["FOLLOWUP", "PRODUTOSDISTRIBUIDOS"].includes(i.name.toUpperCase()));
-
-      // Calculate date range: always from Jan 1st of current year to today
-      const fmt = (d: Date) =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      const currentYear = brtTime.getFullYear();
-      const currentMonth = brtTime.getMonth() + 1; // 1-based
-
-      // Build month-by-month chunks from January to current month
-      const monthChunks: { data_inicial: string; data_final: string }[] = [];
-      for (let m = 1; m <= currentMonth; m++) {
-        const firstDay = new Date(currentYear, m - 1, 1);
-        const lastDay = new Date(currentYear, m, 0);
-        monthChunks.push({
-          data_inicial: `${fmt(firstDay)} 00:00`,
-          data_final: `${fmt(lastDay)} 23:59`,
-        });
-      }
-
-      // Call each API integration
-      for (const integration of integrations) {
-        const url = integration.base_url;
-        if (!url) continue;
+        // Skip if already fetched this combo
+        if (fetchedKeys.has(cacheKey)) {
+          console.log(`Skipping duplicate: ${cacheKey}`);
+          continue;
+        }
+        fetchedKeys.add(cacheKey);
 
         const headers: Record<string, string> = { "Content-Type": "application/json" };
         if (integration.auth_token) {
@@ -144,64 +155,50 @@ Deno.serve(async (req) => {
           Object.assign(headers, integration.headers_json);
         }
 
-        // Build request body - only include date range for APIs that need it
         const apiName = integration.name.toUpperCase();
         const apiNeedsDateRange = ["FOLLOWUP", "PRODUTOSDISTRIBUIDOS"].includes(apiName);
-
-        // Determine cache key based on API name
-        const cacheKey = `${integration.name.toLowerCase()}_${biSetting.cod_cli}`;
+        const defaultBody = integration.default_body && typeof integration.default_body === "object"
+          ? integration.default_body as Record<string, any>
+          : {};
 
         try {
-          console.log(`Calling API: ${integration.name} for page ${pageId}`);
+          console.log(`Fetching API: ${integration.name} for cod_cli: ${codCli}`);
           const startTime = Date.now();
-
           let allDataArray: any[] = [];
 
           if (apiNeedsDateRange) {
-            // Fetch month by month from Jan to current month
             for (const chunk of monthChunks) {
-              const body: Record<string, any> = { cod_cli: biSetting.cod_cli, ...chunk };
-              const apiResponse = await fetch(url, {
+              const body: Record<string, any> = { ...defaultBody, cod_cli: codCli, ...chunk };
+              const apiResponse = await fetch(integration.base_url, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(body),
               });
               const responseBody = await apiResponse.json().catch(() => null);
-              let dataArray: any[] = [];
-              if (responseBody?.ocorrencias && Array.isArray(responseBody.ocorrencias)) {
-                dataArray = responseBody.ocorrencias;
-              } else if (responseBody?.pedidos && Array.isArray(responseBody.pedidos)) {
-                dataArray = responseBody.pedidos;
-              } else if (Array.isArray(responseBody)) {
-                dataArray = responseBody;
-              } else if (responseBody?.data && Array.isArray(responseBody.data)) {
-                dataArray = responseBody.data;
-              }
-              allDataArray = allDataArray.concat(dataArray);
+              const dataArray = extractDataArray(responseBody);
+              // Tag each record with fetch metadata
+              const tagged = dataArray.map((r: any) => ({
+                ...r,
+                _fetch_month: chunk.data_inicial.substring(5, 7),
+                _fetch_year: chunk.data_inicial.substring(0, 4),
+              }));
+              allDataArray = allDataArray.concat(tagged);
               console.log(`  Chunk ${chunk.data_inicial}: ${dataArray.length} records`);
             }
           } else {
-            const body: Record<string, any> = { cod_cli: biSetting.cod_cli };
-            const apiResponse = await fetch(url, {
+            const body: Record<string, any> = { ...defaultBody, cod_cli: codCli };
+            const apiResponse = await fetch(integration.base_url, {
               method: "POST",
               headers,
               body: JSON.stringify(body),
             });
             const responseBody = await apiResponse.json().catch(() => null);
-            if (responseBody?.ocorrencias && Array.isArray(responseBody.ocorrencias)) {
-              allDataArray = responseBody.ocorrencias;
-            } else if (responseBody?.pedidos && Array.isArray(responseBody.pedidos)) {
-              allDataArray = responseBody.pedidos;
-            } else if (Array.isArray(responseBody)) {
-              allDataArray = responseBody;
-            } else if (responseBody?.data && Array.isArray(responseBody.data)) {
-              allDataArray = responseBody.data;
-            }
+            allDataArray = extractDataArray(responseBody);
           }
 
           const execTime = Date.now() - startTime;
 
-          // Save to shared cache (one extraction per API, shared by all BIs)
+          // Save to shared cache
           await supabase.from("bi_data_cache").upsert(
             {
               page_id: "_shared",
@@ -212,39 +209,40 @@ Deno.serve(async (req) => {
             { onConflict: "page_id,cache_key" }
           );
 
-          console.log(`API ${integration.name}: ${allDataArray.length} total records, ${execTime}ms`);
+          console.log(`API ${integration.name} (${codCli}): ${allDataArray.length} records, ${execTime}ms`);
           results.push({
-            page_id: pageId,
             api: integration.name,
+            cod_cli: codCli,
             status: 200,
             records: allDataArray.length,
             time_ms: execTime,
           });
         } catch (apiError: any) {
-          console.error(`API error for ${integration.name}:`, apiError.message);
+          console.error(`API error for ${integration.name} (${codCli}):`, apiError.message);
           results.push({
-            page_id: pageId,
             api: integration.name,
+            cod_cli: codCli,
             status: "error",
             error: apiError.message,
           });
         }
       }
+    }
 
-      // Update last update timestamp
+    // Update last_update_at for all matched pages
+    for (const pageId of matchingPageIds) {
       await supabase.from("bi_last_update").upsert(
         { page_id: pageId, last_update_at: new Date().toISOString() },
         { onConflict: "page_id" }
       );
+    }
 
-      // Update last_executed_at for interval-based schedules in this page
-      const scheduleIds = matchingSchedules.filter((s: any) => s.page_id === pageId).map((s: any) => s.page_id);
-      if (scheduleIds.length > 0) {
-        await supabase.from("bi_scheduled_updates")
-          .update({ last_executed_at: new Date().toISOString() } as any)
-          .eq("page_id", pageId)
-          .eq("is_active", true);
-      }
+    // Update last_executed_at for all matched schedules
+    const scheduleIds = matchingSchedules.map((s: any) => s.id);
+    if (scheduleIds.length > 0) {
+      await supabase.from("bi_scheduled_updates")
+        .update({ last_executed_at: new Date().toISOString() } as any)
+        .in("id", scheduleIds);
     }
 
     return new Response(JSON.stringify({ success: true, results, time: currentTime }), {
@@ -258,3 +256,13 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+function extractDataArray(body: any): any[] {
+  if (!body) return [];
+  if (body?.ocorrencias && Array.isArray(body.ocorrencias)) return body.ocorrencias;
+  if (body?.pedidos && Array.isArray(body.pedidos)) return body.pedidos;
+  if (Array.isArray(body)) return body;
+  if (body?.data && Array.isArray(body.data)) return body.data;
+  if (body?.results && Array.isArray(body.results)) return body.results;
+  return [];
+}
