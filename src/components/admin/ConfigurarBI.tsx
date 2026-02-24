@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, Loader2, Plus, Trash2, Link, Pencil, Search, ChevronDown, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, Loader2, Plus, Trash2, Link, Pencil, Search, ChevronDown, ChevronRight, Eye, EyeOff, Clock, Timer } from "lucide-react";
 import { useBiSettings, BiSetting } from "@/hooks/useBiSettings";
 import { toast } from "sonner";
 import defaultLogo from "@/assets/logo.jpg";
@@ -335,6 +335,7 @@ const ConfigurarBI = () => {
                 <TableHead className="text-muted-foreground">Empresa</TableHead>
                 <TableHead className="text-muted-foreground">Cód. Cliente</TableHead>
                 <TableHead className="text-muted-foreground text-center">Intervalo</TableHead>
+                <TableHead className="text-muted-foreground text-center">Agendamento</TableHead>
                 <TableHead className="text-muted-foreground text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -359,6 +360,29 @@ const ConfigurarBI = () => {
                   <TableCell className="text-muted-foreground">{setting.company_name || "-"}</TableCell>
                   <TableCell className="text-muted-foreground font-mono">{setting.cod_cli || "-"}</TableCell>
                   <TableCell className="text-muted-foreground text-center">{setting.refresh_interval_minutes}min</TableCell>
+                  <TableCell className="text-center">
+                    {(() => {
+                      const pageSchedules = schedules[setting.page_id] || [];
+                      if (pageSchedules.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
+                      const activeCount = pageSchedules.filter(s => s.is_active).length;
+                      return (
+                        <div className="flex flex-col items-center gap-0.5">
+                          {pageSchedules.filter(s => s.is_active).map((s, i) => (
+                            <Badge key={i} variant="outline" className="text-[10px] px-1.5 py-0 border-dashboard-accent/40 text-dashboard-accent">
+                              {s.schedule_type === "interval" ? (
+                                <><Timer className="h-2.5 w-2.5 mr-0.5" />{s.interval_minutes}min</>
+                              ) : (
+                                <><Clock className="h-2.5 w-2.5 mr-0.5" />{s.update_time?.substring(0, 5)}</>
+                              )}
+                            </Badge>
+                          ))}
+                          {pageSchedules.some(s => !s.is_active) && (
+                            <span className="text-[9px] text-muted-foreground">{pageSchedules.length - activeCount} inativo(s)</span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => openEditModal(setting)}>
@@ -390,7 +414,7 @@ const ConfigurarBI = () => {
               ))}
               {filteredSettings.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum BI encontrado</TableCell>
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum BI encontrado</TableCell>
                 </TableRow>
               )}
             </TableBody>
