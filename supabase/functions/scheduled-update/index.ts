@@ -125,8 +125,24 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Check existing cache freshness to avoid re-fetching recently updated APIs
+    const allCacheKeys = integrations.flatMap(i => codClis.map(c => `${i.name.toLowerCase()}_${c}`));
+    const { data: existingCache } = await supabase
+      .from("bi_data_cache")
+      .select("cache_key, cached_at")
+      .eq("page_id", "_shared")
+      .in("cache_key", allCacheKeys);
+    const cacheAgeMap = new Map<string, number>();
+    (existingCache || []).forEach((c: any) => {
+      const ageMinutes = (now.getTime() - new Date(c.cached_at).getTime()) / 60000;
+      cacheAgeMap.set(c.cache_key, ageMinutes);
+    });
+
+    // Minimum freshness threshold: skip if updated less than 30 min ago
+    const FRESHNESS_THRESHOLD_MINUTES = 30;
+
     const results: any[] = [];
-    const fetchedKeys = new Set<string>(); // track already fetched api+codcli
+    const fetchedKeys = new Set<string>();
 
     for (const integration of integrations) {
       if (!integration.base_url) continue;
@@ -134,11 +150,19 @@ Deno.serve(async (req) => {
       for (const codCli of codClis) {
         const cacheKey = `${integration.name.toLowerCase()}_${codCli}`;
 
-        // Skip if already fetched this combo
         if (fetchedKeys.has(cacheKey)) {
           console.log(`Skipping duplicate: ${cacheKey}`);
           continue;
         }
+
+        // Skip if cache is still fresh
+        const cacheAge = cacheAgeMap.get(cacheKey);
+        if (cacheAge !== undefined && cacheAge < FRESHNESS_THRESHOLD_MINUTES) {
+          console.log(`Skipping fresh cache: ${cacheKey} (${Math.round(cacheAge)}min old)`);
+          results.push({ api: integration.name, cod_cli: codCli, status: "skipped", reason: `cache fresh (${Math.round(cacheAge)}min)` });
+          continue;
+        }
+
         fetchedKeys.add(cacheKey);
 
         const headers: Record<string, string> = { "Content-Type": "application/json" };
