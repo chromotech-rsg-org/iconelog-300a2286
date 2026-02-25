@@ -480,12 +480,12 @@ const Tracking = () => {
                   <div className="sm:col-span-2 h-[400px] sm:h-full overflow-hidden">
                     <TrackingCidadeChart data={chartData.cidade} onCidadeClick={handleCidadeClick} selectedCidade={selectedCidade} />
                   </div>
-                  {/* Região + Mapa stacked — 1/3 width, 35/65 split */}
+                  {/* Região + Mapa stacked — 1/3 width, 45/55 split */}
                   <div className="sm:col-span-1 flex flex-col gap-3 h-[400px] sm:h-full overflow-hidden">
-                    <div className="h-[40%] min-h-0 overflow-hidden">
+                    <div className="h-[45%] min-h-[220px] overflow-hidden">
                       <TrackingRegionalPieChart data={chartData.regional} onRegionalClick={handleRegionalClick} selectedRegional={selectedRegional} />
                     </div>
-                    <div className="h-[60%] min-h-0 overflow-hidden">
+                    <div className="h-[55%] min-h-0 overflow-hidden">
                       <TrackingBrazilMap estadoData={chartData.estado} onEstadoClick={handleEstadoClick} selectedEstado={selectedEstado} />
                     </div>
                   </div>

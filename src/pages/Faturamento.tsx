@@ -5,7 +5,7 @@ import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
 import { useFollowupData } from "@/hooks/useFollowupData";
 import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useCityMapping } from "@/hooks/useCityMapping";
 import { Badge } from "@/components/ui/badge";
 import {
   BarChart,
@@ -27,7 +27,7 @@ import { formatCurrency, allMonthValues } from "@/data/mockData";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { DollarSign, Warehouse, Truck, Percent, Clock, X, AlertCircle, InboxIcon, Loader2 } from "lucide-react";
+import { Clock, X, AlertCircle, InboxIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const COLORS = ['hsl(45, 100%, 50%)', 'hsl(217, 91%, 60%)', 'hsl(25, 95%, 53%)', 'hsl(142, 76%, 36%)', 'hsl(280, 65%, 60%)', 'hsl(340, 82%, 52%)', 'hsl(180, 70%, 45%)'];
@@ -52,9 +52,10 @@ const Faturamento = () => {
   } = useFollowupData(codCli, "faturamento");
 
   const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [activeTab, setActiveTab] = useState("bside");
   const [showError, setShowError] = useState(true);
   const [showRefreshProgress, setShowRefreshProgress] = useState(true);
+  // B-SIDE / D-SIDE multi-select filter (empty = show all)
+  const [selectedSides, setSelectedSides] = useState<string[]>([]);
 
   // Global filters
   const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
@@ -70,8 +71,8 @@ const Faturamento = () => {
 
   // Compute faturamento data from API
   const faturamentoResult = useMemo(() => {
-    return getFaturamentoData(selectedMonths, selectedYears);
-  }, [getFaturamentoData, selectedMonths, selectedYears]);
+    return getFaturamentoData(selectedMonths, selectedYears, selectedSides);
+  }, [getFaturamentoData, selectedMonths, selectedYears, selectedSides]);
 
   const { mensal, totals, tipoServico: tipoServicoData, modalidade: modalidadeData, campanha: campanhaData, regional: regionalData } = faturamentoResult;
 
@@ -148,6 +149,7 @@ const Faturamento = () => {
     setSelectedMonths([]);
     setSelectedYears([]);
     setSelectedGlobalRegions([]);
+    setSelectedSides([]);
     clearAllFilters();
   }, [clearAllFilters]);
 
@@ -179,10 +181,12 @@ const Faturamento = () => {
         onMonthsChange={setSelectedMonths}
         onYearsChange={setSelectedYears}
         onRegionsChange={setSelectedGlobalRegions}
+        selectedSides={selectedSides}
+        onSidesChange={setSelectedSides}
         onRefreshData={handleRefreshData}
         onExportExcel={handleExportExcel}
         onClearAllFilters={clearGlobalFilters}
-        hasActiveFilters={hasGlobalFilters || hasActiveFilters}
+        hasActiveFilters={hasGlobalFilters || hasActiveFilters || selectedSides.length > 0}
       />
 
       {/* Refresh Progress */}
@@ -262,92 +266,51 @@ const Faturamento = () => {
 
         {/* Main Content */}
         {hasData && (
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="bg-dashboard-card border border-dashboard-border">
-              <TabsTrigger value="bside" className="data-[state=active]:bg-dashboard-accent data-[state=active]:text-dashboard-dark">
-                B-SIDE
-              </TabsTrigger>
-              <TabsTrigger value="dside" className="data-[state=active]:bg-dashboard-accent data-[state=active]:text-dashboard-dark">
-                D-SIDE
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="bside" className="space-y-4 mt-4">
-              {/* Row 1: KPI Cards + Transporte/Armazenagem Mensal */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Left: KPI Cards */}
-                <div className="lg:col-span-2 space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                    <Card className="bg-dashboard-card border-dashboard-border md:col-span-1">
-                      <CardContent className="p-6 text-center">
-                        <DollarSign className="h-8 w-8 mx-auto mb-2 text-dashboard-accent" />
-                        <p className="text-sm text-muted-foreground mb-1">Faturamento</p>
-                        <p className="text-lg sm:text-2xl font-bold text-dashboard-accent break-all">{formatCurrency(displayTotals.faturamento)}</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="bg-dashboard-card border-dashboard-border">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Warehouse className="h-4 w-4 text-dashboard-blue" />
-                          <span className="text-xs text-muted-foreground">R$ Armazenagem</span>
-                        </div>
-                        <p className="text-xl font-bold text-foreground">{formatCurrency(displayTotals.armazenagem)}</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="bg-dashboard-card border-dashboard-border">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Percent className="h-4 w-4 text-dashboard-blue" />
-                          <span className="text-xs text-muted-foreground">% Armazenagem</span>
-                        </div>
-                        <p className="text-xl font-bold text-foreground">{displayTotals.percentArmazenagem.toFixed(0)}%</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="bg-dashboard-card border-dashboard-border">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Truck className="h-4 w-4 text-dashboard-orange" />
-                          <span className="text-xs text-muted-foreground">R$ Transporte</span>
-                        </div>
-                        <p className="text-xl font-bold text-foreground">{formatCurrency(displayTotals.transporte)}</p>
-                      </CardContent>
-                    </Card>
-                    <Card className="bg-dashboard-card border-dashboard-border">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Percent className="h-4 w-4 text-dashboard-orange" />
-                          <span className="text-xs text-muted-foreground">% Transporte</span>
-                        </div>
-                        <p className="text-xl font-bold text-foreground">{displayTotals.percentTransporte.toFixed(0)}%</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-
-                {/* Right: Transporte Mensal */}
+          <div className="space-y-4">
+              {/* Row 1: KPI Cards - matching image layout */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                {/* Big Faturamento card */}
+                <Card className="bg-dashboard-card border-dashboard-accent border-2 sm:row-span-2 md:col-span-1 flex items-center justify-center">
+                  <CardContent className="p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-2">Faturamento</p>
+                    <p className="text-2xl sm:text-3xl font-black text-dashboard-accent break-all">{formatCurrency(displayTotals.faturamento)}</p>
+                  </CardContent>
+                </Card>
+                {/* R$ Armazenagem */}
                 <Card className="bg-dashboard-card border-dashboard-border">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Transporte Mensal</CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-[140px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={transporteMensalData} layout="vertical" margin={{ right: 80 }}>
-                        <XAxis type="number" hide />
-                        <YAxis type="category" dataKey="mes" stroke="hsl(0, 0%, 60%)" fontSize={11} width={65} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} formatter={(value: number) => formatCurrency(value)} />
-                        <Bar dataKey="value" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]}>
-                          <LabelList dataKey="value" position="right" formatter={(v: number) => formatCurrency(v)} style={{ fill: 'hsl(0, 0%, 80%)', fontSize: 11 }} />
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <CardContent className="p-4 text-center">
+                    <span className="text-xs text-muted-foreground">R$ Armazenagem</span>
+                    <p className="text-lg font-bold text-foreground mt-1">{formatCurrency(displayTotals.armazenagem)}</p>
+                  </CardContent>
+                </Card>
+                {/* % Armazenagem */}
+                <Card className="bg-dashboard-card border-dashboard-border">
+                  <CardContent className="p-4 text-center">
+                    <span className="text-xs text-muted-foreground">% Armazenagem</span>
+                    <p className="text-lg font-bold text-foreground mt-1">{displayTotals.percentArmazenagem.toFixed(0)}%</p>
+                  </CardContent>
+                </Card>
+                {/* R$ Transporte */}
+                <Card className="bg-dashboard-card border-dashboard-border">
+                  <CardContent className="p-4 text-center">
+                    <span className="text-xs text-muted-foreground">R$ Transporte</span>
+                    <p className="text-lg font-bold text-foreground mt-1">{formatCurrency(displayTotals.transporte)}</p>
+                  </CardContent>
+                </Card>
+                {/* % Transporte */}
+                <Card className="bg-dashboard-card border-dashboard-border">
+                  <CardContent className="p-4 text-center">
+                    <span className="text-xs text-muted-foreground">% Transporte</span>
+                    <p className="text-lg font-bold text-foreground mt-1">{displayTotals.percentTransporte.toFixed(0)}%</p>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Row 2: Faturamento Mensal line + Armazenagem Mensal bar */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Faturamento Mensal */}
-                <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedMonth ? 'ring-2 ring-dashboard-accent' : ''}`}>
+
+              {/* Row 2: Faturamento Mensal line chart + Transporte Mensal bars */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Faturamento Mensal - takes 2/3 */}
+                <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all md:col-span-2 ${selectedMonth ? 'ring-2 ring-dashboard-accent' : ''}`}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-foreground">Faturamento Mensal</CardTitle>
                   </CardHeader>
@@ -382,14 +345,14 @@ const Faturamento = () => {
                   </CardContent>
                 </Card>
 
-                {/* Armazenagem Mensal */}
+                {/* Transporte Mensal - takes 1/3 */}
                 <Card className="bg-dashboard-card border-dashboard-border">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Armazenagem Mensal</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">Transporte Mensal</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[250px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={armazenagemMensalData} layout="vertical" margin={{ right: 80 }}>
+                      <BarChart data={transporteMensalData} layout="vertical" margin={{ right: 80 }}>
                         <XAxis type="number" hide />
                         <YAxis type="category" dataKey="mes" stroke="hsl(0, 0%, 60%)" fontSize={11} width={65} />
                         <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} formatter={(value: number) => formatCurrency(value)} />
@@ -491,42 +454,54 @@ const Faturamento = () => {
                 </Card>
               </div>
 
-              {/* Row 4: Campanha */}
-              <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedCampanha ? 'ring-2 ring-purple-500' : ''}`}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-foreground">Faturamento | Campanha</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[220px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={campanhaData} layout="vertical" margin={{ right: 80 }} onClick={(data) => {
-                      if (data && data.activePayload && data.activePayload[0]) {
-                        const campanha = data.activePayload[0].payload.name;
-                        setSelectedCampanha(prev => prev === campanha ? null : campanha);
-                      }
-                    }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
-                      <XAxis type="number" hide />
-                      <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={9} width={200} />
-                      <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} formatter={(value: number) => formatCurrency(value)} />
-                      <Bar dataKey="value" fill="hsl(25, 95%, 53%)" radius={[0, 4, 4, 0]}>
-                        <LabelList dataKey="value" position="right" formatter={(v: number) => formatCurrency(v)} style={{ fill: 'hsl(0, 0%, 80%)', fontSize: 11 }} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </TabsContent>
+              {/* Row 4: Campanha + Armazenagem Mensal */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedCampanha ? 'ring-2 ring-purple-500' : ''}`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-foreground">Faturamento | Campanha</CardTitle>
+                  </CardHeader>
+                  <CardContent className="max-h-[300px] overflow-y-auto popover-dark-scroll">
+                    <div style={{ height: Math.max(220, campanhaData.length * 30) }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={campanhaData} layout="vertical" margin={{ right: 80 }} onClick={(data) => {
+                          if (data && data.activePayload && data.activePayload[0]) {
+                            const campanha = data.activePayload[0].payload.name;
+                            setSelectedCampanha(prev => prev === campanha ? null : campanha);
+                          }
+                        }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
+                          <XAxis type="number" hide />
+                          <YAxis type="category" dataKey="name" stroke="hsl(0, 0%, 60%)" fontSize={9} width={200} />
+                          <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} formatter={(value: number) => formatCurrency(value)} />
+                          <Bar dataKey="value" fill="hsl(25, 95%, 53%)" radius={[0, 4, 4, 0]}>
+                            <LabelList dataKey="value" position="right" formatter={(v: number) => formatCurrency(v)} style={{ fill: 'hsl(0, 0%, 80%)', fontSize: 11 }} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <TabsContent value="dside" className="mt-4">
-              <Card className="bg-dashboard-card border-dashboard-border">
-                <CardContent className="p-12 text-center">
-                  <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">D-SIDE em Desenvolvimento</h3>
-                  <p className="text-muted-foreground">Esta funcionalidade estará disponível em breve.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                {/* Armazenagem Mensal */}
+                <Card className="bg-dashboard-card border-dashboard-border">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-foreground">Armazenagem Mensal</CardTitle>
+                  </CardHeader>
+                  <CardContent className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={armazenagemMensalData} layout="vertical" margin={{ right: 80 }}>
+                        <XAxis type="number" hide />
+                        <YAxis type="category" dataKey="mes" stroke="hsl(0, 0%, 60%)" fontSize={11} width={65} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} formatter={(value: number) => formatCurrency(value)} />
+                        <Bar dataKey="value" fill="hsl(217, 91%, 60%)" radius={[0, 4, 4, 0]}>
+                          <LabelList dataKey="value" position="right" formatter={(v: number) => formatCurrency(v)} style={{ fill: 'hsl(0, 0%, 80%)', fontSize: 11 }} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+          </div>
         )}
       </div>
     </div>
