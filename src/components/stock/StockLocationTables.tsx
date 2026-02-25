@@ -305,6 +305,7 @@ export const StockLocationTables = ({
                   <span className="text-dashboard-accent">{modalItem.sku}</span>
                   <span className="text-foreground">{modalItem.name}</span>
                 </DialogTitle>
+                <p className="text-sm text-muted-foreground mt-1">Fornecedor: <span className="text-foreground font-medium">{modalItem.category || "-"}</span></p>
               </DialogHeader>
               <div className="space-y-6">
                 {/* Large product image */}
@@ -346,16 +347,10 @@ export const StockLocationTables = ({
                   </div>
                 </div>
 
-                {/* Fornecedor */}
-                <div className="bg-dashboard-dark rounded-xl p-4">
-                  <h3 className="text-sm font-semibold text-foreground mb-1">Fornecedor</h3>
-                  <p className="text-foreground text-sm">{modalItem.category || "-"}</p>
-                </div>
-
-                {/* Movimentações - full width */}
-                <div className="bg-dashboard-dark rounded-xl p-4 space-y-2">
+                {/* Movimentações - full width side by side */}
+                <div className="bg-dashboard-dark rounded-xl p-4 space-y-3">
                   <h3 className="text-sm font-semibold text-foreground">Movimentações</h3>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
                     <div><span className="text-muted-foreground">Ult. Entrada:</span> <span className="text-foreground">{modalItem.lastEntryQty ?? "-"} un - {modalItem.lastEntryDate || "-"}</span></div>
                     <div><span className="text-muted-foreground">Ult. Saída:</span> <span className="text-foreground">{modalItem.lastExitQty ?? "-"} un - {modalItem.lastExitDate || "-"}</span></div>
                     <div><span className="text-muted-foreground">Total Entradas:</span> <span className="text-foreground">{modalItem.totalEntryQty != null ? formatNumber(modalItem.totalEntryQty) : "-"}</span></div>
