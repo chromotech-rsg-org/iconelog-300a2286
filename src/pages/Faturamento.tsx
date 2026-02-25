@@ -34,7 +34,9 @@ const COLORS = ['hsl(45, 100%, 50%)', 'hsl(217, 91%, 60%)', 'hsl(25, 95%, 53%)',
 
 const Faturamento = () => {
   const currentYear = new Date().getFullYear();
-
+  const currentMonth = new Date().getMonth() + 1;
+  // Default: all months from Jan to current month
+  const defaultMonths = Array.from({ length: currentMonth }, (_, i) => i + 1);
   const { getCodCli, loading: settingsLoading } = useBiSettingsContext();
   const codCli = getCodCli("faturamento");
 
@@ -58,8 +60,8 @@ const Faturamento = () => {
   const [selectedSides, setSelectedSides] = useState<string[]>([]);
 
   // Global filters
-  const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
-  const [selectedYears, setSelectedYears] = useState<number[]>([]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(defaultMonths);
+  const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedGlobalRegions, setSelectedGlobalRegions] = useState<string[]>([]);
 
   // BI interactivity filters
@@ -69,33 +71,36 @@ const Faturamento = () => {
   const [selectedTipoServico, setSelectedTipoServico] = useState<string | null>(null);
   const [selectedCampanha, setSelectedCampanha] = useState<string | null>(null);
 
-  // Compute faturamento data from API
+  // Interactive filters for cross-filtering
+  const interactiveFilters = useMemo(() => ({
+    selectedMonth,
+    selectedRegional,
+    selectedModalidade,
+    selectedTipoServico,
+    selectedCampanha,
+  }), [selectedMonth, selectedRegional, selectedModalidade, selectedTipoServico, selectedCampanha]);
+
+  // Filters WITHOUT selectedMonth - for the monthly line chart (so all months remain visible/clickable)
+  const chartInteractiveFilters = useMemo(() => ({
+    selectedMonth: null,
+    selectedRegional,
+    selectedModalidade,
+    selectedTipoServico,
+    selectedCampanha,
+  }), [selectedRegional, selectedModalidade, selectedTipoServico, selectedCampanha]);
+
+  // Full cross-filtered result (KPIs + breakdown charts)
   const faturamentoResult = useMemo(() => {
-    return getFaturamentoData(selectedMonths, selectedYears, selectedSides);
-  }, [getFaturamentoData, selectedMonths, selectedYears, selectedSides]);
+    return getFaturamentoData(selectedMonths, selectedYears, selectedSides, interactiveFilters);
+  }, [getFaturamentoData, selectedMonths, selectedYears, selectedSides, interactiveFilters]);
 
-  const { mensal, totals, tipoServico: tipoServicoData, modalidade: modalidadeData, campanha: campanhaData, regional: regionalData } = faturamentoResult;
+  // Chart-specific result without month filter (for monthly line/bar charts)
+  const chartResult = useMemo(() => {
+    return getFaturamentoData(selectedMonths, selectedYears, selectedSides, chartInteractiveFilters);
+  }, [getFaturamentoData, selectedMonths, selectedYears, selectedSides, chartInteractiveFilters]);
 
-  // Filtered monthly data when a specific month is clicked
-  const filteredMensal = useMemo(() => {
-    if (!selectedMonth) return mensal;
-    return mensal.filter(d => d.mes === selectedMonth);
-  }, [mensal, selectedMonth]);
-
-  // Recalculate totals based on filtered month
-  const displayTotals = useMemo(() => {
-    if (!selectedMonth) return totals;
-    const f = filteredMensal.reduce((acc, m) => ({
-      faturamento: acc.faturamento + m.faturamento,
-      armazenagem: acc.armazenagem + m.armazenagem,
-      transporte: acc.transporte + m.transporte,
-    }), { faturamento: 0, armazenagem: 0, transporte: 0 });
-    return {
-      ...f,
-      percentArmazenagem: f.faturamento > 0 ? (f.armazenagem / f.faturamento) * 100 : 0,
-      percentTransporte: f.faturamento > 0 ? (f.transporte / f.faturamento) * 100 : 0,
-    };
-  }, [filteredMensal, selectedMonth, totals]);
+  const { totals: displayTotals, tipoServico: tipoServicoData, modalidade: modalidadeData, campanha: campanhaData, regional: regionalData } = faturamentoResult;
+  const { mensal } = chartResult;
 
   useEffect(() => {
     if (lastUpdateAt) setLastUpdate(lastUpdateAt);
@@ -146,12 +151,12 @@ const Faturamento = () => {
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
-    setSelectedMonths([]);
-    setSelectedYears([]);
+    setSelectedMonths(defaultMonths);
+    setSelectedYears([currentYear]);
     setSelectedGlobalRegions([]);
     setSelectedSides([]);
     clearAllFilters();
-  }, [clearAllFilters]);
+  }, [clearAllFilters, defaultMonths, currentYear]);
 
   const hasActiveFilters = !!(selectedMonth || selectedRegional || selectedModalidade || selectedTipoServico || selectedCampanha);
   const hasGlobalFilters = selectedMonths.length > 0 || selectedYears.length > 0 || selectedGlobalRegions.length > 0;
