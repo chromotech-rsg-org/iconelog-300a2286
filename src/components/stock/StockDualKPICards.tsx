@@ -7,6 +7,7 @@ interface StockDualKPICardsProps {
   matrizM3: number;
   matrizQtdeSKUs: number;
   matrizKits: number;
+  matrizKitsCompleto: number;
 }
 
 export const StockDualKPICards = ({
@@ -14,6 +15,7 @@ export const StockDualKPICards = ({
   matrizM3,
   matrizQtdeSKUs,
   matrizKits,
+  matrizKitsCompleto,
 }: StockDualKPICardsProps) => {
   return (
     <Card className="bg-dashboard-card border-dashboard-border">
@@ -38,9 +40,9 @@ export const StockDualKPICards = ({
             <p className="text-lg font-bold text-foreground">{formatNumber(matrizQtdeSKUs)}</p>
           </div>
           <div className="text-center">
-            <Boxes className="h-5 w-5 mx-auto mb-1 text-dashboard-orange" />
-            <p className="text-xs text-muted-foreground">Kits</p>
-            <p className="text-lg font-bold text-foreground">{formatNumber(matrizKits)}</p>
+           <Boxes className="h-5 w-5 mx-auto mb-1 text-dashboard-orange" />
+            <p className="text-xs text-muted-foreground">Kits Completo</p>
+            <p className="text-lg font-bold text-foreground">{formatNumber(matrizKitsCompleto)}</p>
           </div>
         </div>
       </CardContent>
