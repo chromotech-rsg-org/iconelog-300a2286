@@ -277,12 +277,12 @@ const Faturamento = () => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Left: KPI Cards */}
                 <div className="lg:col-span-2 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                     <Card className="bg-dashboard-card border-dashboard-border md:col-span-1">
                       <CardContent className="p-6 text-center">
                         <DollarSign className="h-8 w-8 mx-auto mb-2 text-dashboard-accent" />
                         <p className="text-sm text-muted-foreground mb-1">Faturamento</p>
-                        <p className="text-2xl font-bold text-dashboard-accent">{formatCurrency(displayTotals.faturamento)}</p>
+                        <p className="text-lg sm:text-2xl font-bold text-dashboard-accent break-all">{formatCurrency(displayTotals.faturamento)}</p>
                       </CardContent>
                     </Card>
                     <Card className="bg-dashboard-card border-dashboard-border">

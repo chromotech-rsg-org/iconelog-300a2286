@@ -319,21 +319,21 @@ const EstoqueConsolidado = () => {
               <CardTitle className="text-lg font-bold text-yellow-400">ESTOQUE MATRIZ</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="text-center">
                   <DollarSign className="h-7 w-7 mx-auto mb-1 text-green-500" />
                   <p className="text-sm font-medium text-muted-foreground">Valor</p>
-                  <p className="text-3xl font-black text-foreground">{formatCurrency(filteredMatrizTotals.valor)}</p>
+                  <p className="text-xl sm:text-3xl font-black text-foreground break-all">{formatCurrency(filteredMatrizTotals.valor)}</p>
                 </div>
                 <div className="text-center">
                   <Box className="h-7 w-7 mx-auto mb-1 text-blue-500" />
                   <p className="text-sm font-medium text-muted-foreground">M³</p>
-                  <p className="text-3xl font-black text-foreground">{filteredMatrizTotals.m3.toFixed(1)}</p>
+                  <p className="text-xl sm:text-3xl font-black text-foreground">{filteredMatrizTotals.m3.toFixed(1)}</p>
                 </div>
                 <div className="text-center">
                   <Package className="h-7 w-7 mx-auto mb-1 text-primary" />
                   <p className="text-sm font-medium text-muted-foreground">Qtde SKUs</p>
-                  <p className="text-3xl font-black text-foreground">{formatNumber(filteredMatrizTotals.qtdeSKUs)}</p>
+                  <p className="text-xl sm:text-3xl font-black text-foreground">{formatNumber(filteredMatrizTotals.qtdeSKUs)}</p>
                 </div>
               </div>
             </CardContent>
@@ -344,21 +344,21 @@ const EstoqueConsolidado = () => {
               <CardTitle className="text-lg font-bold text-blue-400">ESTOQUE BASE</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="text-center">
                   <DollarSign className="h-7 w-7 mx-auto mb-1 text-green-500" />
                   <p className="text-sm font-medium text-muted-foreground">Valor</p>
-                  <p className="text-3xl font-black text-foreground">{formatCurrency(filteredBaseTotals.valor)}</p>
+                  <p className="text-xl sm:text-3xl font-black text-foreground break-all">{formatCurrency(filteredBaseTotals.valor)}</p>
                 </div>
                 <div className="text-center">
                   <Box className="h-7 w-7 mx-auto mb-1 text-blue-500" />
                   <p className="text-sm font-medium text-muted-foreground">M³</p>
-                  <p className="text-3xl font-black text-foreground">{filteredBaseTotals.m3.toFixed(1)}</p>
+                  <p className="text-xl sm:text-3xl font-black text-foreground">{filteredBaseTotals.m3.toFixed(1)}</p>
                 </div>
                 <div className="text-center">
                   <Package className="h-7 w-7 mx-auto mb-1 text-primary" />
                   <p className="text-sm font-medium text-muted-foreground">Qtde SKUs</p>
-                  <p className="text-3xl font-black text-foreground">{formatNumber(filteredBaseTotals.qtdeSKUs)}</p>
+                  <p className="text-xl sm:text-3xl font-black text-foreground">{formatNumber(filteredBaseTotals.qtdeSKUs)}</p>
                 </div>
               </div>
             </CardContent>
@@ -366,7 +366,7 @@ const EstoqueConsolidado = () => {
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* 1. Representação do Estoque | Grupo - Blue Pie */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
             <CardHeader className="pb-1">

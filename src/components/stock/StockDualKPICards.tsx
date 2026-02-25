@@ -23,7 +23,7 @@ export const StockDualKPICards = ({
         <CardTitle className="text-sm font-medium text-dashboard-accent">ESTOQUE MATRIZ (BARUERI)</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="text-center">
             <DollarSign className="h-5 w-5 mx-auto mb-1 text-green-500" />
             <p className="text-xs text-muted-foreground">Valor</p>
