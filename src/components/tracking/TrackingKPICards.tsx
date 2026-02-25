@@ -19,7 +19,7 @@ interface Props {
 
 export const TrackingKPICards = ({ kpis, onPrazoClick, selectedPrazo }: Props) => {
   return (
-    <div className="flex gap-2 h-full items-stretch">
+    <div className="flex flex-col sm:flex-row gap-2 h-full items-stretch">
       {/* Quantidade de Pedidos — big card */}
       <Card className="bg-card border-primary/60 border-2 flex-1 min-w-0">
         <CardContent className="p-3 flex flex-col items-center justify-center h-full">

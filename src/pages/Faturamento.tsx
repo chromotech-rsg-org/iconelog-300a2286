@@ -277,7 +277,7 @@ const Faturamento = () => {
                 {/* Left block: KPIs above + Faturamento Mensal below — 3/4 width */}
                 <div className="lg:col-span-3 flex flex-col gap-4">
                   {/* KPI Cards: 1 big left + 2x2 grid right (same as Tracking) */}
-                  <div className="flex gap-2 h-full items-stretch">
+                  <div className="flex flex-col sm:flex-row gap-2 h-full items-stretch">
                     {/* Big Faturamento card */}
                     <Card className="bg-card border-primary/60 border-2 flex-1 min-w-0">
                       <CardContent className="p-3 flex flex-col items-center justify-center h-full">
