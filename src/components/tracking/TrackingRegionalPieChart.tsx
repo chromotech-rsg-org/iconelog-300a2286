@@ -41,10 +41,10 @@ export const TrackingRegionalPieChart = ({ data, onRegionalClick, selectedRegion
           <PieChart>
             <Pie
               data={withPercent}
-              cx="65%"
+              cx="60%"
               cy="50%"
-              outerRadius="80%"
-              innerRadius="35%"
+              outerRadius="75%"
+              innerRadius="30%"
               dataKey="value"
               nameKey="name"
               label={renderLabel}

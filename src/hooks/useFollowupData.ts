@@ -585,9 +585,9 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     };
   }, [followupData, cityMappings]);
 
-  const getFaturamentoData = useCallback((months: number[], years: number[]) => {
+  const getFaturamentoData = useCallback((months: number[], years: number[], sides: string[] = []) => {
     // Filter by _fetch_month/_fetch_year tags (same pattern as other getters)
-    const filtered = (months?.length || years?.length)
+    let filtered = (months?.length || years?.length)
       ? followupData.filter(item => {
           const ms = months || [];
           const ys = years || [];
@@ -599,7 +599,19 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           return dateMatchesMonthYear(item.dt_expedicao, ms, ys) ||
                  dateMatchesMonthYear(item.dt_emissao, ms, ys);
         })
-      : followupData;
+      : [...followupData];
+
+    // B-SIDE / D-SIDE filter
+    if (sides.length > 0) {
+      filtered = filtered.filter(item => {
+        const ccusto = (item.nr_ccusto_ped_cliente || "").toUpperCase().trim();
+        return sides.some(s => {
+          const sNorm = s.replace("-", "").replace(" ", "").toUpperCase();
+          const ccustoNorm = ccusto.replace("-", "").replace(" ", "");
+          return ccustoNorm.includes(sNorm) || ccustoNorm === sNorm || ccusto.includes(s.toUpperCase());
+        });
+      });
+    }
 
     // Monthly breakdown
     const monthlyMap = new Map<string, { mes: string; mesNum: number; ano: number; faturamento: number; armazenagem: number; transporte: number }>();
@@ -650,10 +662,17 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       const campanha = (item.nm_campanha || item.ds_campanha || item.campanha || "OUTROS").toUpperCase();
       campanhaMap.set(campanha, (campanhaMap.get(campanha) || 0) + valor);
 
-      // Regional
-      const cidade = item.ds_cidade_DES || item.ds_cidade || "";
-      const regional = resolveRegional(cidade, cityMappings);
-      regionalMap.set(regional, (regionalMap.get(regional) || 0) + valor);
+      // Regional - macro region based on UF
+      const UF_TO_MACRO: Record<string, string> = {
+        SP: "Sudeste", RJ: "Sudeste", MG: "Sudeste", ES: "Sudeste",
+        BA: "Nordeste", SE: "Nordeste", AL: "Nordeste", PE: "Nordeste", PB: "Nordeste", RN: "Nordeste", CE: "Nordeste", PI: "Nordeste", MA: "Nordeste",
+        PR: "Sul", SC: "Sul", RS: "Sul",
+        AM: "Norte", PA: "Norte", AC: "Norte", RO: "Norte", RR: "Norte", AP: "Norte", TO: "Norte",
+        GO: "Centro-Oeste", MT: "Centro-Oeste", MS: "Centro-Oeste", DF: "Centro-Oeste",
+      };
+      const uf = (item.ds_uf_DES || item.ds_uf || "").toUpperCase().trim();
+      const macroRegion = UF_TO_MACRO[uf] || "Outros";
+      regionalMap.set(macroRegion, (regionalMap.get(macroRegion) || 0) + valor);
     });
 
     const mensal = Array.from(monthlyMap.values()).sort((a, b) => a.ano - b.ano || a.mesNum - b.mesNum);
