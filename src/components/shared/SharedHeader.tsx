@@ -230,39 +230,37 @@ import { CalendarFilter } from "./CalendarFilter";
     <>
      <header className="w-full border-b border-dashboard-border bg-dashboard-card sticky top-0 z-40">
       {/* Top bar with logo, page title, update time, and navigation */}
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 gap-2">
         {/* Logo and Page Title */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 shrink">
           <img 
-             src={pageLogo} 
+            src={pageLogo} 
             alt="Logo" 
-            className="h-12 w-12 rounded-lg object-cover border-2 border-dashboard-accent"
+            className="h-8 w-8 sm:h-12 sm:w-12 rounded-lg object-cover border-2 border-dashboard-accent shrink-0"
           />
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">{pageTitle}</h1>
+          <h1 className="text-sm sm:text-lg font-semibold text-foreground truncate">{pageTitle}</h1>
+        </div>
+
+        {/* Last update + refresh + nav */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span>Última atualização: {formatLastUpdate(lastUpdate)}</span>
           </div>
-        </div>
-
-        {/* Last update */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Clock className="h-4 w-4" />
-          <span className="hidden sm:inline">Última atualização: {formatLastUpdate(lastUpdate)}</span>
-          <span className="sm:hidden">{formatLastUpdate(lastUpdate)}</span>
+          <span className="sm:hidden text-[10px] text-muted-foreground whitespace-nowrap">{formatLastUpdate(lastUpdate)}</span>
           {showRefresh && onRefreshData && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleRefresh}
-                className="h-8 w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
-                title="Atualizar dados"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleRefresh}
+              className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
+              title="Atualizar dados"
+            >
+              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            </Button>
           )}
+          <NavigationMenu />
         </div>
-
-        {/* Navigation menu */}
-        <NavigationMenu />
       </div>
 
       {/* Filters bar - only shown if showFilters is true */}
