@@ -37,7 +37,7 @@ interface StockLocationTablesProps {
 }
 
 type SortDirection = "asc" | "desc" | null;
-type SortField = "sku" | "name" | "stockQuantity" | "kitsQuantity" | "value" | "lastEntryQty" | "lastEntryDate";
+type SortField = "sku" | "name" | "category" | "stockQuantity" | "kitsQuantity" | "lastEntryQty" | "lastEntryDate";
 
 interface SortConfig {
   field: SortField | null;
@@ -69,15 +69,15 @@ export const StockLocationTables = ({
         let aVal: number | string;
         let bVal: number | string;
 
-        switch (sortConfig.field) {
-          case "sku": aVal = a.sku; bVal = b.sku; break;
-          case "name": aVal = a.name; bVal = b.name; break;
-          case "stockQuantity": aVal = a.stockQuantity; bVal = b.stockQuantity; break;
-          case "kitsQuantity": aVal = a.kitsQuantity; bVal = b.kitsQuantity; break;
-          case "value": aVal = a.totalValue; bVal = b.totalValue; break;
-          case "lastEntryQty": aVal = a.lastEntryQty || 0; bVal = b.lastEntryQty || 0; break;
-          case "lastEntryDate": aVal = a.lastEntryDate || ""; bVal = b.lastEntryDate || ""; break;
-          default: return 0;
+          switch (sortConfig.field) {
+            case "sku": aVal = a.sku; bVal = b.sku; break;
+            case "name": aVal = a.name; bVal = b.name; break;
+            case "category": aVal = a.category; bVal = b.category; break;
+            case "stockQuantity": aVal = a.stockQuantity; bVal = b.stockQuantity; break;
+            case "kitsQuantity": aVal = a.kitsQuantity; bVal = b.kitsQuantity; break;
+            case "lastEntryQty": aVal = a.lastEntryQty || 0; bVal = b.lastEntryQty || 0; break;
+            case "lastEntryDate": aVal = a.lastEntryDate || ""; bVal = b.lastEntryDate || ""; break;
+            default: return 0;
         }
 
         if (typeof aVal === "string" && typeof bVal === "string") {
@@ -158,21 +158,21 @@ export const StockLocationTables = ({
             <Table>
               <TableHeader className="sticky top-0 bg-dashboard-card z-10">
                 <TableRow className="border-dashboard-border">
-                  <TableHead className="text-muted-foreground text-xs w-20">Foto</TableHead>
+                 <TableHead className="text-muted-foreground text-xs w-24">Foto</TableHead>
                   <TableHead className="text-muted-foreground text-xs cursor-pointer hover:text-foreground" onClick={() => handleSort("sku")}>
                     <span className="flex items-center">Código <SortIcon field="sku" /></span>
                   </TableHead>
                   <TableHead className="text-muted-foreground text-xs cursor-pointer hover:text-foreground" onClick={() => handleSort("name")}>
                     <span className="flex items-center">Nome <SortIcon field="name" /></span>
                   </TableHead>
+                  <TableHead className="text-muted-foreground text-xs cursor-pointer hover:text-foreground" onClick={() => handleSort("category")}>
+                    <span className="flex items-center">Fornecedor <SortIcon field="category" /></span>
+                  </TableHead>
                   <TableHead className="text-muted-foreground text-xs text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("stockQuantity")}>
                     <span className="flex items-center justify-end">Qtde <SortIcon field="stockQuantity" /></span>
                   </TableHead>
                   <TableHead className="text-muted-foreground text-xs text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("kitsQuantity")}>
                     <span className="flex items-center justify-end">Kits <SortIcon field="kitsQuantity" /></span>
-                  </TableHead>
-                  <TableHead className="text-muted-foreground text-xs text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("value")}>
-                    <span className="flex items-center justify-end">Valor <SortIcon field="value" /></span>
                   </TableHead>
                   <TableHead className="text-muted-foreground text-xs text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("lastEntryQty")}>
                     <span className="flex items-center justify-end">Ult. Ent. Qtd <SortIcon field="lastEntryQty" /></span>
@@ -198,11 +198,11 @@ export const StockLocationTables = ({
                         <img
                           src={item.imageUrl}
                           alt={item.name}
-                          className="w-16 h-16 rounded-lg object-cover border border-dashboard-border cursor-pointer hover:opacity-80 transition-opacity"
+                          className="w-20 h-20 rounded-lg object-contain bg-white border border-dashboard-border cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={(e) => { e.stopPropagation(); setModalItem(item); }}
                         />
                       ) : (
-                        <div className="w-16 h-16 rounded-lg bg-dashboard-border flex items-center justify-center text-xs text-muted-foreground">
+                        <div className="w-20 h-20 rounded-lg bg-dashboard-border flex items-center justify-center text-xs text-muted-foreground">
                           N/A
                         </div>
                       )}
@@ -219,9 +219,9 @@ export const StockLocationTables = ({
                     >
                       {item.name}
                     </TableCell>
+                    <TableCell className="text-muted-foreground text-xs py-1.5 truncate max-w-[150px]">{item.category || "-"}</TableCell>
                     <TableCell className="text-foreground text-right text-xs py-1.5">{formatNumber(item.stockQuantity)}</TableCell>
                     <TableCell className="text-foreground text-right text-xs py-1.5">{formatNumber(item.kitsQuantity)}</TableCell>
-                    <TableCell className="text-foreground text-right text-xs py-1.5">{formatCurrency(item.totalValue)}</TableCell>
                     <TableCell className="text-foreground text-right text-xs py-1.5">{item.lastEntryQty != null ? formatNumber(item.lastEntryQty) : "-"}</TableCell>
                     <TableCell
                       className="text-muted-foreground text-right text-xs py-1.5 cursor-pointer hover:underline"
@@ -296,7 +296,6 @@ export const StockLocationTables = ({
         </div>
       )}
 
-      {/* Product detail modal */}
       <Dialog open={!!modalItem} onOpenChange={(open) => !open && setModalItem(null)}>
         <DialogContent className="bg-dashboard-card border-dashboard-border max-w-2xl max-h-[90vh] overflow-y-auto">
           {modalItem && (
@@ -310,7 +309,7 @@ export const StockLocationTables = ({
               <div className="space-y-6">
                 {/* Large product image */}
                 {modalItem.imageUrl && (
-                  <div className="w-full max-h-80 overflow-hidden rounded-xl border border-dashboard-border">
+                  <div className="w-full aspect-square max-h-96 overflow-hidden rounded-xl border border-dashboard-border">
                     <img src={modalItem.imageUrl} alt={modalItem.name} className="w-full h-full object-contain bg-white" />
                   </div>
                 )}
@@ -347,28 +346,23 @@ export const StockLocationTables = ({
                   </div>
                 </div>
 
-                {/* Details */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-dashboard-dark rounded-xl p-4 space-y-2">
-                    <h3 className="text-sm font-semibold text-foreground">Classificação</h3>
-                    <div className="text-xs space-y-1">
-                      <div><span className="text-muted-foreground">Categoria:</span> <span className="text-foreground">{modalItem.category || "-"}</span></div>
-                      <div><span className="text-muted-foreground">Grupo:</span> <span className="text-foreground">{modalItem.group || "-"}</span></div>
-                      <div><span className="text-muted-foreground">SubGrupo:</span> <span className="text-foreground">{modalItem.subGroup || "-"}</span></div>
-                      <div><span className="text-muted-foreground">Condição:</span> <span className="text-foreground">{modalItem.condition || "-"}</span></div>
-                    </div>
-                  </div>
-                  <div className="bg-dashboard-dark rounded-xl p-4 space-y-2">
-                    <h3 className="text-sm font-semibold text-foreground">Movimentações</h3>
-                    <div className="text-xs space-y-1">
-                      <div><span className="text-muted-foreground">Ult. Entrada:</span> <span className="text-foreground">{modalItem.lastEntryQty ?? "-"} un - {modalItem.lastEntryDate || "-"}</span></div>
-                      <div><span className="text-muted-foreground">Ult. Saída:</span> <span className="text-foreground">{modalItem.lastExitQty ?? "-"} un - {modalItem.lastExitDate || "-"}</span></div>
-                      <div><span className="text-muted-foreground">Total Entradas:</span> <span className="text-foreground">{modalItem.totalEntryQty != null ? formatNumber(modalItem.totalEntryQty) : "-"}</span></div>
-                      <div><span className="text-muted-foreground">Total Saídas:</span> <span className="text-foreground">{modalItem.totalExitQty != null ? formatNumber(modalItem.totalExitQty) : "-"}</span></div>
-                      {modalItem.daysSinceLastMovement != null && (
-                        <div><span className="text-muted-foreground">Dias sem mov.:</span> <span className="text-foreground">{modalItem.daysSinceLastMovement}</span></div>
-                      )}
-                    </div>
+                {/* Fornecedor */}
+                <div className="bg-dashboard-dark rounded-xl p-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-1">Fornecedor</h3>
+                  <p className="text-foreground text-sm">{modalItem.category || "-"}</p>
+                </div>
+
+                {/* Movimentações - full width */}
+                <div className="bg-dashboard-dark rounded-xl p-4 space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground">Movimentações</h3>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                    <div><span className="text-muted-foreground">Ult. Entrada:</span> <span className="text-foreground">{modalItem.lastEntryQty ?? "-"} un - {modalItem.lastEntryDate || "-"}</span></div>
+                    <div><span className="text-muted-foreground">Ult. Saída:</span> <span className="text-foreground">{modalItem.lastExitQty ?? "-"} un - {modalItem.lastExitDate || "-"}</span></div>
+                    <div><span className="text-muted-foreground">Total Entradas:</span> <span className="text-foreground">{modalItem.totalEntryQty != null ? formatNumber(modalItem.totalEntryQty) : "-"}</span></div>
+                    <div><span className="text-muted-foreground">Total Saídas:</span> <span className="text-foreground">{modalItem.totalExitQty != null ? formatNumber(modalItem.totalExitQty) : "-"}</span></div>
+                    {modalItem.daysSinceLastMovement != null && (
+                      <div className="col-span-2"><span className="text-muted-foreground">Dias sem mov.:</span> <span className="text-foreground">{modalItem.daysSinceLastMovement}</span></div>
+                    )}
                   </div>
                 </div>
 

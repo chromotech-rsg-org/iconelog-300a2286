@@ -81,10 +81,9 @@ const Estoque = () => {
     const exportData = displayItems.map(item => ({
       Código: item.sku,
       Nome: item.name,
-      Categoria: item.category,
+      Fornecedor: item.category,
       Estoque: item.stockQuantity,
       Kits: item.kitsQuantity,
-      "Valor Total": item.totalValue,
       "M³": item.m3Total,
       "Ult. Entrada Qtd": item.lastEntryQty || "-",
       "Ult. Entrada Data": item.lastEntryDate || "-",
@@ -134,7 +133,10 @@ const Estoque = () => {
     const valor = displayItems.reduce((sum, i) => sum + i.totalValue, 0);
     const m3 = displayItems.reduce((sum, i) => sum + i.m3Total, 0);
     const kits = displayItems.reduce((sum, i) => sum + i.kitsQuantity, 0);
-    return { valor, m3, qtdeSKUs: displayItems.length, kits };
+    const kitsCompleto = displayItems.length > 0
+      ? Math.min(...displayItems.map(i => i.kitsQuantity))
+      : 0;
+    return { valor, m3, qtdeSKUs: displayItems.length, kits, kitsCompleto };
   }, [displayItems]);
 
   const hasActiveFilters = selectedSKU !== null || filterByName !== null || filterByDate !== null;
@@ -235,6 +237,7 @@ const Estoque = () => {
             matrizM3={filteredTotals.m3}
             matrizQtdeSKUs={filteredTotals.qtdeSKUs}
             matrizKits={filteredTotals.kits}
+            matrizKitsCompleto={filteredTotals.kitsCompleto}
           />
 
           <StockLocationTables

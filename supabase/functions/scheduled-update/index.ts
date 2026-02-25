@@ -203,8 +203,8 @@ Deno.serve(async (req) => {
               // Tag each record with fetch metadata
               const tagged = dataArray.map((r: any) => ({
                 ...r,
-                _fetch_month: chunk.data_inicial.substring(5, 7),
-                _fetch_year: chunk.data_inicial.substring(0, 4),
+                _fetch_month: parseInt(chunk.data_inicial.substring(5, 7), 10),
+                _fetch_year: parseInt(chunk.data_inicial.substring(0, 4), 10),
               }));
               allDataArray = allDataArray.concat(tagged);
               console.log(`  Chunk ${chunk.data_inicial}: ${dataArray.length} records`);

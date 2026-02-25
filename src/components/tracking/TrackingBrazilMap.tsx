@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useMemo, useState, useRef, useCallback } from "react";
+import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import BrazilHeatmap, { Tooltip } from "react-brazil-heatmap";
 import "react-brazil-heatmap/dist/style.css";
 import type { GeographyType, MetaItem } from "react-brazil-heatmap";
@@ -39,10 +39,20 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setScale(prev => {
       const next = prev + (e.deltaY < 0 ? 0.2 : -0.2);
       return Math.min(4, Math.max(1, next));
     });
+  }, []);
+
+  // Prevent native wheel scroll on the map container
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => { e.preventDefault(); };
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
   }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
