@@ -1,9 +1,9 @@
 import { useState, useCallback } from "react";
-import { Clock, RotateCcw, Download, RefreshCw, ChevronDown, CalendarIcon } from "lucide-react";
+import { Clock, RotateCcw, Download, RefreshCw, ChevronDown, CalendarIcon, SlidersHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
- import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
+import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -20,6 +20,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { months, years, regions, allMonthValues } from "@/data/mockData";
 import { NavigationMenu } from "./NavigationMenu";
 import { useAuth } from "@/contexts/AuthContext";
@@ -96,6 +103,7 @@ import { CalendarFilter } from "./CalendarFilter";
   // Cooldown modal state
   const [showCooldownModal, setShowCooldownModal] = useState(false);
   const [cooldownRemainingMinutes, setCooldownRemainingMinutes] = useState(0);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   const checkServerCooldown = useCallback(async (): Promise<boolean> => {
     if (refreshIntervalMinutes <= 0) return true; // No cooldown configured
@@ -259,220 +267,312 @@ import { CalendarFilter } from "./CalendarFilter";
 
       {/* Filters bar - only shown if showFilters is true */}
       {showFilters && (
-        <div className="flex flex-wrap items-center gap-4 px-6 py-3 border-t border-dashboard-border">
-          {/* Month selection - desktop */}
-          <div className="hidden md:flex flex-wrap items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleAllMonths}
-              className={`px-2 py-1 text-xs font-bold transition-all duration-200 border ${
-                selectedMonths.length === 12
-                  ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent hover:bg-dashboard-accent/80"
-                  : "text-muted-foreground border-dashboard-border hover:text-dashboard-accent hover:bg-dashboard-border"
-              }`}
-              title={selectedMonths.length === 12 ? "Desmarcar todos" : "Selecionar todos"}
-            >
-              {selectedMonths.length === 12 ? "✓" : "∀"}
-            </Button>
-            {months.map((month) => (
-              <Button
-                key={month.value}
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleMonth(month.value)}
-                className={`px-2 py-1 text-xs font-medium transition-all duration-200 ${
-                  selectedMonths.includes(month.value)
-                    ? "bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent"
-                    : "text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
-                }`}
-              >
-                {month.short}
-              </Button>
-            ))}
+        <>
+          {/* ===== MOBILE: single button that opens a Sheet ===== */}
+          <div className="md:hidden flex items-center gap-2 px-4 py-2 border-t border-dashboard-border">
+            <Sheet open={mobileFilterOpen} onOpenChange={setMobileFilterOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="border-dashboard-border text-foreground hover:bg-dashboard-border flex-1">
+                  <SlidersHorizontal className="mr-2 h-4 w-4" />
+                  Filtros
+                  {(hasActiveFilters || (selectedSides && selectedSides.length > 0)) && (
+                    <span className="ml-2 h-5 w-5 rounded-full bg-dashboard-accent text-dashboard-dark text-[10px] font-bold flex items-center justify-center">!</span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="bg-dashboard-card border-dashboard-border max-h-[85vh] overflow-y-auto popover-dark-scroll">
+                <SheetHeader>
+                  <SheetTitle className="text-foreground">Filtros</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-5 pt-4">
+                  {/* Months */}
+                  <div>
+                    <p className="text-xs text-muted-foreground font-semibold mb-2">Meses</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={toggleAllMonths}
+                        className={`px-3 py-1.5 text-xs font-bold border ${
+                          selectedMonths.length === 12
+                            ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent"
+                            : "text-muted-foreground border-dashboard-border"
+                        }`}
+                      >
+                        {selectedMonths.length === 12 ? "Desmarcar todos" : "Selecionar todos"}
+                      </Button>
+                      {months.map((month) => (
+                        <Button
+                          key={month.value}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleMonth(month.value)}
+                          className={`px-3 py-1.5 text-xs font-medium ${
+                            selectedMonths.includes(month.value)
+                              ? "bg-dashboard-accent text-dashboard-dark"
+                              : "text-muted-foreground hover:text-dashboard-accent"
+                          }`}
+                        >
+                          {month.short}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Years */}
+                  <div>
+                    <p className="text-xs text-muted-foreground font-semibold mb-2">Ano</p>
+                    <div className="flex flex-wrap gap-2">
+                      {uniqueYears.map((year) => (
+                        <Button
+                          key={year}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleYear(year)}
+                          className={`px-3 py-1.5 text-xs font-medium border ${
+                            selectedYears.includes(year)
+                              ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent"
+                              : "text-muted-foreground border-dashboard-border"
+                          }`}
+                        >
+                          {year}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Regional */}
+                  <div>
+                    <p className="text-xs text-muted-foreground font-semibold mb-2">Regional</p>
+                    <div className="flex flex-col gap-1">
+                      <div
+                        className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-dashboard-border ${
+                          selectedRegions.length === 0 ? "bg-dashboard-accent/20" : ""
+                        }`}
+                        onClick={() => toggleRegion("all")}
+                      >
+                        <span className="text-sm text-foreground">Todas as Regionais</span>
+                      </div>
+                      {uniqueRegions.map((region) => (
+                        <div key={region} className="flex items-center space-x-2 p-1">
+                          <Checkbox
+                            id={`m-region-${region}`}
+                            checked={selectedRegions.includes(region)}
+                            onCheckedChange={() => toggleRegion(region)}
+                            className="border-dashboard-border data-[state=checked]:bg-dashboard-accent data-[state=checked]:border-dashboard-accent"
+                          />
+                          <label htmlFor={`m-region-${region}`} className="text-sm text-foreground cursor-pointer">
+                            {region}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Calendar */}
+                  {onDateRangeChange && (
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold mb-2">Período</p>
+                      <CalendarFilter selectedDateRange={selectedDateRange} onDateRangeChange={onDateRangeChange} />
+                    </div>
+                  )}
+
+                  {/* B-SIDE / D-SIDE */}
+                  {selectedSides && onSidesChange && (
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold mb-2">Lado</p>
+                      <div className="flex items-center gap-2">
+                        {["B-SIDE", "D-SIDE"].map(side => {
+                          const isActive = selectedSides.includes(side);
+                          return (
+                            <Button
+                              key={side}
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                onSidesChange(
+                                  selectedSides.includes(side)
+                                    ? selectedSides.filter(s => s !== side)
+                                    : [...selectedSides, side]
+                                );
+                              }}
+                              className={`px-4 py-2 text-sm font-medium border ${
+                                isActive
+                                  ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent"
+                                  : "text-muted-foreground border-dashboard-border"
+                              }`}
+                            >
+                              {side}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-2 pt-2 border-t border-dashboard-border">
+                    {showExport && onExportExcel && (
+                      <Button variant="outline" size="sm" onClick={() => { onExportExcel(); setMobileFilterOpen(false); }} className="border-dashboard-border text-foreground">
+                        <Download className="mr-2 h-4 w-4" />
+                        Exportar
+                      </Button>
+                    )}
+                    {hasActiveFilters && onClearAllFilters && (
+                      <Button variant="outline" size="sm" onClick={() => { onClearAllFilters(); setMobileFilterOpen(false); }} className="border-dashboard-accent/50 text-dashboard-accent">
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Limpar Filtros
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
 
-          {/* Month dropdown for mobile */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button 
-                variant="outline" 
-                className="md:hidden w-32 justify-between border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border"
+          {/* ===== DESKTOP: inline filters (hidden on mobile) ===== */}
+          <div className="hidden md:flex flex-wrap items-center gap-4 px-6 py-3 border-t border-dashboard-border">
+            {/* Month selection */}
+            <div className="flex flex-wrap items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleAllMonths}
+                className={`px-2 py-1 text-xs font-bold transition-all duration-200 border ${
+                  selectedMonths.length === 12
+                    ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent hover:bg-dashboard-accent/80"
+                    : "text-muted-foreground border-dashboard-border hover:text-dashboard-accent hover:bg-dashboard-border"
+                }`}
+                title={selectedMonths.length === 12 ? "Desmarcar todos" : "Selecionar todos"}
               >
-                {getMonthsLabel()}
-                <ChevronDown className="ml-2 h-4 w-4" />
+                {selectedMonths.length === 12 ? "✓" : "∀"}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-3 bg-dashboard-card border-dashboard-border z-50">
-              <div className="flex flex-wrap gap-2">
+              {months.map((month) => (
                 <Button
+                  key={month.value}
                   variant="ghost"
                   size="sm"
-                  onClick={toggleAllMonths}
-                  className={`w-full px-3 py-1.5 text-xs font-bold transition-all duration-200 border mb-1 ${
-                    selectedMonths.length === 12
-                      ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent"
-                      : "text-muted-foreground border-dashboard-border hover:text-dashboard-accent"
+                  onClick={() => toggleMonth(month.value)}
+                  className={`px-2 py-1 text-xs font-medium transition-all duration-200 ${
+                    selectedMonths.includes(month.value)
+                      ? "bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent"
+                      : "text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
                   }`}
                 >
-                  {selectedMonths.length === 12 ? "Desmarcar todos" : "Selecionar todos"}
+                  {month.short}
                 </Button>
-                {months.map((month) => (
-                  <Button
-                    key={month.value}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleMonth(month.value)}
-                    className={`px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
-                      selectedMonths.includes(month.value)
-                        ? "bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent"
-                        : "text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
-                    }`}
-                  >
-                    {month.short}
-                  </Button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Year multi-select */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button 
-                variant="outline" 
-                className="w-32 justify-between border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border"
-              >
-                {getYearsLabel()}
-                <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-40 p-2 bg-dashboard-card border-dashboard-border z-50 popover-dark-scroll max-h-64 overflow-y-auto">
-              <div className="flex flex-col gap-2">
-                {uniqueYears.map((year) => (
-                   <div key={year} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`year-${year}`}
-                      checked={selectedYears.includes(year)}
-                      onCheckedChange={() => toggleYear(year)}
-                      className="border-dashboard-border data-[state=checked]:bg-dashboard-accent data-[state=checked]:border-dashboard-accent"
-                    />
-                    <label 
-                      htmlFor={`year-${year}`}
-                      className="text-sm text-foreground cursor-pointer"
-                    >
-                      {year}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Regional multi-select */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button 
-                variant="outline" 
-                className="w-48 justify-between border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border"
-              >
-                {getRegionsLabel()}
-                <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-2 bg-dashboard-card border-dashboard-border z-50 popover-dark-scroll max-h-64 overflow-y-auto">
-              <div className="flex flex-col gap-1">
-                <div 
-                  className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-dashboard-border ${
-                    selectedRegions.length === 0 ? "bg-dashboard-accent/20" : ""
-                  }`}
-                  onClick={() => toggleRegion("all")}
-                >
-                  <span className="text-sm text-foreground">Todas as Regionais</span>
-                </div>
-                {uniqueRegions.map((region) => (
-                   <div key={region} className="flex items-center space-x-2 p-1">
-                    <Checkbox
-                      id={`region-${region}`}
-                      checked={selectedRegions.includes(region)}
-                      onCheckedChange={() => toggleRegion(region)}
-                      className="border-dashboard-border data-[state=checked]:bg-dashboard-accent data-[state=checked]:border-dashboard-accent"
-                    />
-                    <label 
-                      htmlFor={`region-${region}`}
-                      className="text-sm text-foreground cursor-pointer"
-                    >
-                      {region}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Calendar date filter */}
-          {onDateRangeChange && (
-            <CalendarFilter
-              selectedDateRange={selectedDateRange}
-              onDateRangeChange={onDateRangeChange}
-            />
-          )}
-
-          {/* B-SIDE / D-SIDE toggle filters */}
-          {selectedSides && onSidesChange && (
-            <div className="flex items-center gap-1">
-              {["B-SIDE", "D-SIDE"].map(side => {
-                const isActive = selectedSides.includes(side);
-                return (
-                  <Button
-                    key={side}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      onSidesChange(
-                        selectedSides.includes(side)
-                          ? selectedSides.filter(s => s !== side)
-                          : [...selectedSides, side]
-                      );
-                    }}
-                    className={`px-3 py-1 text-xs font-medium transition-all duration-200 border ${
-                      isActive
-                        ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent hover:bg-dashboard-accent/80"
-                        : "text-muted-foreground border-dashboard-border hover:text-dashboard-accent hover:bg-dashboard-border"
-                    }`}
-                  >
-                    {side}
-                  </Button>
-                );
-              })}
+              ))}
             </div>
-          )}
 
-          {showExport && onExportExcel && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onExportExcel}
-              className="border-dashboard-border text-foreground hover:bg-dashboard-accent hover:text-dashboard-dark"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Exportar Excel
-            </Button>
-          )}
+            {/* Year multi-select */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-32 justify-between border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border">
+                  {getYearsLabel()}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-40 p-2 bg-dashboard-card border-dashboard-border z-50 popover-dark-scroll max-h-64 overflow-y-auto">
+                <div className="flex flex-col gap-2">
+                  {uniqueYears.map((year) => (
+                    <div key={year} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`year-${year}`}
+                        checked={selectedYears.includes(year)}
+                        onCheckedChange={() => toggleYear(year)}
+                        className="border-dashboard-border data-[state=checked]:bg-dashboard-accent data-[state=checked]:border-dashboard-accent"
+                      />
+                      <label htmlFor={`year-${year}`} className="text-sm text-foreground cursor-pointer">{year}</label>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
 
-          {/* Clear all filters button */}
-          {hasActiveFilters && onClearAllFilters && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onClearAllFilters}
-              className="ml-auto border-dashboard-accent/50 text-dashboard-accent hover:bg-dashboard-accent hover:text-dashboard-dark"
-            >
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Limpar Filtros
-            </Button>
-          )}
-        </div>
+            {/* Regional multi-select */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-48 justify-between border-dashboard-border bg-dashboard-card text-foreground hover:bg-dashboard-border">
+                  {getRegionsLabel()}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2 bg-dashboard-card border-dashboard-border z-50 popover-dark-scroll max-h-64 overflow-y-auto">
+                <div className="flex flex-col gap-1">
+                  <div
+                    className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-dashboard-border ${
+                      selectedRegions.length === 0 ? "bg-dashboard-accent/20" : ""
+                    }`}
+                    onClick={() => toggleRegion("all")}
+                  >
+                    <span className="text-sm text-foreground">Todas as Regionais</span>
+                  </div>
+                  {uniqueRegions.map((region) => (
+                    <div key={region} className="flex items-center space-x-2 p-1">
+                      <Checkbox
+                        id={`region-${region}`}
+                        checked={selectedRegions.includes(region)}
+                        onCheckedChange={() => toggleRegion(region)}
+                        className="border-dashboard-border data-[state=checked]:bg-dashboard-accent data-[state=checked]:border-dashboard-accent"
+                      />
+                      <label htmlFor={`region-${region}`} className="text-sm text-foreground cursor-pointer">{region}</label>
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Calendar date filter */}
+            {onDateRangeChange && (
+              <CalendarFilter selectedDateRange={selectedDateRange} onDateRangeChange={onDateRangeChange} />
+            )}
+
+            {/* B-SIDE / D-SIDE toggle filters */}
+            {selectedSides && onSidesChange && (
+              <div className="flex items-center gap-1">
+                {["B-SIDE", "D-SIDE"].map(side => {
+                  const isActive = selectedSides.includes(side);
+                  return (
+                    <Button
+                      key={side}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        onSidesChange(
+                          selectedSides.includes(side)
+                            ? selectedSides.filter(s => s !== side)
+                            : [...selectedSides, side]
+                        );
+                      }}
+                      className={`px-3 py-1 text-xs font-medium transition-all duration-200 border ${
+                        isActive
+                          ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent hover:bg-dashboard-accent/80"
+                          : "text-muted-foreground border-dashboard-border hover:text-dashboard-accent hover:bg-dashboard-border"
+                      }`}
+                    >
+                      {side}
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
+
+            {showExport && onExportExcel && (
+              <Button variant="outline" size="sm" onClick={onExportExcel} className="border-dashboard-border text-foreground hover:bg-dashboard-accent hover:text-dashboard-dark">
+                <Download className="mr-2 h-4 w-4" />
+                Exportar Excel
+              </Button>
+            )}
+
+            {/* Clear all filters button */}
+            {hasActiveFilters && onClearAllFilters && (
+              <Button variant="outline" size="sm" onClick={onClearAllFilters} className="ml-auto border-dashboard-accent/50 text-dashboard-accent hover:bg-dashboard-accent hover:text-dashboard-dark">
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Limpar Filtros
+              </Button>
+            )}
+          </div>
+        </>
       )}
     </header>
 
