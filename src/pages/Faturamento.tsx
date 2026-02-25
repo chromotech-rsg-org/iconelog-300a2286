@@ -267,90 +267,92 @@ const Faturamento = () => {
         {/* Main Content */}
         {hasData && (
           <div className="space-y-4">
-              {/* Row 1: KPI Cards - matching image layout */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                {/* Big Faturamento card */}
-                <Card className="bg-dashboard-card border-dashboard-accent border-2 sm:row-span-2 md:col-span-1 flex items-center justify-center">
-                  <CardContent className="p-6 text-center">
-                    <p className="text-sm text-muted-foreground mb-2">Faturamento</p>
-                    <p className="text-2xl sm:text-3xl font-black text-dashboard-accent break-all">{formatCurrency(displayTotals.faturamento)}</p>
-                  </CardContent>
-                </Card>
-                {/* R$ Armazenagem */}
-                <Card className="bg-dashboard-card border-dashboard-border">
-                  <CardContent className="p-4 text-center">
-                    <span className="text-xs text-muted-foreground">R$ Armazenagem</span>
-                    <p className="text-lg font-bold text-foreground mt-1">{formatCurrency(displayTotals.armazenagem)}</p>
-                  </CardContent>
-                </Card>
-                {/* % Armazenagem */}
-                <Card className="bg-dashboard-card border-dashboard-border">
-                  <CardContent className="p-4 text-center">
-                    <span className="text-xs text-muted-foreground">% Armazenagem</span>
-                    <p className="text-lg font-bold text-foreground mt-1">{displayTotals.percentArmazenagem.toFixed(0)}%</p>
-                  </CardContent>
-                </Card>
-                {/* R$ Transporte */}
-                <Card className="bg-dashboard-card border-dashboard-border">
-                  <CardContent className="p-4 text-center">
-                    <span className="text-xs text-muted-foreground">R$ Transporte</span>
-                    <p className="text-lg font-bold text-foreground mt-1">{formatCurrency(displayTotals.transporte)}</p>
-                  </CardContent>
-                </Card>
-                {/* % Transporte */}
-                <Card className="bg-dashboard-card border-dashboard-border">
-                  <CardContent className="p-4 text-center">
-                    <span className="text-xs text-muted-foreground">% Transporte</span>
-                    <p className="text-lg font-bold text-foreground mt-1">{displayTotals.percentTransporte.toFixed(0)}%</p>
-                  </CardContent>
-                </Card>
-              </div>
+              {/* Row 1: [KPI Cards + Faturamento Mensal] + Transporte Mensal */}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                {/* Left block: KPIs above + Faturamento Mensal below — 3/4 width */}
+                <div className="lg:col-span-3 flex flex-col gap-4">
+                  {/* KPI Cards: 1 big + 4 small in a row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    {/* Big Faturamento card — spans 2 rows on sm+ */}
+                    <Card className="bg-dashboard-card border-dashboard-accent border-2 col-span-2 sm:col-span-1 sm:row-span-2 flex items-center justify-center">
+                      <CardContent className="p-4 text-center">
+                        <p className="text-xs text-muted-foreground mb-1">Faturamento</p>
+                        <p className="text-xl sm:text-2xl font-black text-dashboard-accent break-all">{formatCurrency(displayTotals.faturamento)}</p>
+                      </CardContent>
+                    </Card>
+                    {/* R$ Armazenagem */}
+                    <Card className="bg-dashboard-card border-dashboard-border">
+                      <CardContent className="p-3 text-center">
+                        <span className="text-[10px] text-muted-foreground">R$ Armazenagem</span>
+                        <p className="text-sm font-bold text-foreground mt-0.5">{formatCurrency(displayTotals.armazenagem)}</p>
+                      </CardContent>
+                    </Card>
+                    {/* % Armazenagem */}
+                    <Card className="bg-dashboard-card border-dashboard-border">
+                      <CardContent className="p-3 text-center">
+                        <span className="text-[10px] text-muted-foreground">% Armazenagem</span>
+                        <p className="text-sm font-bold text-foreground mt-0.5">{displayTotals.percentArmazenagem.toFixed(0)}%</p>
+                      </CardContent>
+                    </Card>
+                    {/* R$ Transporte */}
+                    <Card className="bg-dashboard-card border-dashboard-border">
+                      <CardContent className="p-3 text-center">
+                        <span className="text-[10px] text-muted-foreground">R$ Transporte</span>
+                        <p className="text-sm font-bold text-foreground mt-0.5">{formatCurrency(displayTotals.transporte)}</p>
+                      </CardContent>
+                    </Card>
+                    {/* % Transporte */}
+                    <Card className="bg-dashboard-card border-dashboard-border">
+                      <CardContent className="p-3 text-center">
+                        <span className="text-[10px] text-muted-foreground">% Transporte</span>
+                        <p className="text-sm font-bold text-foreground mt-0.5">{displayTotals.percentTransporte.toFixed(0)}%</p>
+                      </CardContent>
+                    </Card>
+                  </div>
 
+                  {/* Faturamento Mensal line chart */}
+                  <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all flex-1 ${selectedMonth ? 'ring-2 ring-dashboard-accent' : ''}`}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-foreground">Faturamento Mensal</CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[250px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={mensal} onClick={handleMonthClick}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
+                          <XAxis dataKey="mes" stroke="hsl(0, 0%, 60%)" fontSize={11} />
+                          <YAxis stroke="hsl(0, 0%, 60%)" fontSize={10} tickFormatter={(v) => formatCurrency(v)} />
+                          <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} formatter={(value: number) => formatCurrency(value)} />
+                          <Line
+                            type="monotone"
+                            dataKey="faturamento"
+                            stroke="hsl(45, 100%, 50%)"
+                            strokeWidth={2}
+                            dot={({ cx, cy, payload }: any) => (
+                              <circle
+                                key={payload.mes}
+                                cx={cx}
+                                cy={cy}
+                                r={selectedMonth === payload.mes ? 8 : 4}
+                                fill={selectedMonth === payload.mes ? 'hsl(45, 100%, 60%)' : 'hsl(45, 100%, 50%)'}
+                                stroke={selectedMonth === payload.mes ? 'hsl(45, 100%, 70%)' : 'none'}
+                                strokeWidth={2}
+                              />
+                            )}
+                          >
+                            <LabelList dataKey="faturamento" position="top" formatter={(v: number) => formatCurrency(v)} style={{ fill: 'hsl(0, 0%, 70%)', fontSize: 10 }} />
+                          </Line>
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
 
-              {/* Row 2: Faturamento Mensal line chart + Transporte Mensal bars */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Faturamento Mensal - takes 2/3 */}
-                <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all md:col-span-2 ${selectedMonth ? 'ring-2 ring-dashboard-accent' : ''}`}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Faturamento Mensal</CardTitle>
-                  </CardHeader>
-                  <CardContent className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={mensal} onClick={handleMonthClick}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 15%)" />
-                        <XAxis dataKey="mes" stroke="hsl(0, 0%, 60%)" fontSize={11} />
-                        <YAxis stroke="hsl(0, 0%, 60%)" fontSize={10} tickFormatter={(v) => formatCurrency(v)} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(0, 0%, 6%)', border: '1px solid hsl(0, 0%, 15%)' }} formatter={(value: number) => formatCurrency(value)} />
-                        <Line
-                          type="monotone"
-                          dataKey="faturamento"
-                          stroke="hsl(45, 100%, 50%)"
-                          strokeWidth={2}
-                          dot={({ cx, cy, payload }: any) => (
-                            <circle
-                              key={payload.mes}
-                              cx={cx}
-                              cy={cy}
-                              r={selectedMonth === payload.mes ? 8 : 4}
-                              fill={selectedMonth === payload.mes ? 'hsl(45, 100%, 60%)' : 'hsl(45, 100%, 50%)'}
-                              stroke={selectedMonth === payload.mes ? 'hsl(45, 100%, 70%)' : 'none'}
-                              strokeWidth={2}
-                            />
-                          )}
-                        >
-                          <LabelList dataKey="faturamento" position="top" formatter={(v: number) => formatCurrency(v)} style={{ fill: 'hsl(0, 0%, 70%)', fontSize: 10 }} />
-                        </Line>
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                {/* Transporte Mensal - takes 1/3 */}
-                <Card className="bg-dashboard-card border-dashboard-border">
+                {/* Right: Transporte Mensal — 1/4 width, full height */}
+                <Card className="bg-dashboard-card border-dashboard-border lg:col-span-1 flex flex-col">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-foreground">Transporte Mensal</CardTitle>
                   </CardHeader>
-                  <CardContent className="h-[250px]">
+                  <CardContent className="flex-1 min-h-[350px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={transporteMensalData} layout="vertical" margin={{ right: 80 }}>
                         <XAxis type="number" hide />
