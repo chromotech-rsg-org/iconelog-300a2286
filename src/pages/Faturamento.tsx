@@ -271,43 +271,46 @@ const Faturamento = () => {
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 {/* Left block: KPIs above + Faturamento Mensal below — 3/4 width */}
                 <div className="lg:col-span-3 flex flex-col gap-4">
-                  {/* KPI Cards: 1 big + 4 small in a row */}
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                    {/* Big Faturamento card — spans 2 rows on sm+ */}
-                    <Card className="bg-dashboard-card border-dashboard-accent border-2 col-span-2 sm:col-span-1 sm:row-span-2 flex items-center justify-center">
-                      <CardContent className="p-4 text-center">
-                        <p className="text-xs text-muted-foreground mb-1">Faturamento</p>
-                        <p className="text-xl sm:text-2xl font-black text-dashboard-accent break-all">{formatCurrency(displayTotals.faturamento)}</p>
+                  {/* KPI Cards: 1 big left + 2x2 grid right (same as Tracking) */}
+                  <div className="flex gap-2 h-full items-stretch">
+                    {/* Big Faturamento card */}
+                    <Card className="bg-card border-primary/60 border-2 flex-1 min-w-0">
+                      <CardContent className="p-3 flex flex-col items-center justify-center h-full">
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Faturamento</span>
+                        <p className="text-4xl sm:text-5xl lg:text-6xl font-black text-primary leading-tight mt-1 break-all">{formatCurrency(displayTotals.faturamento)}</p>
                       </CardContent>
                     </Card>
-                    {/* R$ Armazenagem */}
-                    <Card className="bg-dashboard-card border-dashboard-border">
-                      <CardContent className="p-3 text-center">
-                        <span className="text-[10px] text-muted-foreground">R$ Armazenagem</span>
-                        <p className="text-sm font-bold text-foreground mt-0.5">{formatCurrency(displayTotals.armazenagem)}</p>
-                      </CardContent>
-                    </Card>
-                    {/* % Armazenagem */}
-                    <Card className="bg-dashboard-card border-dashboard-border">
-                      <CardContent className="p-3 text-center">
-                        <span className="text-[10px] text-muted-foreground">% Armazenagem</span>
-                        <p className="text-sm font-bold text-foreground mt-0.5">{displayTotals.percentArmazenagem.toFixed(0)}%</p>
-                      </CardContent>
-                    </Card>
-                    {/* R$ Transporte */}
-                    <Card className="bg-dashboard-card border-dashboard-border">
-                      <CardContent className="p-3 text-center">
-                        <span className="text-[10px] text-muted-foreground">R$ Transporte</span>
-                        <p className="text-sm font-bold text-foreground mt-0.5">{formatCurrency(displayTotals.transporte)}</p>
-                      </CardContent>
-                    </Card>
-                    {/* % Transporte */}
-                    <Card className="bg-dashboard-card border-dashboard-border">
-                      <CardContent className="p-3 text-center">
-                        <span className="text-[10px] text-muted-foreground">% Transporte</span>
-                        <p className="text-sm font-bold text-foreground mt-0.5">{displayTotals.percentTransporte.toFixed(0)}%</p>
-                      </CardContent>
-                    </Card>
+
+                    {/* 2x2 grid: Armazenagem / Transporte */}
+                    <div className="grid grid-cols-2 grid-rows-2 gap-1.5 flex-1 min-w-0">
+                      <Card className="bg-card border-border">
+                        <CardContent className="p-2 text-center flex flex-col justify-center h-full">
+                          <span className="text-xs text-muted-foreground leading-tight">R$ Armazenagem</span>
+                          <p className="text-lg sm:text-2xl font-bold text-dashboard-blue leading-tight">{formatCurrency(displayTotals.armazenagem)}</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-card border-border">
+                        <CardContent className="p-2 text-center flex flex-col justify-center h-full">
+                          <span className="text-xs text-muted-foreground leading-tight">% Armazenagem</span>
+                          <p className="text-lg sm:text-2xl font-bold text-dashboard-blue leading-tight">{displayTotals.percentArmazenagem.toFixed(1)}%</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-card border-border">
+                        <CardContent className="p-2 text-center flex flex-col justify-center h-full">
+                          <span className="text-xs text-muted-foreground leading-tight">R$ Transporte</span>
+                          <p className="text-lg sm:text-2xl font-bold text-dashboard-orange leading-tight">{formatCurrency(displayTotals.transporte)}</p>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-card border-border">
+                        <CardContent className="p-2 text-center flex flex-col justify-center h-full">
+                          <span className="text-xs text-muted-foreground leading-tight">% Transporte</span>
+                          <p className="text-lg sm:text-2xl font-bold text-dashboard-orange leading-tight">{displayTotals.percentTransporte.toFixed(1)}%</p>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </div>
 
                   {/* Faturamento Mensal line chart */}
