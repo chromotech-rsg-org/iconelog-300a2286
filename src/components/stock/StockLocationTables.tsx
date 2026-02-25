@@ -195,12 +195,14 @@ export const StockLocationTables = ({
                   >
                     <TableCell className="py-1.5">
                       {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="w-20 h-20 rounded-lg object-contain bg-white border border-dashboard-border cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={(e) => { e.stopPropagation(); setModalItem(item); }}
-                        />
+                        <div className="w-20 h-20 rounded-lg overflow-hidden bg-white border border-dashboard-border cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={(e) => { e.stopPropagation(); setModalItem(item); }}>
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-full object-contain p-1"
+                          />
+                        </div>
                       ) : (
                         <div className="w-20 h-20 rounded-lg bg-dashboard-border flex items-center justify-center text-xs text-muted-foreground">
                           N/A
