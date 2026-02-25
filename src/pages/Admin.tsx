@@ -275,9 +275,9 @@ const Admin = () => {
       case "logs_api":
         return canViewAdmin("logsApi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><ApiTestLogs /></Suspense> : null;
       case "produtos_estoque":
-        return canViewAdmin("configurarBi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><StockProductsManager /></Suspense> : null;
+        return canViewAdmin("produtosEstoque") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><StockProductsManager /></Suspense> : null;
       case "dados_api":
-        return canViewAdmin("logsApi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><ApiDataViewer /></Suspense> : null;
+        return canViewAdmin("dadosApi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><ApiDataViewer /></Suspense> : null;
       default:
         return null;
     }
