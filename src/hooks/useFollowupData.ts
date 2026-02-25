@@ -585,7 +585,18 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     };
   }, [followupData, cityMappings]);
 
-  const getFaturamentoData = useCallback((months: number[], years: number[], sides: string[] = []) => {
+  const getFaturamentoData = useCallback((
+    months: number[],
+    years: number[],
+    sides: string[] = [],
+    interactiveFilters?: {
+      selectedMonth?: string | null;
+      selectedRegional?: string | null;
+      selectedModalidade?: string | null;
+      selectedTipoServico?: string | null;
+      selectedCampanha?: string | null;
+    }
+  ) => {
     // Filter by _fetch_month/_fetch_year tags (same pattern as other getters)
     let filtered = (months?.length || years?.length)
       ? followupData.filter(item => {
@@ -611,6 +622,55 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           return ccustoNorm.includes(sNorm) || ccustoNorm === sNorm || ccusto.includes(s.toUpperCase());
         });
       });
+    }
+
+    // Apply interactive cross-filters on raw data
+    if (interactiveFilters) {
+      const mesesNomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+      if (interactiveFilters.selectedMonth) {
+        const selMonth = interactiveFilters.selectedMonth;
+        filtered = filtered.filter(item => {
+          const fm = item._fetch_month;
+          if (fm) return mesesNomes[fm - 1] === selMonth;
+          return false;
+        });
+      }
+      if (interactiveFilters.selectedTipoServico) {
+        const sel = interactiveFilters.selectedTipoServico.toUpperCase();
+        filtered = filtered.filter(item => {
+          const tipo = (item.ds_tipo_servico || "OUTROS").toUpperCase();
+          return tipo === sel;
+        });
+      }
+      if (interactiveFilters.selectedModalidade) {
+        const sel = interactiveFilters.selectedModalidade.toUpperCase();
+        filtered = filtered.filter(item => {
+          const mod = (item.ds_modalidade_transporte || "OUTROS").toUpperCase();
+          return mod === sel;
+        });
+      }
+      if (interactiveFilters.selectedCampanha) {
+        const sel = interactiveFilters.selectedCampanha.toUpperCase();
+        filtered = filtered.filter(item => {
+          const campanha = (item.nm_campanha || item.ds_campanha || item.campanha || "OUTROS").toUpperCase();
+          return campanha === sel;
+        });
+      }
+      if (interactiveFilters.selectedRegional) {
+        const sel = interactiveFilters.selectedRegional;
+        const UF_TO_MACRO: Record<string, string> = {
+          SP: "Sudeste", RJ: "Sudeste", MG: "Sudeste", ES: "Sudeste",
+          BA: "Nordeste", SE: "Nordeste", AL: "Nordeste", PE: "Nordeste", PB: "Nordeste", RN: "Nordeste", CE: "Nordeste", PI: "Nordeste", MA: "Nordeste",
+          PR: "Sul", SC: "Sul", RS: "Sul",
+          AM: "Norte", PA: "Norte", AC: "Norte", RO: "Norte", RR: "Norte", AP: "Norte", TO: "Norte",
+          GO: "Centro-Oeste", MT: "Centro-Oeste", MS: "Centro-Oeste", DF: "Centro-Oeste",
+        };
+        filtered = filtered.filter(item => {
+          const uf = (item.ds_uf_DES || item.ds_uf || "").toUpperCase().trim();
+          const macroRegion = UF_TO_MACRO[uf] || "Outros";
+          return macroRegion === sel;
+        });
+      }
     }
 
     // Monthly breakdown
