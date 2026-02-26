@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { user_id, email, password } = await req.json();
+    const { user_id, email, password, action } = await req.json();
 
     if (!user_id) {
       return new Response(JSON.stringify({ error: "user_id é obrigatório" }), {
@@ -65,6 +65,40 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // Handle delete action
+    if (action === "delete") {
+      // Check delete permission
+      const { data: hasDeletePerm } = await anonClient.rpc("has_admin_permission", {
+        user_uuid: callerId,
+        perm_type: "usuarios",
+        action: "excluir",
+      });
+
+      if (!hasDeletePerm) {
+        return new Response(JSON.stringify({ error: "Sem permissão para excluir" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Delete user_roles, profile, and auth user
+      await adminClient.from("user_roles").delete().eq("user_id", user_id);
+      await adminClient.from("profiles").delete().eq("id", user_id);
+      const { error } = await adminClient.auth.admin.deleteUser(user_id);
+
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Handle update action
     const updateData: Record<string, string> = {};
     if (email) updateData.email = email;
     if (password) updateData.password = password;

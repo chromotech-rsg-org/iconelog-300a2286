@@ -202,20 +202,23 @@ export const useUsersManagement = () => {
   }, [fetchUsers]);
 
   const deleteUser = useCallback(async (userId: string) => {
-    // Note: This only marks user as inactive, doesn't delete from auth
-    const { error } = await supabase
-      .from("profiles")
-      .update({ ativo: false })
-      .eq("id", userId);
+    try {
+      const res = await supabase.functions.invoke("update-user-auth", {
+        body: { user_id: userId, action: "delete" },
+      });
 
-    if (error) {
-      toast.error("Erro ao desativar usuário: " + error.message);
+      if (res.error || res.data?.error) {
+        toast.error("Erro ao excluir usuário: " + (res.data?.error || res.error?.message));
+        return false;
+      }
+
+      toast.success("Usuário excluído com sucesso!");
+      await fetchUsers();
+      return true;
+    } catch (error: any) {
+      toast.error("Erro ao excluir usuário: " + error.message);
       return false;
     }
-
-    toast.success("Usuário desativado com sucesso!");
-    await fetchUsers();
-    return true;
   }, [fetchUsers]);
 
   return {

@@ -77,7 +77,7 @@ const Admin = () => {
   const systemName = getSystemName();
 
   const { roles, loading: rolesLoading, createRole, updateRole, deleteRole } = useRolesManagement();
-  const { users, loading: usersLoading, createUser, updateUser, fetchUsers } = useUsersManagement();
+  const { users, loading: usersLoading, createUser, updateUser, deleteUser, fetchUsers } = useUsersManagement();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSection = (searchParams.get("tab") as AdminSection) || "usuarios";
@@ -177,7 +177,10 @@ const Admin = () => {
     setIsUserDialogOpen(false);
   };
 
-  const handleDeleteUser = async (user: UserWithRole) => { await updateUser(user.id, { ativo: false }); };
+  const handleDeleteUser = async (user: UserWithRole) => {
+    if (!confirm(`Tem certeza que deseja excluir permanentemente o usuário "${user.nome}"? Esta ação não pode ser desfeita.`)) return;
+    await deleteUser(user.id);
+  };
 
   // === PROFILE HANDLERS ===
   const handleOpenNewProfile = () => {
