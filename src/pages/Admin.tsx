@@ -454,7 +454,7 @@ const Admin = () => {
                       <TableHead className="text-muted-foreground text-center">Visualizar</TableHead>
                       <TableHead className="text-muted-foreground text-center">Exportar</TableHead>
                       <TableHead className="text-muted-foreground text-center">Atualizar</TableHead>
-                      {isDeveloper && <TableHead className="text-muted-foreground text-center">Dev.</TableHead>}
+                      {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableHead className="text-muted-foreground text-center">Dev.</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -468,7 +468,7 @@ const Admin = () => {
                           <TableCell className="text-center"><Switch checked={perm?.visualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "visualizar")} /></TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.exportar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "exportar")} /></TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.atualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "atualizar")} /></TableCell>
-                          {isDeveloper && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "apenas_dev")} /></TableCell>}
+                          {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "apenas_dev")} /></TableCell>}
                         </TableRow>
                       );
                     })}
@@ -489,7 +489,7 @@ const Admin = () => {
                       <TableHead className="text-muted-foreground text-center">Editar</TableHead>
                       <TableHead className="text-muted-foreground text-center">Criar</TableHead>
                       <TableHead className="text-muted-foreground text-center">Excluir</TableHead>
-                      {isDeveloper && <TableHead className="text-muted-foreground text-center">Dev.</TableHead>}
+                      {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableHead className="text-muted-foreground text-center">Dev.</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -509,7 +509,7 @@ const Admin = () => {
                           <TableCell className="text-center">
                             {type.hasCrud ? <Switch checked={perm?.excluir ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "excluir")} /> : <span className="text-muted-foreground text-xs">-</span>}
                           </TableCell>
-                          {isDeveloper && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "apenas_dev")} /></TableCell>}
+                          {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "apenas_dev")} /></TableCell>}
                         </TableRow>
                       );
                     })}
