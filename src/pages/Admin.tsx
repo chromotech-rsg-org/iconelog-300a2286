@@ -412,7 +412,9 @@ const Admin = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {roles.map(role => (
+              {roles
+                .filter(role => isDeveloper || role.id !== "00000000-0000-0000-0000-000000000002")
+                .map(role => (
                 <TableRow key={role.id} className="border-dashboard-border">
                   <TableCell className="text-foreground font-medium">{role.nome}</TableCell>
                   <TableCell className="text-center">
@@ -424,7 +426,7 @@ const Admin = () => {
                   </TableCell>
                 </TableRow>
               ))}
-              {roles.length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Nenhum perfil cadastrado</TableCell></TableRow>}
+              {roles.filter(role => isDeveloper || role.id !== "00000000-0000-0000-0000-000000000002").length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Nenhum perfil cadastrado</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>
