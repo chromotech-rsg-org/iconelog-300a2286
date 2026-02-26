@@ -159,10 +159,24 @@ const Admin = () => {
   // === PROFILE HANDLERS ===
   const handleOpenNewProfile = () => {
     setEditingRole(null);
+    // Copy apenas_dev values from developer role so non-devs see the same rows as in editing
+    const devRole = roles.find(r => r.id === "00000000-0000-0000-0000-000000000002");
+    const pagePerms = initializePagePermissions();
+    if (devRole) {
+      Object.entries(devRole.pagePermissions).forEach(([pageId, perm]) => {
+        if (pagePerms[pageId]) pagePerms[pageId].apenas_dev = perm.apenas_dev;
+      });
+    }
+    const adminPerms = initializeAdminPermissions();
+    if (devRole) {
+      Object.entries(devRole.adminPermissions).forEach(([key, perm]) => {
+        if (adminPerms[key]) adminPerms[key].apenas_dev = perm.apenas_dev;
+      });
+    }
     setProfileForm({
       nome: "", descricao: "",
-      pagePermissions: initializePagePermissions(),
-      adminPermissions: initializeAdminPermissions(),
+      pagePermissions: pagePerms,
+      adminPermissions: adminPerms,
     });
     setIsProfileDialogOpen(true);
   };
