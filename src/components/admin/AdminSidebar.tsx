@@ -39,7 +39,7 @@ const configItems: MenuItem[] = [
 ];
 
 export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarProps) => {
-  const { canViewAdmin, canViewAnyConfig, isDeveloper, isAdminDevOnly } = useAuth();
+  const { canViewAdmin } = useAuth();
   const [configOpen, setConfigOpen] = useState(
     configItems.some(item => item.id === activeSection)
   );

@@ -169,16 +169,68 @@ export const useRolesManagement = () => {
       await supabase.from("page_permissions").insert(pagePermsToInsert);
     }
 
-    await supabase.from("admin_permissions").delete().eq("role_id", roleId);
-
-    const adminPermsToInsert = Object.entries(adminPermissions).map(([permType, perm]) => ({
-      role_id: roleId,
+    const adminPermsToSave = Object.entries(adminPermissions).map(([permType, perm]) => ({
       permission_type: permType,
       ...perm,
     }));
 
-    if (adminPermsToInsert.length > 0) {
-      await supabase.from("admin_permissions").insert(adminPermsToInsert);
+    const { data: existingAdminPerms, error: existingAdminPermsError } = await supabase
+      .from("admin_permissions")
+      .select("id, permission_type")
+      .eq("role_id", roleId);
+
+    if (existingAdminPermsError) {
+      toast.error("Erro ao carregar permissões administrativas: " + existingAdminPermsError.message);
+      return false;
+    }
+
+    const existingByType = new Map(
+      (existingAdminPerms || []).map((p: any) => [p.permission_type, p.id])
+    );
+
+    // Atualiza 'perfis' por último para evitar perder autorização durante a operação
+    const orderedAdminPerms = [
+      ...adminPermsToSave.filter(p => p.permission_type !== "perfis"),
+      ...adminPermsToSave.filter(p => p.permission_type === "perfis"),
+    ];
+
+    for (const perm of orderedAdminPerms) {
+      const existingId = existingByType.get(perm.permission_type);
+
+      if (existingId) {
+        const { error: updateAdminError } = await supabase
+          .from("admin_permissions")
+          .update({
+            ver: perm.ver,
+            editar: perm.editar,
+            criar: perm.criar,
+            excluir: perm.excluir,
+            apenas_dev: perm.apenas_dev,
+          })
+          .eq("id", existingId);
+
+        if (updateAdminError) {
+          toast.error("Erro ao atualizar permissões administrativas: " + updateAdminError.message);
+          return false;
+        }
+      } else {
+        const { error: insertAdminError } = await supabase
+          .from("admin_permissions")
+          .insert({
+            role_id: roleId,
+            permission_type: perm.permission_type,
+            ver: perm.ver,
+            editar: perm.editar,
+            criar: perm.criar,
+            excluir: perm.excluir,
+            apenas_dev: perm.apenas_dev,
+          });
+
+        if (insertAdminError) {
+          toast.error("Erro ao inserir permissões administrativas: " + insertAdminError.message);
+          return false;
+        }
+      }
     }
 
     toast.success("Perfil atualizado com sucesso!");
