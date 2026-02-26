@@ -157,16 +157,38 @@ export const useRolesManagement = () => {
       return false;
     }
 
-    await supabase.from("page_permissions").delete().eq("role_id", roleId);
+    // Upsert page permissions (update existing, insert new)
+    const { data: existingPagePerms } = await supabase
+      .from("page_permissions")
+      .select("id, page_id")
+      .eq("role_id", roleId);
 
-    const pagePermsToInsert = Object.entries(pagePermissions).map(([pageId, perm]) => ({
-      role_id: roleId,
-      page_id: pageId,
-      ...perm,
-    }));
+    const existingByPageId = new Map(
+      (existingPagePerms || []).map((p: any) => [p.page_id, p.id])
+    );
 
-    if (pagePermsToInsert.length > 0) {
-      await supabase.from("page_permissions").insert(pagePermsToInsert);
+    for (const [pageId, perm] of Object.entries(pagePermissions)) {
+      const existingId = existingByPageId.get(pageId);
+
+      if (existingId) {
+        await supabase
+          .from("page_permissions")
+          .update({
+            visualizar: perm.visualizar,
+            exportar: perm.exportar,
+            atualizar: perm.atualizar,
+            apenas_dev: perm.apenas_dev,
+          })
+          .eq("id", existingId);
+      } else {
+        await supabase
+          .from("page_permissions")
+          .insert({
+            role_id: roleId,
+            page_id: pageId,
+            ...perm,
+          });
+      }
     }
 
     const adminPermsToSave = Object.entries(adminPermissions).map(([permType, perm]) => ({
