@@ -34,6 +34,7 @@ const Estoque = () => {
     refreshRecordCount,
     lastUpdateAt,
     refreshData,
+    whitelist,
   } = useEstoqueData(codCli);
 
   const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
@@ -133,11 +134,31 @@ const Estoque = () => {
     const valor = displayItems.reduce((sum, i) => sum + i.totalValue, 0);
     const m3 = displayItems.reduce((sum, i) => sum + i.m3Total, 0);
     const kits = displayItems.reduce((sum, i) => sum + i.kitsQuantity, 0);
-    const kitsCompleto = displayItems.length > 0
-      ? Math.min(...displayItems.map(i => i.kitsQuantity))
-      : 0;
+
+    // Build unified_code map from whitelist
+    const unifiedMap = new Map<string, string>();
+    whitelist.forEach(w => {
+      if (w.unified_code) unifiedMap.set(w.product_code, w.unified_code);
+    });
+
+    // Group kits by unified_code, sum them; standalone items keep individual value
+    const groupedKits = new Map<string, number>();
+    const standaloneKits: number[] = [];
+
+    displayItems.forEach(item => {
+      const uCode = unifiedMap.get(item.sku);
+      if (uCode) {
+        groupedKits.set(uCode, (groupedKits.get(uCode) || 0) + item.kitsQuantity);
+      } else {
+        standaloneKits.push(item.kitsQuantity);
+      }
+    });
+
+    const allKitValues = [...groupedKits.values(), ...standaloneKits];
+    const kitsCompleto = allKitValues.length > 0 ? Math.min(...allKitValues) : 0;
+
     return { valor, m3, qtdeSKUs: displayItems.length, kits, kitsCompleto };
-  }, [displayItems]);
+  }, [displayItems, whitelist]);
 
   const hasActiveFilters = selectedSKU !== null || filterByName !== null || filterByDate !== null;
   const loading = settingsLoading || dataLoading;

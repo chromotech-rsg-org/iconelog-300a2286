@@ -1,0 +1,1 @@
+ALTER TABLE public.stock_product_whitelist ADD COLUMN unified_code text;

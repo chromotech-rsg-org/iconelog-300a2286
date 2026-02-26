@@ -28,6 +28,20 @@ import { formatNumber, formatCurrency } from "@/data/mockData";
 import { cn } from "@/lib/utils";
 import type { StockItem } from "@/hooks/useEstoqueData";
 
+const formatDateBR = (dateStr: string): string => {
+  const normalized = String(dateStr).replace(/\//g, "-");
+  const parts = normalized.split("-");
+  if (parts.length === 3) {
+    // If YYYY-MM-DD format
+    if (parts[0].length === 4) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    // Already DD/MM/YYYY or DD-MM-YYYY
+    return `${parts[0]}/${parts[1]}/${parts[2]}`;
+  }
+  return dateStr;
+};
+
 interface StockLocationTablesProps {
   matrizItems: StockItem[];
   selectedSKU: string | null;
@@ -126,8 +140,8 @@ export const StockLocationTables = ({
       <Card className="bg-dashboard-card border-dashboard-border">
         <CardHeader className="pb-2">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <CardTitle className="text-sm font-semibold text-foreground">
-              Estoque Matriz (Barueri) <span className="text-xs font-normal text-muted-foreground">({filteredAndSortedItems.length} itens)</span>
+            <CardTitle className="text-base font-semibold text-foreground">
+              Estoque Matriz (Barueri) <span className="text-sm font-normal text-muted-foreground">({filteredAndSortedItems.length} itens)</span>
             </CardTitle>
             <div className="flex items-center gap-2">
               <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
@@ -159,27 +173,27 @@ export const StockLocationTables = ({
             <Table>
               <TableHeader className="sticky top-0 bg-dashboard-card z-10">
                 <TableRow className="border-dashboard-border">
-                 <TableHead className="text-muted-foreground text-xs w-24">Foto</TableHead>
-                  <TableHead className="text-muted-foreground text-xs cursor-pointer hover:text-foreground" onClick={() => handleSort("sku")}>
+                 <TableHead className="text-muted-foreground text-sm w-24">Foto</TableHead>
+                  <TableHead className="text-muted-foreground text-sm cursor-pointer hover:text-foreground" onClick={() => handleSort("sku")}>
                     <span className="flex items-center">Código <SortIcon field="sku" /></span>
                   </TableHead>
-                  <TableHead className="text-muted-foreground text-xs cursor-pointer hover:text-foreground" onClick={() => handleSort("name")}>
+                  <TableHead className="text-muted-foreground text-sm cursor-pointer hover:text-foreground" onClick={() => handleSort("name")}>
                     <span className="flex items-center">Nome <SortIcon field="name" /></span>
                   </TableHead>
-                  <TableHead className="text-muted-foreground text-xs cursor-pointer hover:text-foreground" onClick={() => handleSort("category")}>
+                  <TableHead className="text-muted-foreground text-sm cursor-pointer hover:text-foreground" onClick={() => handleSort("category")}>
                     <span className="flex items-center">Fornecedor <SortIcon field="category" /></span>
                   </TableHead>
-                  <TableHead className="text-muted-foreground text-xs text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("stockQuantity")}>
+                  <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("stockQuantity")}>
                     <span className="flex items-center justify-end">Qtde <SortIcon field="stockQuantity" /></span>
                   </TableHead>
-                  <TableHead className="text-muted-foreground text-xs text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("kitsQuantity")}>
+                  <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("kitsQuantity")}>
                     <span className="flex items-center justify-end">Kits <SortIcon field="kitsQuantity" /></span>
                   </TableHead>
-                  <TableHead className="text-muted-foreground text-xs text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("lastEntryQty")}>
-                    <span className="flex items-center justify-end">Ult. Ent. Qtd <SortIcon field="lastEntryQty" /></span>
-                  </TableHead>
-                  <TableHead className="text-muted-foreground text-xs text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("lastEntryDate")}>
+                  <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("lastEntryDate")}>
                     <span className="flex items-center justify-end">Ult. Ent. Data <SortIcon field="lastEntryDate" /></span>
+                  </TableHead>
+                  <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("lastEntryQty")}>
+                    <span className="flex items-center justify-end">Ult. Ent. Qtd <SortIcon field="lastEntryQty" /></span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -211,27 +225,27 @@ export const StockLocationTables = ({
                       )}
                     </TableCell>
                     <TableCell
-                      className="text-dashboard-accent font-medium text-xs py-1.5 cursor-pointer hover:underline"
+                      className="text-dashboard-accent font-medium text-sm py-1.5 cursor-pointer hover:underline"
                       onClick={() => onSKUClick(item.sku)}
                     >
                       {item.sku}
                     </TableCell>
                     <TableCell
-                      className="text-foreground truncate max-w-[200px] text-xs py-1.5 cursor-pointer hover:underline"
+                      className="text-foreground truncate max-w-[200px] text-sm py-1.5 cursor-pointer hover:underline"
                       onClick={() => onNameClick?.(item.name)}
                     >
                       {item.name}
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs py-1.5 truncate max-w-[150px]">{item.category || "-"}</TableCell>
-                    <TableCell className="text-foreground text-right text-xs py-1.5">{formatNumber(item.stockQuantity)}</TableCell>
-                    <TableCell className="text-foreground text-right text-xs py-1.5">{formatNumber(item.kitsQuantity)}</TableCell>
-                    <TableCell className="text-foreground text-right text-xs py-1.5">{item.lastEntryQty != null ? formatNumber(item.lastEntryQty) : "-"}</TableCell>
+                    <TableCell className="text-foreground font-semibold text-sm py-1.5 truncate max-w-[150px]">{item.category || "-"}</TableCell>
+                    <TableCell className="text-foreground text-right text-sm py-1.5">{formatNumber(item.stockQuantity)}</TableCell>
+                    <TableCell className="text-foreground text-right text-sm py-1.5">{formatNumber(item.kitsQuantity)}</TableCell>
                     <TableCell
-                      className="text-muted-foreground text-right text-xs py-1.5 cursor-pointer hover:underline"
+                      className="text-muted-foreground text-right text-sm py-1.5 cursor-pointer hover:underline"
                       onClick={() => item.lastEntryDate && onDateClick?.(item.lastEntryDate)}
                     >
-                      {item.lastEntryDate || "-"}
+                      {item.lastEntryDate ? formatDateBR(item.lastEntryDate) : "-"}
                     </TableCell>
+                    <TableCell className="text-foreground text-right text-sm py-1.5">{item.lastEntryQty != null ? formatNumber(item.lastEntryQty) : "-"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -290,7 +304,7 @@ export const StockLocationTables = ({
             <div><span className="text-muted-foreground">Valor:</span> <span className="text-foreground font-medium">{formatCurrency(hoveredItem.totalValue)}</span></div>
             <div><span className="text-muted-foreground">M³:</span> <span className="text-foreground font-medium">{hoveredItem.m3Total.toFixed(2)}</span></div>
             {hoveredItem.lastEntryDate && (
-              <div className="col-span-2"><span className="text-muted-foreground">Ult. Entrada:</span> <span className="text-foreground font-medium">{hoveredItem.lastEntryQty} un - {hoveredItem.lastEntryDate}</span></div>
+              <div className="col-span-2"><span className="text-muted-foreground">Ult. Entrada:</span> <span className="text-foreground font-medium">{hoveredItem.lastEntryQty} un - {formatDateBR(hoveredItem.lastEntryDate)}</span></div>
             )}
             {hoveredItem.daysSinceLastMovement != null && (
               <div className="col-span-2"><span className="text-muted-foreground">Dias sem mov.:</span> <span className="text-foreground font-medium">{hoveredItem.daysSinceLastMovement}</span></div>
@@ -354,8 +368,8 @@ export const StockLocationTables = ({
                 <div className="bg-dashboard-dark rounded-xl p-4 space-y-3">
                   <h3 className="text-sm font-semibold text-foreground">Movimentações</h3>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-                    <div><span className="text-muted-foreground">Ult. Entrada:</span> <span className="text-foreground">{modalItem.lastEntryQty ?? "-"} un - {modalItem.lastEntryDate || "-"}</span></div>
-                    <div><span className="text-muted-foreground">Ult. Saída:</span> <span className="text-foreground">{modalItem.lastExitQty ?? "-"} un - {modalItem.lastExitDate || "-"}</span></div>
+                    <div><span className="text-muted-foreground">Ult. Entrada:</span> <span className="text-foreground">{modalItem.lastEntryQty ?? "-"} un - {modalItem.lastEntryDate ? formatDateBR(modalItem.lastEntryDate) : "-"}</span></div>
+                    <div><span className="text-muted-foreground">Ult. Saída:</span> <span className="text-foreground">{modalItem.lastExitQty ?? "-"} un - {modalItem.lastExitDate ? formatDateBR(modalItem.lastExitDate) : "-"}</span></div>
                     <div><span className="text-muted-foreground">Total Entradas:</span> <span className="text-foreground">{modalItem.totalEntryQty != null ? formatNumber(modalItem.totalEntryQty) : "-"}</span></div>
                     <div><span className="text-muted-foreground">Total Saídas:</span> <span className="text-foreground">{modalItem.totalExitQty != null ? formatNumber(modalItem.totalExitQty) : "-"}</span></div>
                     {modalItem.daysSinceLastMovement != null && (
