@@ -1,14 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Package, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Product {
@@ -43,6 +44,9 @@ export const StockProductsManager = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [kits, setKits] = useState<Kit[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<CombinedProduct | null>(null);
@@ -68,6 +72,38 @@ export const StockProductsManager = () => {
       kit: kitMap.get(p.product_code) || null,
     }));
   }, [products, kits]);
+
+  const filteredList = useMemo(() => {
+    if (!searchTerm.trim()) return combinedList;
+    const term = searchTerm.toLowerCase();
+    return combinedList.filter(item =>
+      item.product.product_code.toLowerCase().includes(term) ||
+      (item.product.product_name || "").toLowerCase().includes(term)
+    );
+  }, [combinedList, searchTerm]);
+
+  const totalPages = Math.ceil(filteredList.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedList = filteredList.slice(startIndex, startIndex + itemsPerPage);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else if (currentPage <= 3) {
+      pages.push(1, 2, 3, 4, "...", totalPages);
+    } else if (currentPage >= totalPages - 2) {
+      pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
+    }
+    return pages;
+  };
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setCurrentPage(1);
+  };
 
   const handleOpenNew = () => {
     setEditingProduct(null);
@@ -96,14 +132,12 @@ export const StockProductsManager = () => {
     const name = form.product_name.trim() || null;
 
     if (editingProduct) {
-      // Update product
       const { error: prodErr } = await supabase
         .from("stock_product_whitelist")
         .update({ product_code: code, product_name: name, ativo: form.ativo })
         .eq("id", editingProduct.product.id);
       if (prodErr) { toast.error("Erro: " + prodErr.message); return; }
 
-      // Update or create kit
       if (editingProduct.kit) {
         await supabase.from("stock_kit_config")
           .update({ sku_code: code, sku_name: name, kit_quantity: form.kit_quantity })
@@ -115,12 +149,10 @@ export const StockProductsManager = () => {
 
       toast.success("Produto atualizado!");
     } else {
-      // Create product
       const { error: prodErr } = await supabase.from("stock_product_whitelist")
         .insert({ product_code: code, product_name: name, ativo: form.ativo });
       if (prodErr) { toast.error("Erro: " + prodErr.message); return; }
 
-      // Create kit config if quantity > 1
       if (form.kit_quantity > 1) {
         await supabase.from("stock_kit_config")
           .insert({ sku_code: code, sku_name: name, kit_quantity: form.kit_quantity });
@@ -164,19 +196,46 @@ export const StockProductsManager = () => {
   return (
     <>
       <Card className="bg-dashboard-card border-dashboard-border">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-base text-foreground flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Produtos & Kits
-            </CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Gerencie produtos e configuração de kits em uma única tabela
-            </CardDescription>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <CardTitle className="text-base text-foreground flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Produtos & Kits
+              </CardTitle>
+              <span className="text-sm text-muted-foreground">
+                {filteredList.length} registros
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Mostrar:</span>
+                <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+                  <SelectTrigger className="w-20 h-8 bg-dashboard-dark border-dashboard-border text-foreground">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-dashboard-card border-dashboard-border">
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="relative w-48">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar..."
+                  value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                  className="pl-9 h-8 bg-dashboard-dark border-dashboard-border text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
+              <Button size="sm" className="bg-dashboard-accent text-dashboard-dark" onClick={handleOpenNew}>
+                <Plus className="h-4 w-4 mr-1" /> Novo Produto
+              </Button>
+            </div>
           </div>
-          <Button size="sm" className="bg-dashboard-accent text-dashboard-dark" onClick={handleOpenNew}>
-            <Plus className="h-4 w-4 mr-1" /> Novo Produto
-          </Button>
         </CardHeader>
         <CardContent>
           <Table>
@@ -190,7 +249,7 @@ export const StockProductsManager = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {combinedList.map((item) => (
+              {paginatedList.map((item) => (
                 <TableRow key={item.product.id} className="border-dashboard-border">
                   <TableCell className="text-foreground font-mono text-sm">{item.product.product_code}</TableCell>
                   <TableCell className="text-foreground">{item.product.product_name || "-"}</TableCell>
@@ -217,15 +276,59 @@ export const StockProductsManager = () => {
                   </TableCell>
                 </TableRow>
               ))}
-              {combinedList.length === 0 && (
+              {paginatedList.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Nenhum produto cadastrado
+                    {searchTerm ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t border-dashboard-border mt-2">
+              <span className="text-sm text-muted-foreground">
+                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredList.length)} de {filteredList.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {getPageNumbers().map((page, i) =>
+                  typeof page === "string" ? (
+                    <span key={`ellipsis-${i}`} className="px-2 text-muted-foreground">...</span>
+                  ) : (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "ghost"}
+                      size="icon"
+                      className={`h-8 w-8 ${currentPage === page ? "bg-dashboard-accent text-dashboard-dark" : "text-muted-foreground"}`}
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  )
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
