@@ -23,12 +23,15 @@ Deno.serve(async (req) => {
       });
     }
 
+    const token = authHeader.replace("Bearer ", "");
+
     const anonClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user: callerUser }, error: userError } = await anonClient.auth.getUser();
+    const { data: { user: callerUser }, error: userError } = await anonClient.auth.getUser(token);
     if (userError || !callerUser) {
+      console.error("Auth error:", userError?.message);
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
