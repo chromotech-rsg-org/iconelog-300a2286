@@ -558,6 +558,8 @@ const Admin = () => {
                   <TableBody>
                     {systemPages.map(page => {
                       const perm = profileForm.pagePermissions[page.id];
+                      const isDevProfile = editingRole?.id === "00000000-0000-0000-0000-000000000002";
+                      const isCreating = !editingRole;
                       if (!isDeveloper && !perm?.apenas_dev) return null;
                       return (
                         <TableRow key={page.id} className="border-dashboard-border">
@@ -603,6 +605,8 @@ const Admin = () => {
                   <TableBody>
                     {ALL_ADMIN_TYPES.map(type => {
                       const perm = profileForm.adminPermissions[type.key];
+                      const isDevProfile = editingRole?.id === "00000000-0000-0000-0000-000000000002";
+                      const isCreating = !editingRole;
                       if (!isDeveloper && !perm?.apenas_dev) return null;
                       return (
                         <TableRow key={type.key} className="border-dashboard-border">
