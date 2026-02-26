@@ -13,42 +13,50 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
+      console.log("Missing or invalid Authorization header");
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const token = authHeader.replace("Bearer ", "");
-
-    const anonClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
+    // Use service role client to verify the caller's identity and permissions
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      console.error("Auth error:", claimsError?.message);
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
+    // Verify token using admin client (works reliably regardless of session state)
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user: callerUser }, error: userError } = await adminClient.auth.getUser(token);
+
+    if (userError || !callerUser) {
+      console.error("Token verification failed:", userError?.message);
+      return new Response(JSON.stringify({ error: "Token inválido ou expirado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const callerId = claimsData.claims.sub as string;
+    const callerId = callerUser.id;
+    console.log("Caller verified:", callerId);
 
-    // Check admin permission using RPC
-    const { data: hasPermission } = await anonClient.rpc("has_admin_permission", {
+    // Check admin permission using service role client (bypasses RLS)
+    const { data: hasPermission, error: permError } = await adminClient.rpc("has_admin_permission", {
       user_uuid: callerId,
       perm_type: "usuarios",
       action: "editar",
     });
 
+    if (permError) {
+      console.error("Permission check error:", permError.message);
+    }
+
     if (!hasPermission) {
-      return new Response(JSON.stringify({ error: "Sem permissão" }), {
+      console.log("Permission denied for caller:", callerId);
+      return new Response(JSON.stringify({ error: "Sem permissão para editar usuários" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -63,14 +71,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
     // Handle delete action
     if (action === "delete") {
-      // Check delete permission
-      const { data: hasDeletePerm } = await anonClient.rpc("has_admin_permission", {
+      const { data: hasDeletePerm } = await adminClient.rpc("has_admin_permission", {
         user_uuid: callerId,
         perm_type: "usuarios",
         action: "excluir",
@@ -83,7 +86,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Delete user_roles, profile, and auth user
       await adminClient.from("user_roles").delete().eq("user_id", user_id);
       await adminClient.from("profiles").delete().eq("id", user_id);
       const { error } = await adminClient.auth.admin.deleteUser(user_id);
@@ -114,6 +116,7 @@ Deno.serve(async (req) => {
     const { error } = await adminClient.auth.admin.updateUserById(user_id, updateData);
 
     if (error) {
+      console.error("Update user error:", error.message);
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -125,10 +128,12 @@ Deno.serve(async (req) => {
       await adminClient.from("profiles").update({ email }).eq("id", user_id);
     }
 
+    console.log("User updated successfully:", user_id);
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    console.error("Unexpected error:", err.message);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

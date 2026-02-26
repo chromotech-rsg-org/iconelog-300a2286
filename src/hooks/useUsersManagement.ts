@@ -74,7 +74,7 @@ export const useUsersManagement = () => {
     userId: string,
     data: { nome?: string; ativo?: boolean; role_id?: string; is_developer?: boolean }
   ) => {
-    // Update profile
+    // Update profile fields
     if (data.nome !== undefined || data.ativo !== undefined || data.is_developer !== undefined) {
       const updateData: any = {};
       if (data.nome !== undefined) updateData.nome = data.nome;
@@ -92,23 +92,50 @@ export const useUsersManagement = () => {
       }
     }
 
-    // Update role
-    if (data.role_id !== undefined) {
-      // Delete existing role assignment
-      await supabase
+    // Update role using safe upsert pattern (no delete+insert gap)
+    if (data.role_id !== undefined && data.role_id) {
+      // Fetch existing role assignment
+      const { data: existingRoles, error: fetchError } = await supabase
         .from("user_roles")
-        .delete()
+        .select("id, role_id")
         .eq("user_id", userId);
 
-      // Insert new role assignment
-      if (data.role_id) {
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({ user_id: userId, role_id: data.role_id });
+      if (fetchError) {
+        toast.error("Erro ao verificar perfil atual: " + fetchError.message);
+        return false;
+      }
 
-        if (roleError) {
-          toast.error("Erro ao atribuir perfil: " + roleError.message);
-          return false;
+      const currentRole = existingRoles?.[0];
+
+      // Only touch user_roles if the role actually changed
+      if (!currentRole || currentRole.role_id !== data.role_id) {
+        if (currentRole) {
+          // Update existing record in-place (no gap without a role)
+          const { error: updateError } = await supabase
+            .from("user_roles")
+            .update({ role_id: data.role_id })
+            .eq("id", currentRole.id);
+
+          if (updateError) {
+            toast.error("Erro ao atualizar perfil: " + updateError.message);
+            return false;
+          }
+
+          // Clean up any duplicate role assignments
+          if (existingRoles && existingRoles.length > 1) {
+            const extraIds = existingRoles.slice(1).map(r => r.id);
+            await supabase.from("user_roles").delete().in("id", extraIds);
+          }
+        } else {
+          // No existing role, insert new one
+          const { error: insertError } = await supabase
+            .from("user_roles")
+            .insert({ user_id: userId, role_id: data.role_id });
+
+          if (insertError) {
+            toast.error("Erro ao atribuir perfil: " + insertError.message);
+            return false;
+          }
         }
       }
     }
@@ -119,20 +146,37 @@ export const useUsersManagement = () => {
   }, [fetchUsers]);
 
   const assignRole = useCallback(async (userId: string, roleId: string) => {
-    // Delete existing role assignment
-    await supabase
+    // Use safe upsert pattern
+    const { data: existingRoles } = await supabase
       .from("user_roles")
-      .delete()
+      .select("id, role_id")
       .eq("user_id", userId);
 
-    // Insert new role assignment
-    const { error } = await supabase
-      .from("user_roles")
-      .insert({ user_id: userId, role_id: roleId });
+    const currentRole = existingRoles?.[0];
 
-    if (error) {
-      toast.error("Erro ao atribuir perfil: " + error.message);
-      return false;
+    if (currentRole) {
+      if (currentRole.role_id === roleId) {
+        toast.success("Perfil já atribuído!");
+        return true;
+      }
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ role_id: roleId })
+        .eq("id", currentRole.id);
+
+      if (error) {
+        toast.error("Erro ao atribuir perfil: " + error.message);
+        return false;
+      }
+    } else {
+      const { error } = await supabase
+        .from("user_roles")
+        .insert({ user_id: userId, role_id: roleId });
+
+      if (error) {
+        toast.error("Erro ao atribuir perfil: " + error.message);
+        return false;
+      }
     }
 
     toast.success("Perfil atribuído com sucesso!");
