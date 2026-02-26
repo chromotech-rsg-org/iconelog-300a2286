@@ -1,0 +1,1 @@
+ALTER TABLE public.admin_permissions ADD COLUMN apenas_dev boolean NOT NULL DEFAULT false;
