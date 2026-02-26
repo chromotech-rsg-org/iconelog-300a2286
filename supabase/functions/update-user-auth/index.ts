@@ -29,16 +29,16 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: { user: callerUser }, error: userError } = await anonClient.auth.getUser(token);
-    if (userError || !callerUser) {
-      console.error("Auth error:", userError?.message);
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      console.error("Auth error:", claimsError?.message);
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const callerId = callerUser.id;
+    const callerId = claimsData.claims.sub as string;
 
     // Check admin permission using RPC
     const { data: hasPermission } = await anonClient.rpc("has_admin_permission", {
