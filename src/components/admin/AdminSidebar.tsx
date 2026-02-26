@@ -26,13 +26,13 @@ const mainItems: MenuItem[] = [
   { id: "perfis", label: "Perfis", icon: Shield, permissionKey: "perfis" },
   { id: "publico", label: "Acesso Público", icon: Globe, permissionKey: "acessoPublico" },
   { id: "regionais", label: "Cadastro de Regionais", icon: MapPin, permissionKey: "cadastroCidades" },
+  { id: "empresas_clientes", label: "Empresas / Clientes", icon: Building2, permissionKey: "empresasClientes" },
+  { id: "produtos_estoque", label: "Produtos & Kits", icon: Package, permissionKey: "produtosEstoque" },
 ];
 
 const configItems: MenuItem[] = [
   { id: "configurar_bi", label: "Configurar BI", icon: LayoutGrid, permissionKey: "configurarBi" },
-  { id: "empresas_clientes", label: "Empresas / Clientes", icon: Building2, permissionKey: "empresasClientes" },
   { id: "integracao", label: "Integração", icon: Link, permissionKey: "integracao" },
-  { id: "produtos_estoque", label: "Produtos & Kits", icon: Package, permissionKey: "produtosEstoque" },
   { id: "testes_api", label: "Testes de API", icon: FlaskConical, permissionKey: "testesApi" },
   { id: "logs_api", label: "Logs", icon: FileText, permissionKey: "logsApi" },
   { id: "dados_api", label: "Dados das APIs", icon: Database, permissionKey: "dadosApi" },

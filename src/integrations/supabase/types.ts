@@ -549,6 +549,7 @@ export type Database = {
           id: string
           product_code: string
           product_name: string | null
+          unified_code: string | null
         }
         Insert: {
           ativo?: boolean
@@ -556,6 +557,7 @@ export type Database = {
           id?: string
           product_code: string
           product_name?: string | null
+          unified_code?: string | null
         }
         Update: {
           ativo?: boolean
@@ -563,6 +565,7 @@ export type Database = {
           id?: string
           product_code?: string
           product_name?: string | null
+          unified_code?: string | null
         }
         Relationships: []
       }

@@ -359,7 +359,7 @@ const Admin = () => {
               <Select value={userForm.role_id} onValueChange={v => setUserForm({...userForm, role_id: v})}>
                 <SelectTrigger className="bg-dashboard-dark border-dashboard-border text-foreground"><SelectValue placeholder="Selecione um perfil" /></SelectTrigger>
                 <SelectContent className="bg-dashboard-card border-dashboard-border">
-                  {roles.map(role => <SelectItem key={role.id} value={role.id}>{role.nome}</SelectItem>)}
+                  {roles.filter(role => isDeveloper || role.id !== "00000000-0000-0000-0000-000000000002").map(role => <SelectItem key={role.id} value={role.id}>{role.nome}</SelectItem>)}
                 </SelectContent>
               </Select></div>
             {isDeveloper && !editingUser && (

@@ -17,6 +17,7 @@ interface Product {
   product_code: string;
   product_name: string | null;
   ativo: boolean;
+  unified_code: string | null;
   created_at: string;
 }
 
@@ -38,6 +39,7 @@ interface ProductForm {
   product_name: string;
   ativo: boolean;
   kit_quantity: number;
+  unified_code: string;
 }
 
 export const StockProductsManager = () => {
@@ -50,7 +52,7 @@ export const StockProductsManager = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<CombinedProduct | null>(null);
-  const [form, setForm] = useState<ProductForm>({ product_code: "", product_name: "", ativo: true, kit_quantity: 1 });
+  const [form, setForm] = useState<ProductForm>({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "" });
 
   const fetchData = async () => {
     setLoading(true);
@@ -107,7 +109,7 @@ export const StockProductsManager = () => {
 
   const handleOpenNew = () => {
     setEditingProduct(null);
-    setForm({ product_code: "", product_name: "", ativo: true, kit_quantity: 1 });
+    setForm({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "" });
     setIsDialogOpen(true);
   };
 
@@ -118,6 +120,7 @@ export const StockProductsManager = () => {
       product_name: item.product.product_name || "",
       ativo: item.product.ativo,
       kit_quantity: item.kit?.kit_quantity || 1,
+      unified_code: item.product.unified_code || "",
     });
     setIsDialogOpen(true);
   };
@@ -130,11 +133,12 @@ export const StockProductsManager = () => {
 
     const code = form.product_code.trim();
     const name = form.product_name.trim() || null;
+    const unifiedCode = form.unified_code.trim() || null;
 
     if (editingProduct) {
       const { error: prodErr } = await supabase
         .from("stock_product_whitelist")
-        .update({ product_code: code, product_name: name, ativo: form.ativo })
+        .update({ product_code: code, product_name: name, ativo: form.ativo, unified_code: unifiedCode })
         .eq("id", editingProduct.product.id);
       if (prodErr) { toast.error("Erro: " + prodErr.message); return; }
 
@@ -150,7 +154,7 @@ export const StockProductsManager = () => {
       toast.success("Produto atualizado!");
     } else {
       const { error: prodErr } = await supabase.from("stock_product_whitelist")
-        .insert({ product_code: code, product_name: name, ativo: form.ativo });
+        .insert({ product_code: code, product_name: name, ativo: form.ativo, unified_code: unifiedCode });
       if (prodErr) { toast.error("Erro: " + prodErr.message); return; }
 
       if (form.kit_quantity > 1) {
@@ -244,6 +248,7 @@ export const StockProductsManager = () => {
               <TableRow className="border-dashboard-border">
                 <TableHead className="text-muted-foreground">Código</TableHead>
                 <TableHead className="text-muted-foreground">Nome</TableHead>
+                <TableHead className="text-muted-foreground">Prod. Unificado</TableHead>
                 <TableHead className="text-muted-foreground text-center">Status</TableHead>
                 <TableHead className="text-muted-foreground text-center">Qtd por Kit</TableHead>
                 <TableHead className="text-muted-foreground text-right">Ações</TableHead>
@@ -254,6 +259,7 @@ export const StockProductsManager = () => {
                 <TableRow key={item.product.id} className="border-dashboard-border">
                   <TableCell className="text-foreground font-mono text-sm">{item.product.product_code}</TableCell>
                   <TableCell className="text-foreground">{item.product.product_name || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground font-mono text-sm">{item.product.unified_code || "-"}</TableCell>
                   <TableCell className="text-center">
                     <Badge variant={item.product.ativo ? "default" : "secondary"} className={item.product.ativo ? "bg-green-500/20 text-green-400" : ""}>
                       {item.product.ativo ? "Ativo" : "Inativo"}
@@ -279,7 +285,7 @@ export const StockProductsManager = () => {
               ))}
               {paginatedList.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     {searchTerm ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
                   </TableCell>
                 </TableRow>
@@ -367,6 +373,16 @@ export const StockProductsManager = () => {
                 className="bg-dashboard-dark border-dashboard-border text-foreground text-sm mt-1"
                 placeholder="Ex: 10"
               />
+            </div>
+            <div>
+              <Label className="text-foreground text-sm">Produtos Unificados</Label>
+              <Input
+                value={form.unified_code}
+                onChange={(e) => setForm({ ...form, unified_code: e.target.value })}
+                className="bg-dashboard-dark border-dashboard-border text-foreground text-sm mt-1"
+                placeholder="Código para agrupar produtos (ex: KIT-A)"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Produtos com o mesmo código unificado terão seus kits somados no cálculo de Kits Completo.</p>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox
