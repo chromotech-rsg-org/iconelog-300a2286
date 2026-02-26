@@ -44,8 +44,8 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
     configItems.some(item => item.id === activeSection)
   );
 
-  const visibleMainItems = mainItems.filter(item => canViewAdmin(item.permissionKey) && (isDeveloper || !isAdminDevOnly(item.permissionKey)));
-  const visibleConfigItems = configItems.filter(item => canViewAdmin(item.permissionKey) && (isDeveloper || !isAdminDevOnly(item.permissionKey)));
+  const visibleMainItems = mainItems.filter(item => canViewAdmin(item.permissionKey));
+  const visibleConfigItems = configItems.filter(item => canViewAdmin(item.permissionKey));
   const showConfig = visibleConfigItems.length > 0;
 
   const renderItem = (item: MenuItem) => (
