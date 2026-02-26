@@ -572,6 +572,16 @@ import { CalendarFilter } from "./CalendarFilter";
           </div>
         </>
       )}
+
+      {/* Export-only bar when filters are hidden */}
+      {!showFilters && showExport && onExportExcel && (
+        <div className="flex items-center gap-4 px-4 sm:px-6 py-2 border-t border-dashboard-border">
+          <Button variant="outline" size="sm" onClick={onExportExcel} className="border-dashboard-border text-foreground hover:bg-dashboard-accent hover:text-dashboard-dark">
+            <Download className="mr-2 h-4 w-4" />
+            Exportar Excel
+          </Button>
+        </div>
+      )}
     </header>
 
     {/* Cooldown Modal */}
