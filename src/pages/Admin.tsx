@@ -551,7 +551,7 @@ const Admin = () => {
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("visualizar")}>Visualizar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("exportar")}>Exportar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("atualizar")}>Atualizar</TableHead>
-                      {isDeveloper && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("apenas_dev")}>Dev.</TableHead>}
+                      {isDeveloper && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("apenas_dev")}>Todos</TableHead>}
                       <TableHead className="text-muted-foreground text-center w-[50px]">∀</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -596,7 +596,7 @@ const Admin = () => {
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("editar")}>Editar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("criar")}>Criar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("excluir")}>Excluir</TableHead>
-                      {isDeveloper && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("apenas_dev")}>Dev.</TableHead>}
+                      {isDeveloper && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("apenas_dev")}>Todos</TableHead>}
                       <TableHead className="text-muted-foreground text-center w-[50px]">∀</TableHead>
                     </TableRow>
                   </TableHeader>
