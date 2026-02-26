@@ -182,7 +182,7 @@ const Estoque = () => {
       <SharedHeader
         pageId="estoque"
         lastUpdate={lastUpdateAt || new Date()}
-        showFilters={true}
+        showFilters={false}
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
         selectedRegions={selectedRegions}
