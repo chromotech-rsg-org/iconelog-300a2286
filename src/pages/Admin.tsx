@@ -66,6 +66,7 @@ const Admin = () => {
   const {
     publicAccess, setPublicAccess,
     canViewAdmin, canEditAdmin, canCreateAdmin, canDeleteAdmin,
+    isDeveloper,
     loading: authLoading
   } = useAuth();
 
@@ -88,7 +89,7 @@ const Admin = () => {
   // User dialog state
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
-  const [userForm, setUserForm] = useState({ nome: "", email: "", password: "", role_id: "" });
+  const [userForm, setUserForm] = useState({ nome: "", email: "", password: "", role_id: "", is_developer: false });
 
   // Profile dialog state
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
@@ -124,24 +125,30 @@ const Admin = () => {
   // === USER HANDLERS ===
   const handleOpenNewUser = () => {
     setEditingUser(null);
-    setUserForm({ nome: "", email: "", password: "", role_id: "" });
+    setUserForm({ nome: "", email: "", password: "", role_id: "", is_developer: false });
     setIsUserDialogOpen(true);
   };
 
   const handleEditUser = (user: UserWithRole) => {
     setEditingUser(user);
-    setUserForm({ nome: user.nome, email: user.email, password: "", role_id: user.role_id || "" });
+    setUserForm({ nome: user.nome, email: user.email, password: "", role_id: user.role_id || "", is_developer: user.is_developer });
     setIsUserDialogOpen(true);
   };
 
   const handleSaveUser = async () => {
+    if (userForm.is_developer && !isDeveloper) {
+      toast.error("Apenas desenvolvedores podem criar/editar usuários desenvolvedores.");
+      return;
+    }
     if (editingUser) {
-      await updateUser(editingUser.id, { nome: userForm.nome, role_id: userForm.role_id || undefined });
+      const updateData: { nome?: string; role_id?: string; is_developer?: boolean } = { nome: userForm.nome, role_id: userForm.role_id || undefined };
+      if (isDeveloper) updateData.is_developer = userForm.is_developer;
+      await updateUser(editingUser.id, updateData);
     } else {
       if (!userForm.email || !userForm.password || !userForm.nome) {
         toast.error("Nome, email e senha são obrigatórios"); return;
       }
-      await createUser(userForm.email, userForm.password, userForm.nome, userForm.role_id || undefined);
+      await createUser(userForm.email, userForm.password, userForm.nome, userForm.role_id || undefined, isDeveloper ? userForm.is_developer : false);
     }
     setIsUserDialogOpen(false);
   };
@@ -355,6 +362,24 @@ const Admin = () => {
                   {roles.map(role => <SelectItem key={role.id} value={role.id}>{role.nome}</SelectItem>)}
                 </SelectContent>
               </Select></div>
+            {isDeveloper && !editingUser && (
+              <div className="flex items-center gap-3 p-3 rounded-md border border-dashboard-border bg-dashboard-dark">
+                <Switch checked={userForm.is_developer ?? false} onCheckedChange={v => setUserForm({...userForm, is_developer: v})} />
+                <div>
+                  <Label className="text-foreground">Usuário Desenvolvedor</Label>
+                  <p className="text-xs text-muted-foreground">Apenas desenvolvedores podem criar outros desenvolvedores</p>
+                </div>
+              </div>
+            )}
+            {isDeveloper && editingUser && (
+              <div className="flex items-center gap-3 p-3 rounded-md border border-dashboard-border bg-dashboard-dark">
+                <Switch checked={userForm.is_developer ?? false} onCheckedChange={v => setUserForm({...userForm, is_developer: v})} />
+                <div>
+                  <Label className="text-foreground">Usuário Desenvolvedor</Label>
+                  <p className="text-xs text-muted-foreground">Apenas desenvolvedores podem marcar esta opção</p>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setIsUserDialogOpen(false)} className="border-dashboard-border">Cancelar</Button>
@@ -426,17 +451,21 @@ const Admin = () => {
                       <TableHead className="text-muted-foreground text-center">Visualizar</TableHead>
                       <TableHead className="text-muted-foreground text-center">Exportar</TableHead>
                       <TableHead className="text-muted-foreground text-center">Atualizar</TableHead>
+                      {isDeveloper && <TableHead className="text-muted-foreground text-center">Dev.</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {systemPages.map(page => {
                       const perm = profileForm.pagePermissions[page.id];
+                      // If not developer, hide items marked as apenas_dev
+                      if (!isDeveloper && perm?.apenas_dev) return null;
                       return (
                         <TableRow key={page.id} className="border-dashboard-border">
                           <TableCell className="text-foreground text-sm">{page.nome}</TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.visualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "visualizar")} /></TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.exportar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "exportar")} /></TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.atualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "atualizar")} /></TableCell>
+                          {isDeveloper && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "apenas_dev")} /></TableCell>}
                         </TableRow>
                       );
                     })}

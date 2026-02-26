@@ -72,13 +72,14 @@ export const useUsersManagement = () => {
 
   const updateUser = useCallback(async (
     userId: string,
-    data: { nome?: string; ativo?: boolean; role_id?: string }
+    data: { nome?: string; ativo?: boolean; role_id?: string; is_developer?: boolean }
   ) => {
     // Update profile
-    if (data.nome !== undefined || data.ativo !== undefined) {
+    if (data.nome !== undefined || data.ativo !== undefined || data.is_developer !== undefined) {
       const updateData: any = {};
       if (data.nome !== undefined) updateData.nome = data.nome;
       if (data.ativo !== undefined) updateData.ativo = data.ativo;
+      if (data.is_developer !== undefined) updateData.is_developer = data.is_developer;
 
       const { error: profileError } = await supabase
         .from("profiles")
@@ -143,7 +144,8 @@ export const useUsersManagement = () => {
     email: string,
     password: string,
     nome: string,
-    roleId?: string
+    roleId?: string,
+    isDeveloperUser: boolean = false
   ) => {
     setIsCreating(true);
     
@@ -153,7 +155,7 @@ export const useUsersManagement = () => {
         email,
         password,
         options: {
-          data: { nome }
+          data: { nome, is_developer: isDeveloperUser }
         }
       });
 
@@ -178,6 +180,14 @@ export const useUsersManagement = () => {
         if (roleError) {
           console.error("Error assigning role:", roleError);
         }
+      }
+
+      // Set developer status if needed
+      if (isDeveloperUser) {
+        await supabase
+          .from("profiles")
+          .update({ is_developer: true })
+          .eq("id", authData.user.id);
       }
 
       toast.success("Usuário criado com sucesso! Email de confirmação enviado.");
