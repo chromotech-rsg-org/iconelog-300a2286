@@ -66,8 +66,8 @@ export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarPro
   );
 
   return (
-    <div className="w-64 min-h-full bg-dashboard-card border-r border-dashboard-border flex flex-col shrink-0">
-      <div className="p-4 border-b border-dashboard-border">
+    <div className="w-64 bg-dashboard-card border-r border-dashboard-border flex flex-col shrink-0 overflow-y-auto">
+      <div className="p-4 border-b border-dashboard-border shrink-0">
         <h2 className="text-sm font-semibold text-foreground">Administração</h2>
       </div>
       <nav className="flex-1 p-2 space-y-1">
