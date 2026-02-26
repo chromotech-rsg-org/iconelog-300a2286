@@ -143,9 +143,20 @@ const Admin = () => {
       return;
     }
     if (editingUser) {
-      const updateData: { nome?: string; role_id?: string; is_developer?: boolean; ativo?: boolean } = { nome: userForm.nome, role_id: userForm.role_id || undefined, ativo: userForm.ativo };
+      // Only include role_id if it actually changed
+      const updateData: { nome?: string; role_id?: string; is_developer?: boolean; ativo?: boolean } = { nome: userForm.nome, ativo: userForm.ativo };
       if (isDeveloper) updateData.is_developer = userForm.is_developer;
-      await updateUser(editingUser.id, updateData);
+      
+      const currentRoleId = editingUser.role_id || "";
+      if (userForm.role_id !== currentRoleId) {
+        updateData.role_id = userForm.role_id || undefined;
+      }
+      
+      const profileSuccess = await updateUser(editingUser.id, updateData);
+      if (!profileSuccess) {
+        // Don't close modal on failure — user sees the error toast
+        return;
+      }
 
       // Update email/password via edge function if changed
       const authUpdates: Record<string, string> = {};
@@ -159,20 +170,22 @@ const Admin = () => {
           });
           if (res.error || res.data?.error) {
             toast.error("Erro ao atualizar credenciais: " + (res.data?.error || res.error?.message));
-          } else {
-            if (authUpdates.email) toast.success("Email atualizado com sucesso!");
-            if (authUpdates.password) toast.success("Senha atualizada com sucesso!");
-            await fetchUsers();
+            return; // Don't close modal
           }
+          if (authUpdates.email) toast.success("Email atualizado com sucesso!");
+          if (authUpdates.password) toast.success("Senha atualizada com sucesso!");
+          await fetchUsers();
         } catch (err: any) {
           toast.error("Erro ao atualizar credenciais: " + err.message);
+          return; // Don't close modal
         }
       }
     } else {
       if (!userForm.email || !userForm.password || !userForm.nome) {
         toast.error("Nome, email e senha são obrigatórios"); return;
       }
-      await createUser(userForm.email, userForm.password, userForm.nome, userForm.role_id || undefined, isDeveloper ? userForm.is_developer : false);
+      const created = await createUser(userForm.email, userForm.password, userForm.nome, userForm.role_id || undefined, isDeveloper ? userForm.is_developer : false);
+      if (!created) return; // Don't close modal on failure
     }
     setIsUserDialogOpen(false);
   };
