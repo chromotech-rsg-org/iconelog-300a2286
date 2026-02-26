@@ -1,68 +1,58 @@
 
+Objetivo: corrigir de forma definitiva a perda recorrente do perfil de Desenvolvedor e estabilizar a troca de login/email e senha no painel de usuários.
 
-## Plano de Implementacao - Multiplas Melhorias
+Diagnóstico confirmado
+1) O usuário desenvolvedor (dev@iconelog.com) está sem vínculo em `user_roles` no banco (perfil realmente removido).
+2) A causa raiz está no fluxo de edição de usuário:
+- `src/pages/Admin.tsx` sempre envia `role_id` ao salvar, mesmo sem mudança de perfil.
+- `src/hooks/useUsersManagement.ts` faz `delete` + `insert` em `user_roles`.
+- Quando o próprio desenvolvedor edita a própria conta, o `delete` remove a role que dava permissão e o `insert` seguinte pode falhar por RLS, deixando o usuário sem perfil.
+3) O modal fecha mesmo com erro (falha silenciosa para o operador).
+4) A função de backend `update-user-auth` está frágil na autenticação manual (`getClaims`), com histórico de “Auth session missing” em logs, o que contribui para erros 401/“non-2xx”.
 
-### 1. Filtrar perfil "Desenvolvedor" no seletor de perfis (Novo Usuario)
+Implementação proposta (sequência)
+1. Correção imediata de dados (desbloqueio)
+- Recriar o vínculo do desenvolvedor com a role `Desenvolvedor` em `user_roles` (upsert seguro).
+- Validar que `dev@iconelog.com` voltou a ter role.
 
-**Problema:** Usuarios nao-dev veem o perfil "Desenvolvedor" no dropdown ao criar/editar usuarios.
+2. Corrigir o fluxo de salvar usuário no frontend
+- Arquivo: `src/pages/Admin.tsx`
+- Ajustes:
+  - Só enviar `role_id` para atualização quando houver mudança real de perfil.
+  - Não fechar o modal se `updateUser` falhar.
+  - Interromper o fluxo de troca de credenciais quando a etapa de atualização do usuário falhar.
+  - Melhorar feedback de erro para exibir causa real quando backend retornar não-2xx.
 
-**Solucao:** No `Admin.tsx`, filtrar a lista de `roles` no `<Select>` de perfil do usuario para esconder roles vinculadas a dev (o perfil "Desenvolvedor" ID `00000000-0000-0000-0000-000000000002`) quando `isDeveloper` for false.
+3. Blindar atualização de role para não perder permissão no meio da operação
+- Arquivo: `src/hooks/useUsersManagement.ts`
+- Substituir padrão “delete e depois insert” por fluxo seguro:
+  - Buscar vínculo(s) atual(is) do usuário.
+  - Se não mudou, não tocar em `user_roles`.
+  - Se mudou, atualizar vínculo existente (ou inserir quando não existir), sem janela de usuário “sem perfil”.
+  - Normalizar múltiplos vínculos legados sem apagar antes de garantir vínculo válido.
+  - Tratar e propagar todos os erros (inclusive erro de delete/update/insert).
+- Resultado: evita perda de perfil mesmo em cenário de edição do próprio usuário.
 
-### 2. Mover "Empresas / Clientes" e "Produtos & Kits" para fora de Configuracoes
+4. Estabilizar autenticação/autorização da função de troca de credenciais
+- Arquivo: `supabase/functions/update-user-auth/index.ts`
+- Ajustes:
+  - Trocar validação manual para abordagem consistente com as outras funções do projeto (`auth.getUser(token)`).
+  - Manter validação server-side de permissão via `has_admin_permission`.
+  - Padronizar respostas 401/403 com mensagem clara.
+  - Adicionar logs de diagnóstico objetivos (sem vazar dados sensíveis) para facilitar suporte futuro.
 
-**Solucao:** No `AdminSidebar.tsx`, mover esses dois itens de `configItems` para `mainItems`, mantendo-os no mesmo nivel dos outros menus como Usuarios, Perfis, etc.
+5. Validação funcional completa (fim-a-fim)
+- Cenários obrigatórios:
+  - Desenvolvedor editar próprio nome/email/senha sem perder role.
+  - Desenvolvedor editar outro usuário (nome, status, perfil, email, senha).
+  - Usuário sem permissão de `usuarios/editar` receber bloqueio correto.
+  - Confirmar que após salvar, menu e acessos permanecem corretos sem “sumir perfil”.
+  - Repetir fluxo duas ou três vezes para validar que o problema não reaparece.
 
-### 3. Formatar data "Ult. Ent. Data" no padrao brasileiro (dd/MM/yyyy)
+Critérios de aceite
+- dev@iconelog.com permanece com role Desenvolvedor após alterações de credenciais.
+- Troca de email e senha retorna sucesso consistente para usuário autorizado.
+- Nenhum salvamento de usuário deixa `user_roles` vazio por efeito colateral.
+- Em falhas reais, o operador recebe mensagem clara e o modal não fecha indevidamente.
 
-**Solucao:** No `StockLocationTables.tsx`, formatar `item.lastEntryDate` usando uma funcao que converte a data da API para formato `dd/MM/yyyy`. Aplicar tambem no tooltip hover e no modal.
-
-### 4. Inverter colunas "Ult. Ent. Qtd" e "Ult. Ent. Data"
-
-**Solucao:** No `StockLocationTables.tsx`, trocar a ordem dos `<TableHead>` e `<TableCell>` dessas duas colunas - Data vem antes, Qtd depois.
-
-### 5. Dados do fornecedor em negrito
-
-**Solucao:** No `StockLocationTables.tsx`, alterar a classe CSS da celula do fornecedor de `text-muted-foreground` para `text-foreground font-semibold`.
-
-### 6. Aumentar fonte 1 tamanho em todo o B-Side Estoque
-
-**Solucao:** Nos componentes do B-Side Estoque (`StockDualKPICards.tsx`, `StockLocationTables.tsx`), incrementar cada classe de texto em 1 nivel do Tailwind:
-- `text-xs` -> `text-sm`
-- `text-sm` -> `text-base`
-- `text-lg` -> `text-xl`
-- `text-xl` -> `text-2xl`
-
-### 7. Campo "Produtos Unificados" e logica de Kits Completo
-
-**Mudanca no banco:** Adicionar coluna `unified_code` (text, nullable) na tabela `stock_product_whitelist`.
-
-**UI - StockProductsManager:** Adicionar campo "Produtos Unificados" no formulario e na tabela.
-
-**Logica - Estoque.tsx:** No calculo de `kitsCompleto`:
-1. Para cada produto, verificar se possui `unified_code` na whitelist.
-2. Agrupar produtos pelo `unified_code` e somar seus `kitsQuantity`.
-3. Produtos sem `unified_code` manteem seu valor individual.
-4. O `kitsCompleto` sera o `Math.min()` entre todos os valores agrupados/individuais.
-5. O valor de kits na **linha de cada produto** permanece inalterado.
-
-**Exemplo:** Produto A (200 kits, codigo unificado "X") + Produto B (500 kits, codigo unificado "X") = 700 kits agrupados. Produto C (400 kits, sem codigo unificado) = 400 individual. Kits Completo = min(700, 400) = 400.
-
----
-
-### Detalhes Tecnicos
-
-**Arquivos modificados:**
-- `src/pages/Admin.tsx` - Filtro de roles no selector
-- `src/components/admin/AdminSidebar.tsx` - Reorganizar menus
-- `src/components/stock/StockLocationTables.tsx` - Formato de data BR, inversao de colunas, fornecedor negrito, aumento de fonte
-- `src/components/stock/StockDualKPICards.tsx` - Aumento de fonte
-- `src/components/admin/StockProductsManager.tsx` - Campo unified_code
-- `src/hooks/useEstoqueData.ts` - Carregar unified_code da whitelist
-- `src/pages/Estoque.tsx` - Nova logica de kitsCompleto com agrupamento
-
-**Migracao SQL:**
-```sql
-ALTER TABLE public.stock_product_whitelist 
-ADD COLUMN unified_code text;
-```
-
+Se você aprovar, eu implemento exatamente nessa ordem para resolver de vez e deixar o fluxo estável.
