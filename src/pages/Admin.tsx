@@ -551,7 +551,7 @@ const Admin = () => {
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("visualizar")}>Visualizar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("exportar")}>Exportar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("atualizar")}>Atualizar</TableHead>
-                      {isDeveloper && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("apenas_dev")}>Todos</TableHead>}
+                      {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("apenas_dev")}>Todos</TableHead>}
                       <TableHead className="text-muted-foreground text-center w-[50px]">∀</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -565,7 +565,7 @@ const Admin = () => {
                           <TableCell className="text-center"><Switch checked={perm?.visualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "visualizar")} /></TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.exportar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "exportar")} /></TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.atualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "atualizar")} /></TableCell>
-                          {isDeveloper && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "apenas_dev")} /></TableCell>}
+                          {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "apenas_dev")} /></TableCell>}
                           <TableCell className="text-center">
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleTogglePageRow(page.id)}>
                               <CheckSquare className="h-3.5 w-3.5" />
@@ -596,7 +596,7 @@ const Admin = () => {
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("editar")}>Editar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("criar")}>Criar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("excluir")}>Excluir</TableHead>
-                      {isDeveloper && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("apenas_dev")}>Todos</TableHead>}
+                      {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("apenas_dev")}>Todos</TableHead>}
                       <TableHead className="text-muted-foreground text-center w-[50px]">∀</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -617,7 +617,7 @@ const Admin = () => {
                           <TableCell className="text-center">
                             {type.hasCrud ? <Switch checked={perm?.excluir ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "excluir")} /> : <span className="text-muted-foreground text-xs">-</span>}
                           </TableCell>
-                          {isDeveloper && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "apenas_dev")} /></TableCell>}
+                          {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "apenas_dev")} /></TableCell>}
                           <TableCell className="text-center">
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleToggleAdminRow(type.key)}>
                               <CheckSquare className="h-3.5 w-3.5" />
