@@ -26,6 +26,7 @@ export interface AdminPermission {
   editar: boolean;
   criar: boolean;
   excluir: boolean;
+  apenas_dev: boolean;
 }
 
 // All admin permission types in DB snake_case
@@ -47,6 +48,7 @@ const defaultAdminPerm = (roleId: string, permType: string): AdminPermission => 
   editar: false,
   criar: false,
   excluir: false,
+  apenas_dev: false,
 });
 
 export const useRolesManagement = () => {

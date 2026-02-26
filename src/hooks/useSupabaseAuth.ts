@@ -29,6 +29,7 @@ export interface AdminPermission {
   editar: boolean;
   criar: boolean;
   excluir: boolean;
+  apenas_dev: boolean;
 }
 
 export interface PublicAccessPermission {
@@ -75,7 +76,7 @@ const defaultAdminPermissions = (): AdminPermissionsState => {
   const result: AdminPermissionsState = {};
   allAdminSections.forEach(section => {
     const key = dbTypeToSection[section] || section;
-    result[key] = { ver: false, editar: false, criar: false, excluir: false };
+    result[key] = { ver: false, editar: false, criar: false, excluir: false, apenas_dev: false };
   });
   return result;
 };
@@ -193,6 +194,7 @@ export const useSupabaseAuth = () => {
           result[sectionKey].editar = result[sectionKey].editar || p.editar;
           result[sectionKey].criar = result[sectionKey].criar || p.criar;
           result[sectionKey].excluir = result[sectionKey].excluir || p.excluir;
+          result[sectionKey].apenas_dev = result[sectionKey].apenas_dev || (p as any).apenas_dev;
         }
       });
       return result;
@@ -400,6 +402,7 @@ export const useSupabaseAuth = () => {
     canCreateAdmin,
     canDeleteAdmin,
     canViewAnyConfig,
+    isAdminDevOnly: (section: AdminSectionType) => adminPermissions[section]?.apenas_dev ?? false,
     updatePublicAccess,
     refreshUserData: () => user && loadUserData(user.id),
   };

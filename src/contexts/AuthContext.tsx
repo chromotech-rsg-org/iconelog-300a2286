@@ -32,6 +32,7 @@ interface AuthContextType {
   canCreateAdmin: (section: AdminSectionType) => boolean;
   canDeleteAdmin: (section: AdminSectionType) => boolean;
   canViewAnyConfig: () => boolean;
+  isAdminDevOnly: (section: AdminSectionType) => boolean;
   publicAccess: Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }>;
   setPublicAccess: (pageId: string, field: string, value: boolean) => Promise<void>;
   refreshUserData: () => void;
@@ -46,7 +47,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     canView, canExport, canRefresh, isDevOnly, isPublicAccess,
     isPublicExport, isPublicRefresh,
     canViewAdmin, canEditAdmin, canCreateAdmin, canDeleteAdmin,
-    canViewAnyConfig, updatePublicAccess, refreshUserData,
+    canViewAnyConfig, isAdminDevOnly, updatePublicAccess, refreshUserData,
   } = useSupabaseAuth();
 
   const getPermission = (pageId: string): PagePermission | null => {
@@ -72,7 +73,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         canView, canExport, canRefresh, isDevOnly, isPublicAccess,
         isPublicExport, isPublicRefresh,
         canViewAdmin, canEditAdmin, canCreateAdmin, canDeleteAdmin,
-        canViewAnyConfig, publicAccess, setPublicAccess, refreshUserData,
+        canViewAnyConfig, isAdminDevOnly, publicAccess, setPublicAccess, refreshUserData,
       }}
     >
       {children}

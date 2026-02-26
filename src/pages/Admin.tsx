@@ -44,6 +44,7 @@ interface AdminPermissionForm {
   editar: boolean;
   criar: boolean;
   excluir: boolean;
+  apenas_dev: boolean;
 }
 
 // All admin permission types in DB format
@@ -117,7 +118,7 @@ const Admin = () => {
   const initializeAdminPermissions = (): Record<string, AdminPermissionForm> => {
     const perms: Record<string, AdminPermissionForm> = {};
     ALL_ADMIN_TYPES.forEach(t => {
-      perms[t.key] = { ver: false, editar: false, criar: false, excluir: false };
+      perms[t.key] = { ver: false, editar: false, criar: false, excluir: false, apenas_dev: false };
     });
     return perms;
   };
@@ -178,7 +179,7 @@ const Admin = () => {
     const adminPerms = initializeAdminPermissions();
     Object.entries(role.adminPermissions).forEach(([key, perm]) => {
       if (adminPerms[key]) {
-        adminPerms[key] = { ver: perm.ver, editar: perm.editar, criar: perm.criar, excluir: perm.excluir };
+        adminPerms[key] = { ver: perm.ver, editar: perm.editar, criar: perm.criar, excluir: perm.excluir, apenas_dev: perm.apenas_dev };
       }
     });
 
@@ -196,7 +197,7 @@ const Admin = () => {
 
     const adminPerms: Record<string, Omit<RoleAdminPermission, "id" | "role_id" | "permission_type">> = {};
     Object.entries(profileForm.adminPermissions).forEach(([key, perm]) => {
-      adminPerms[key] = { ver: perm.ver, editar: perm.editar, criar: perm.criar, excluir: perm.excluir };
+      adminPerms[key] = { ver: perm.ver, editar: perm.editar, criar: perm.criar, excluir: perm.excluir, apenas_dev: perm.apenas_dev };
     });
 
     if (editingRole) {
@@ -486,11 +487,13 @@ const Admin = () => {
                       <TableHead className="text-muted-foreground text-center">Editar</TableHead>
                       <TableHead className="text-muted-foreground text-center">Criar</TableHead>
                       <TableHead className="text-muted-foreground text-center">Excluir</TableHead>
+                      {isDeveloper && <TableHead className="text-muted-foreground text-center">Dev.</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {ALL_ADMIN_TYPES.map(type => {
                       const perm = profileForm.adminPermissions[type.key];
+                      if (!isDeveloper && perm?.apenas_dev) return null;
                       return (
                         <TableRow key={type.key} className="border-dashboard-border">
                           <TableCell className="text-foreground text-sm">{type.label}</TableCell>
@@ -504,6 +507,7 @@ const Admin = () => {
                           <TableCell className="text-center">
                             {type.hasCrud ? <Switch checked={perm?.excluir ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "excluir")} /> : <span className="text-muted-foreground text-xs">-</span>}
                           </TableCell>
+                          {isDeveloper && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "apenas_dev")} /></TableCell>}
                         </TableRow>
                       );
                     })}

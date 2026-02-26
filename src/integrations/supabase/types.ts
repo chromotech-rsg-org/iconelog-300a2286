@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       admin_permissions: {
         Row: {
+          apenas_dev: boolean
           created_at: string
           criar: boolean
           editar: boolean
@@ -26,6 +27,7 @@ export type Database = {
           ver: boolean
         }
         Insert: {
+          apenas_dev?: boolean
           created_at?: string
           criar?: boolean
           editar?: boolean
@@ -36,6 +38,7 @@ export type Database = {
           ver?: boolean
         }
         Update: {
+          apenas_dev?: boolean
           created_at?: string
           criar?: boolean
           editar?: boolean
