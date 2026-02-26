@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useSearchParams } from "react-router-dom";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,7 +77,7 @@ const Admin = () => {
   const systemName = getSystemName();
 
   const { roles, loading: rolesLoading, createRole, updateRole, deleteRole } = useRolesManagement();
-  const { users, loading: usersLoading, createUser, updateUser } = useUsersManagement();
+  const { users, loading: usersLoading, createUser, updateUser, fetchUsers } = useUsersManagement();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSection = (searchParams.get("tab") as AdminSection) || "usuarios";
@@ -145,6 +146,28 @@ const Admin = () => {
       const updateData: { nome?: string; role_id?: string; is_developer?: boolean } = { nome: userForm.nome, role_id: userForm.role_id || undefined };
       if (isDeveloper) updateData.is_developer = userForm.is_developer;
       await updateUser(editingUser.id, updateData);
+
+      // Update email/password via edge function if changed
+      const authUpdates: Record<string, string> = {};
+      if (userForm.email && userForm.email !== editingUser.email) authUpdates.email = userForm.email;
+      if (userForm.password) authUpdates.password = userForm.password;
+
+      if (Object.keys(authUpdates).length > 0) {
+        try {
+          const res = await supabase.functions.invoke("update-user-auth", {
+            body: { user_id: editingUser.id, ...authUpdates },
+          });
+          if (res.error || res.data?.error) {
+            toast.error("Erro ao atualizar credenciais: " + (res.data?.error || res.error?.message));
+          } else {
+            if (authUpdates.email) toast.success("Email atualizado com sucesso!");
+            if (authUpdates.password) toast.success("Senha atualizada com sucesso!");
+            await fetchUsers();
+          }
+        } catch (err: any) {
+          toast.error("Erro ao atualizar credenciais: " + err.message);
+        }
+      }
     } else {
       if (!userForm.email || !userForm.password || !userForm.nome) {
         toast.error("Nome, email e senha são obrigatórios"); return;
@@ -454,14 +477,10 @@ const Admin = () => {
           <div className="space-y-4">
             <div><Label className="text-foreground">Nome</Label>
               <Input value={userForm.nome} onChange={e => setUserForm({...userForm, nome: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" /></div>
-            {!editingUser && (
-              <>
-                <div><Label className="text-foreground">Email</Label>
-                  <Input type="email" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" /></div>
-                <div><Label className="text-foreground">Senha</Label>
-                  <Input type="password" value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" placeholder="Mínimo 6 caracteres" /></div>
-              </>
-            )}
+            <div><Label className="text-foreground">Email</Label>
+              <Input type="email" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" /></div>
+            <div><Label className="text-foreground">{editingUser ? "Nova Senha (deixe vazio para manter)" : "Senha"}</Label>
+              <Input type="password" value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})} className="bg-dashboard-dark border-dashboard-border text-foreground" placeholder={editingUser ? "Deixe vazio para não alterar" : "Mínimo 6 caracteres"} /></div>
             <div><Label className="text-foreground">Perfil</Label>
               <Select value={userForm.role_id} onValueChange={v => setUserForm({...userForm, role_id: v})}>
                 <SelectTrigger className="bg-dashboard-dark border-dashboard-border text-foreground"><SelectValue placeholder="Selecione um perfil" /></SelectTrigger>
