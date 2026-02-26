@@ -53,7 +53,7 @@ export const StockLocationTables = ({
 }: StockLocationTablesProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: null, direction: null });
   const [hoveredItem, setHoveredItem] = useState<StockItem | null>(null);
   const [modalItem, setModalItem] = useState<StockItem | null>(null);
@@ -137,6 +137,7 @@ export const StockLocationTables = ({
                 <SelectContent className="bg-dashboard-card border-dashboard-border">
                   <SelectItem value="5">5</SelectItem>
                   <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
                   <SelectItem value="25">25</SelectItem>
                   <SelectItem value="50">50</SelectItem>
                 </SelectContent>
