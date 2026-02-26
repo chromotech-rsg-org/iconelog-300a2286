@@ -91,7 +91,7 @@ const Admin = () => {
   // User dialog state
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserWithRole | null>(null);
-  const [userForm, setUserForm] = useState({ nome: "", email: "", password: "", role_id: "", is_developer: false });
+  const [userForm, setUserForm] = useState({ nome: "", email: "", password: "", role_id: "", is_developer: false, ativo: true });
 
   // Profile dialog state
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
@@ -127,13 +127,13 @@ const Admin = () => {
   // === USER HANDLERS ===
   const handleOpenNewUser = () => {
     setEditingUser(null);
-    setUserForm({ nome: "", email: "", password: "", role_id: "", is_developer: false });
+    setUserForm({ nome: "", email: "", password: "", role_id: "", is_developer: false, ativo: true });
     setIsUserDialogOpen(true);
   };
 
   const handleEditUser = (user: UserWithRole) => {
     setEditingUser(user);
-    setUserForm({ nome: user.nome, email: user.email, password: "", role_id: user.role_id || "", is_developer: user.is_developer });
+    setUserForm({ nome: user.nome, email: user.email, password: "", role_id: user.role_id || "", is_developer: user.is_developer, ativo: user.ativo });
     setIsUserDialogOpen(true);
   };
 
@@ -143,7 +143,7 @@ const Admin = () => {
       return;
     }
     if (editingUser) {
-      const updateData: { nome?: string; role_id?: string; is_developer?: boolean } = { nome: userForm.nome, role_id: userForm.role_id || undefined };
+      const updateData: { nome?: string; role_id?: string; is_developer?: boolean; ativo?: boolean } = { nome: userForm.nome, role_id: userForm.role_id || undefined, ativo: userForm.ativo };
       if (isDeveloper) updateData.is_developer = userForm.is_developer;
       await updateUser(editingUser.id, updateData);
 
@@ -503,6 +503,15 @@ const Admin = () => {
                 <div>
                   <Label className="text-foreground">Usuário Desenvolvedor</Label>
                   <p className="text-xs text-muted-foreground">Apenas desenvolvedores podem marcar esta opção</p>
+                </div>
+              </div>
+            )}
+            {editingUser && (
+              <div className="flex items-center gap-3 p-3 rounded-md border border-dashboard-border bg-dashboard-dark">
+                <Switch checked={userForm.ativo} onCheckedChange={v => setUserForm({...userForm, ativo: v})} />
+                <div>
+                  <Label className="text-foreground">Usuário Ativo</Label>
+                  <p className="text-xs text-muted-foreground">Desative para bloquear o acesso do usuário ao sistema</p>
                 </div>
               </div>
             )}
