@@ -16,7 +16,7 @@ import { useRolesManagement, RoleWithPermissions, PagePermission as RolePagePerm
 import { useUsersManagement, UserWithRole } from "@/hooks/useUsersManagement";
 import { systemPages } from "@/data/authData";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Globe, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Globe, Loader2, CheckSquare } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { NavigationMenu } from "@/components/shared/NavigationMenu";
 import { CityMappingCRUD } from "@/components/admin/CityMappingCRUD";
@@ -223,6 +223,98 @@ const Admin = () => {
       ...prev,
       adminPermissions: { ...prev.adminPermissions, [section]: { ...prev.adminPermissions[section], [key]: !prev.adminPermissions[section][key] } }
     }));
+  };
+
+  // Bulk toggle: all page permissions for a specific column
+  const handleToggleAllPageColumn = (key: "visualizar" | "exportar" | "atualizar" | "apenas_dev") => {
+    setProfileForm(prev => {
+      const visiblePages = systemPages.filter(p => isDeveloper || !prev.pagePermissions[p.id]?.apenas_dev);
+      const allChecked = visiblePages.every(p => prev.pagePermissions[p.id]?.[key]);
+      const newVal = !allChecked;
+      const updated = { ...prev.pagePermissions };
+      visiblePages.forEach(p => { updated[p.id] = { ...updated[p.id], [key]: newVal }; });
+      return { ...prev, pagePermissions: updated };
+    });
+  };
+
+  // Bulk toggle: all page permissions for a single row
+  const handleTogglePageRow = (pageId: string) => {
+    setProfileForm(prev => {
+      const perm = prev.pagePermissions[pageId];
+      const keys: (keyof PagePermissionForm)[] = ["visualizar", "exportar", "atualizar"];
+      const allChecked = keys.every(k => perm?.[k]);
+      const newVal = !allChecked;
+      const updated = { ...prev.pagePermissions, [pageId]: { ...perm, visualizar: newVal, exportar: newVal, atualizar: newVal } };
+      return { ...prev, pagePermissions: updated };
+    });
+  };
+
+  // Bulk toggle: all page permissions (all rows, all columns)
+  const handleToggleAllPages = () => {
+    setProfileForm(prev => {
+      const visiblePages = systemPages.filter(p => isDeveloper || !prev.pagePermissions[p.id]?.apenas_dev);
+      const keys: (keyof PagePermissionForm)[] = ["visualizar", "exportar", "atualizar"];
+      const allChecked = visiblePages.every(p => keys.every(k => prev.pagePermissions[p.id]?.[k]));
+      const newVal = !allChecked;
+      const updated = { ...prev.pagePermissions };
+      visiblePages.forEach(p => { keys.forEach(k => { updated[p.id] = { ...updated[p.id], [k]: newVal }; }); });
+      return { ...prev, pagePermissions: updated };
+    });
+  };
+
+  // Bulk toggle: all admin permissions for a specific column
+  const handleToggleAllAdminColumn = (key: keyof AdminPermissionForm) => {
+    setProfileForm(prev => {
+      const visibleTypes = ALL_ADMIN_TYPES.filter(t => isDeveloper || !prev.adminPermissions[t.key]?.apenas_dev);
+      const applicable = visibleTypes.filter(t => {
+        if (key === "ver" || key === "apenas_dev") return true;
+        if (key === "editar") return t.hasCrud || t.key === "acesso_publico";
+        return t.hasCrud;
+      });
+      const allChecked = applicable.every(t => prev.adminPermissions[t.key]?.[key]);
+      const newVal = !allChecked;
+      const updated = { ...prev.adminPermissions };
+      applicable.forEach(t => { updated[t.key] = { ...updated[t.key], [key]: newVal }; });
+      return { ...prev, adminPermissions: updated };
+    });
+  };
+
+  // Bulk toggle: all admin permissions for a single row
+  const handleToggleAdminRow = (section: string) => {
+    setProfileForm(prev => {
+      const perm = prev.adminPermissions[section];
+      const type = ALL_ADMIN_TYPES.find(t => t.key === section);
+      const keys: (keyof AdminPermissionForm)[] = ["ver"];
+      if (type?.hasCrud || section === "acesso_publico") keys.push("editar");
+      if (type?.hasCrud) keys.push("criar", "excluir");
+      const allChecked = keys.every(k => perm?.[k]);
+      const newVal = !allChecked;
+      const updated = { ...prev.adminPermissions, [section]: { ...perm } };
+      keys.forEach(k => { updated[section][k] = newVal; });
+      return { ...prev, adminPermissions: updated };
+    });
+  };
+
+  // Bulk toggle: all admin permissions (all rows, all columns)
+  const handleToggleAllAdmin = () => {
+    setProfileForm(prev => {
+      const visibleTypes = ALL_ADMIN_TYPES.filter(t => isDeveloper || !prev.adminPermissions[t.key]?.apenas_dev);
+      const allChecked = visibleTypes.every(t => {
+        const perm = prev.adminPermissions[t.key];
+        const keys: (keyof AdminPermissionForm)[] = ["ver"];
+        if (t.hasCrud || t.key === "acesso_publico") keys.push("editar");
+        if (t.hasCrud) keys.push("criar", "excluir");
+        return keys.every(k => perm?.[k]);
+      });
+      const newVal = !allChecked;
+      const updated = { ...prev.adminPermissions };
+      visibleTypes.forEach(t => {
+        updated[t.key] = { ...updated[t.key], ver: newVal };
+        if (t.hasCrud || t.key === "acesso_publico") updated[t.key].editar = newVal;
+        if (t.hasCrud) { updated[t.key].criar = newVal; updated[t.key].excluir = newVal; }
+      });
+      return { ...prev, adminPermissions: updated };
+    });
   };
 
   const handleTogglePublicAccess = async (pageId: string, field: string = "is_public") => { 
@@ -445,22 +537,27 @@ const Admin = () => {
 
             {/* Page Permissions */}
             <div>
-              <Label className="text-foreground mb-2 block">Permissões de Módulos</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-foreground block">Permissões de Módulos</Label>
+                <Button variant="outline" size="sm" className="border-dashboard-border text-xs h-7 gap-1" onClick={handleToggleAllPages}>
+                  <CheckSquare className="h-3 w-3" /> Todos
+                </Button>
+              </div>
               <div className="border border-dashboard-border rounded-md">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-dashboard-border">
                       <TableHead className="text-muted-foreground min-w-[200px]">Módulo</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Visualizar</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Exportar</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Atualizar</TableHead>
-                      {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableHead className="text-muted-foreground text-center">Dev.</TableHead>}
+                      <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("visualizar")}>Visualizar</TableHead>
+                      <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("exportar")}>Exportar</TableHead>
+                      <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("atualizar")}>Atualizar</TableHead>
+                      {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("apenas_dev")}>Dev.</TableHead>}
+                      <TableHead className="text-muted-foreground text-center w-[50px]">∀</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {systemPages.map(page => {
                       const perm = profileForm.pagePermissions[page.id];
-                      // If not developer, hide items marked as apenas_dev
                       if (!isDeveloper && perm?.apenas_dev) return null;
                       return (
                         <TableRow key={page.id} className="border-dashboard-border">
@@ -469,6 +566,11 @@ const Admin = () => {
                           <TableCell className="text-center"><Switch checked={perm?.exportar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "exportar")} /></TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.atualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "atualizar")} /></TableCell>
                           {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "apenas_dev")} /></TableCell>}
+                          <TableCell className="text-center">
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleTogglePageRow(page.id)}>
+                              <CheckSquare className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -479,17 +581,23 @@ const Admin = () => {
 
             {/* Admin Permissions */}
             <div>
-              <Label className="text-foreground mb-2 block">Permissões de Administração</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-foreground block">Permissões de Administração</Label>
+                <Button variant="outline" size="sm" className="border-dashboard-border text-xs h-7 gap-1" onClick={handleToggleAllAdmin}>
+                  <CheckSquare className="h-3 w-3" /> Todos
+                </Button>
+              </div>
               <div className="border border-dashboard-border rounded-md">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-dashboard-border">
                       <TableHead className="text-muted-foreground min-w-[150px]">Seção</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Ver</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Editar</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Criar</TableHead>
-                      <TableHead className="text-muted-foreground text-center">Excluir</TableHead>
-                      {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableHead className="text-muted-foreground text-center">Dev.</TableHead>}
+                      <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("ver")}>Ver</TableHead>
+                      <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("editar")}>Editar</TableHead>
+                      <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("criar")}>Criar</TableHead>
+                      <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("excluir")}>Excluir</TableHead>
+                      {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllAdminColumn("apenas_dev")}>Dev.</TableHead>}
+                      <TableHead className="text-muted-foreground text-center w-[50px]">∀</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -510,6 +618,11 @@ const Admin = () => {
                             {type.hasCrud ? <Switch checked={perm?.excluir ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "excluir")} /> : <span className="text-muted-foreground text-xs">-</span>}
                           </TableCell>
                           {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleToggleAdminPermission(type.key, "apenas_dev")} /></TableCell>}
+                          <TableCell className="text-center">
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleToggleAdminRow(type.key)}>
+                              <CheckSquare className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -567,11 +680,11 @@ const Admin = () => {
   );
 
   return (
-    <div className="min-h-screen bg-dashboard-dark">
+    <div className="h-screen flex flex-col bg-dashboard-dark">
       <DocumentHead pageId="admin" />
 
       {/* Header */}
-      <header className="bg-dashboard-card border-b border-dashboard-border p-4 flex justify-between items-center sticky top-0 z-50">
+      <header className="bg-dashboard-card border-b border-dashboard-border p-4 flex justify-between items-center shrink-0 z-50">
         <div className="flex items-center gap-3">
           <img src={systemLogo} alt="Logo" className="h-10 w-10 rounded-lg object-cover border border-dashboard-accent" />
           <span className="text-foreground font-semibold">Painel de Administração</span>
@@ -580,9 +693,9 @@ const Admin = () => {
       </header>
 
       {/* Layout with sidebar */}
-      <div className="flex">
+      <div className="flex flex-1 min-h-0">
         <AdminSidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-y-auto">
           <div className="mb-6">
             <h1 className="text-xl font-bold text-foreground">{systemName}</h1>
             <p className="text-sm text-muted-foreground">Gerencie usuários, perfis, acessos e configurações</p>
