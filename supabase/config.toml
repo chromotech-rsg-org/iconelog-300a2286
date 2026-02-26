@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.scheduled-update]
 verify_jwt = false
+
+[functions.update-user-auth]
+verify_jwt = false
