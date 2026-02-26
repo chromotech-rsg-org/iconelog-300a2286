@@ -46,7 +46,7 @@ export const StockProductsManager = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<CombinedProduct | null>(null);
@@ -217,6 +217,7 @@ export const StockProductsManager = () => {
                   <SelectContent className="bg-dashboard-card border-dashboard-border">
                     <SelectItem value="5">5</SelectItem>
                     <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
                     <SelectItem value="25">25</SelectItem>
                     <SelectItem value="50">50</SelectItem>
                   </SelectContent>
