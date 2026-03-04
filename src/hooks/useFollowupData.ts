@@ -134,6 +134,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       if (!codCli || cacheLoaded || cacheLoading) return;
       setCacheLoading(true);
       try {
+        // Load current year cache
         const { data: followupCache } = await supabase
           .from("bi_data_cache")
           .select("data")
@@ -141,7 +142,26 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           .eq("cache_key", `followup_${codCli}`)
           .maybeSingle();
 
-        if (followupCache?.data) setFollowupData(followupCache.data as FollowupItem[]);
+        let allFollowup: FollowupItem[] = followupCache?.data ? (followupCache.data as FollowupItem[]) : [];
+
+        // For non-minutas pages, also load 2025 cache and merge
+        if (pageId !== "minutas") {
+          const { data: cache2025 } = await supabase
+            .from("bi_data_cache")
+            .select("data")
+            .eq("page_id", "_shared")
+            .eq("cache_key", `followup_2025_${codCli}`)
+            .maybeSingle();
+
+          if (cache2025?.data) {
+            const data2025 = cache2025.data as FollowupItem[];
+            // Merge: 2025 data + current year data (avoid duplicates by checking _fetch_year)
+            const currentYearData = allFollowup.filter(i => i._fetch_year !== 2025);
+            allFollowup = [...data2025, ...currentYearData];
+          }
+        }
+
+        if (allFollowup.length > 0) setFollowupData(allFollowup);
 
         if (pageId === "minutas" || pageId === "tracking") {
           const { data: produtosCache } = await supabase
@@ -202,7 +222,53 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       });
     }
 
-    // Fetch FOLLOWUP month by month and merge, tagging each record with source month/year
+    // For non-minutas pages, check if 2025 cache exists; if not, fetch it once
+    let data2025: FollowupItem[] = [];
+    if (pageId !== "minutas") {
+      const { data: existing2025 } = await supabase
+        .from("bi_data_cache")
+        .select("cached_at")
+        .eq("page_id", "_shared")
+        .eq("cache_key", `followup_2025_${codCli}`)
+        .maybeSingle();
+
+      if (!existing2025) {
+        // Fetch all 12 months of 2025
+        setRefreshStage("requesting_followup");
+        const chunks2025: { data_inicial: string; data_final: string }[] = [];
+        for (let m = 1; m <= 12; m++) {
+          const firstDay = new Date(2025, m - 1, 1);
+          const lastDay = new Date(2025, m, 0);
+          chunks2025.push({
+            data_inicial: `${fmt(firstDay)} 00:00`,
+            data_final: `${fmt(lastDay)} 23:59`,
+          });
+        }
+
+        for (let i = 0; i < chunks2025.length; i++) {
+          setRefreshRecordCount(data2025.length);
+          const result = await callMainApi("FOLLOWUP", codCli, chunks2025[i], pageId);
+          if (result) {
+            const tagged = result.map((item: FollowupItem) => ({
+              ...item,
+              _fetch_month: i + 1,
+              _fetch_year: 2025,
+            }));
+            data2025 = data2025.concat(tagged);
+          }
+        }
+
+        // Save 2025 data to separate cache key
+        if (data2025.length > 0) {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            await saveToCache("followup_2025", data2025);
+          }
+        }
+      }
+    }
+
+    // Fetch FOLLOWUP month by month for current year and merge, tagging each record with source month/year
     setRefreshStage("requesting_followup");
     let allFollowup: FollowupItem[] = [];
     for (let i = 0; i < chunks.length; i++) {
@@ -216,6 +282,22 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           _fetch_year: currentYear,
         }));
         allFollowup = allFollowup.concat(tagged);
+      }
+    }
+
+    // Merge with 2025 data if we fetched it
+    if (data2025.length > 0) {
+      allFollowup = [...data2025, ...allFollowup];
+    } else if (pageId !== "minutas") {
+      // Load from cache if we didn't fetch fresh
+      const { data: cache2025 } = await supabase
+        .from("bi_data_cache")
+        .select("data")
+        .eq("page_id", "_shared")
+        .eq("cache_key", `followup_2025_${codCli}`)
+        .maybeSingle();
+      if (cache2025?.data) {
+        allFollowup = [...(cache2025.data as FollowupItem[]), ...allFollowup];
       }
     }
 
@@ -245,7 +327,9 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     setRefreshStage("saving");
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      if (allFollowup.length > 0) await saveToCache("followup", allFollowup);
+      // Save only current year data to the main cache key
+      const currentYearOnly = allFollowup.filter(i => i._fetch_year === currentYear);
+      if (currentYearOnly.length > 0) await saveToCache("followup", currentYearOnly);
       if ((pageId === "minutas" || pageId === "tracking") && allProdutos.length > 0) {
         await saveToCache("produtosdistribuidos", allProdutos);
       }
