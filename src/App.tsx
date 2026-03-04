@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
  import { AuthProvider } from "@/contexts/AuthContext";
  import { BiSettingsProvider } from "@/contexts/BiSettingsContext";
+ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SmartRedirect } from "@/components/auth/SmartRedirect";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import DynamicBiRoute from "@/components/auth/DynamicBiRoute";
@@ -26,6 +27,7 @@ const queryClient = new QueryClient();
    <QueryClientProvider client={queryClient}>
      <AuthProvider>
        <BiSettingsProvider>
+         <LanguageProvider>
          <TooltipProvider>
            <Toaster />
            <Sonner />
@@ -49,6 +51,7 @@ const queryClient = new QueryClient();
              </Routes>
            </BrowserRouter>
          </TooltipProvider>
+         </LanguageProvider>
        </BiSettingsProvider>
      </AuthProvider>
    </QueryClientProvider>
