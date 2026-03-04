@@ -106,12 +106,15 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
               <span className="font-bold text-dashboard-accent">{formatNumber(entregaTotals.total)}</span>
             </div>
           </div>
-          {/* Progress bar at bottom */}
-          <div className="h-2 bg-dashboard-border">
+          {/* Progress bar at bottom with percentage */}
+          <div className="relative h-5 bg-dashboard-border">
             <div 
               className="h-full bg-dashboard-accent transition-all"
               style={{ width: `${entregaTotals.total > 0 ? (entregaTotals.finalizado / entregaTotals.total) * 100 : 0}%` }}
             />
+            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground mix-blend-difference">
+              {entregaTotals.total > 0 ? ((entregaTotals.finalizado / entregaTotals.total) * 100).toFixed(1) : "0.0"}%
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -173,6 +176,16 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
               <span className="font-bold text-foreground">{formatNumber(reposicaoTotals.emTransito)}</span>
               <span className="font-bold text-dashboard-accent">{formatNumber(reposicaoTotals.total)}</span>
             </div>
+          </div>
+          {/* Progress bar at bottom with percentage */}
+          <div className="relative h-5 bg-dashboard-border">
+            <div 
+              className="h-full bg-dashboard-accent transition-all"
+              style={{ width: `${reposicaoTotals.total > 0 ? (reposicaoTotals.finalizado / reposicaoTotals.total) * 100 : 0}%` }}
+            />
+            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground mix-blend-difference">
+              {reposicaoTotals.total > 0 ? ((reposicaoTotals.finalizado / reposicaoTotals.total) * 100).toFixed(1) : "0.0"}%
+            </span>
           </div>
         </CardContent>
       </Card>

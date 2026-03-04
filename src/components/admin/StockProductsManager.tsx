@@ -246,6 +246,7 @@ export const StockProductsManager = () => {
           <Table>
             <TableHeader>
               <TableRow className="border-dashboard-border">
+                <TableHead className="text-muted-foreground w-16">Foto</TableHead>
                 <TableHead className="text-muted-foreground">Código</TableHead>
                 <TableHead className="text-muted-foreground">Nome</TableHead>
                 <TableHead className="text-muted-foreground">Prod. Unificado</TableHead>
@@ -257,6 +258,16 @@ export const StockProductsManager = () => {
             <TableBody>
               {paginatedList.map((item) => (
                 <TableRow key={item.product.id} className="border-dashboard-border">
+                  <TableCell className="py-1">
+                    <div className="w-10 h-10 rounded bg-white flex items-center justify-center overflow-hidden">
+                      <img
+                        src={`https://icone-api.bfranca.com.br/fotos/icone_${item.product.product_code}.jpg`}
+                        alt={item.product.product_name || item.product.product_code}
+                        className="w-full h-full object-contain"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>'; }}
+                      />
+                    </div>
+                  </TableCell>
                   <TableCell className="text-foreground font-mono text-sm">{item.product.product_code}</TableCell>
                   <TableCell className="text-foreground">{item.product.product_name || "-"}</TableCell>
                   <TableCell className="text-muted-foreground font-mono text-sm">{item.product.unified_code || "-"}</TableCell>
@@ -285,7 +296,7 @@ export const StockProductsManager = () => {
               ))}
               {paginatedList.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     {searchTerm ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
                   </TableCell>
                 </TableRow>

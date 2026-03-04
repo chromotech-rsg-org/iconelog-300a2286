@@ -6,7 +6,7 @@
  }
  
  export const DocumentHead = ({ pageId }: DocumentHeadProps) => {
-   const { getSystemName, getSystemLogo, getPageTitle, loading } = useBiSettingsContext();
+   const { getSystemName, getSystemLogo, getPageTitle, getPageLogo, loading } = useBiSettingsContext();
  
    useEffect(() => {
      if (loading) return;
@@ -19,18 +19,21 @@
        ? `${pageTitle} | ${systemName}`
        : systemName;
  
-     // Set favicon dynamically
-     const systemLogo = getSystemLogo();
-     const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-     if (link) {
-       link.href = systemLogo;
-     } else {
-       const newLink = document.createElement("link");
-       newLink.rel = "icon";
-       newLink.href = systemLogo;
-       document.head.appendChild(newLink);
-     }
-   }, [loading, pageId, getSystemName, getSystemLogo, getPageTitle]);
+    // Set favicon dynamically - use page-specific logo when on a BI page
+    const nonBiPages = ["system", "admin_panel", "settings"];
+    const faviconUrl = pageId && !nonBiPages.includes(pageId) 
+      ? getPageLogo(pageId) 
+      : getSystemLogo();
+    const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (link) {
+      link.href = faviconUrl;
+    } else {
+      const newLink = document.createElement("link");
+      newLink.rel = "icon";
+      newLink.href = faviconUrl;
+      document.head.appendChild(newLink);
+    }
+   }, [loading, pageId, getSystemName, getSystemLogo, getPageTitle, getPageLogo]);
  
    return null;
  };

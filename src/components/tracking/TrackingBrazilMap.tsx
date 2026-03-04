@@ -95,10 +95,33 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
     return m;
   }, [estadoData]);
 
-  const handleClick = (geo: GeographyType) => {
-    const uf = geo.properties.uf;
-    if (uf) onEstadoClick(uf);
-  };
+  // Attach click handlers via DOM since the library ignores onClick prop
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleStateClick = (e: Event) => {
+      const target = e.currentTarget as SVGElement;
+      const classList = target.getAttribute("class") || "";
+      const match = classList.match(/react-brazil-heatmap__state--(\w{2})/);
+      if (match) {
+        const uf = match[1].toUpperCase();
+        onEstadoClick(uf);
+      }
+    };
+
+    // Wait for SVG to render
+    const timer = setTimeout(() => {
+      const states = el.querySelectorAll(".react-brazil-heatmap__state");
+      states.forEach(s => s.addEventListener("click", handleStateClick));
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+      const states = el.querySelectorAll(".react-brazil-heatmap__state");
+      states.forEach(s => s.removeEventListener("click", handleStateClick));
+    };
+  }, [onEstadoClick, heatmapData]);
 
   const renderTooltipContent = (meta: MetaItem) => {
     if (!meta) return null;
@@ -179,7 +202,6 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
               data={heatmapData}
               metadata={metadata}
               colorRange={["hsl(45, 30%, 20%)", "hsl(45, 100%, 50%)"]}
-              onClick={handleClick}
             >
               <Tooltip trigger="hover" float tooltipContent={renderTooltipContent} />
             </BrazilHeatmap>

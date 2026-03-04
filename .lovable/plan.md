@@ -1,124 +1,58 @@
 
+Objetivo: corrigir de forma definitiva a perda recorrente do perfil de Desenvolvedor e estabilizar a troca de login/email e senha no painel de usuários.
 
-# Plano de Implementação — 7 Melhorias nos BIs
+Diagnóstico confirmado
+1) O usuário desenvolvedor (dev@iconelog.com) está sem vínculo em `user_roles` no banco (perfil realmente removido).
+2) A causa raiz está no fluxo de edição de usuário:
+- `src/pages/Admin.tsx` sempre envia `role_id` ao salvar, mesmo sem mudança de perfil.
+- `src/hooks/useUsersManagement.ts` faz `delete` + `insert` em `user_roles`.
+- Quando o próprio desenvolvedor edita a própria conta, o `delete` remove a role que dava permissão e o `insert` seguinte pode falhar por RLS, deixando o usuário sem perfil.
+3) O modal fecha mesmo com erro (falha silenciosa para o operador).
+4) A função de backend `update-user-auth` está frágil na autenticação manual (`getClaims`), com histórico de “Auth session missing” em logs, o que contribui para erros 401/“non-2xx”.
 
-## 1. Carregar dados de 2025 em todos os BIs (menos Minutas) — cache unificado
+Implementação proposta (sequência)
+1. Correção imediata de dados (desbloqueio)
+- Recriar o vínculo do desenvolvedor com a role `Desenvolvedor` em `user_roles` (upsert seguro).
+- Validar que `dev@iconelog.com` voltou a ter role.
 
-**Problema**: Hoje `useFollowupData` e `useEstoqueConsolidadoData` buscam dados do ano corrente (2026). É necessário também carregar 2025 inteiro uma única vez e armazená-lo no cache compartilhado.
+2. Corrigir o fluxo de salvar usuário no frontend
+- Arquivo: `src/pages/Admin.tsx`
+- Ajustes:
+  - Só enviar `role_id` para atualização quando houver mudança real de perfil.
+  - Não fechar o modal se `updateUser` falhar.
+  - Interromper o fluxo de troca de credenciais quando a etapa de atualização do usuário falhar.
+  - Melhorar feedback de erro para exibir causa real quando backend retornar não-2xx.
 
-**Abordagem**:
-- Na `scheduled-update` edge function e no `useFollowupData.fetchFollowup()`, ao fazer refresh para BIs que não sejam "minutas", incluir chunks mensais de 2025 (jan-dez) **apenas se o cache de 2025 ainda não existir** (ex: `followup_2025_{codCli}`).
-- Criar chave de cache separada para 2025 (ex: `followup_2025_{codCli}`) para não misturar com dados do ano corrente.
-- No carregamento do cache (`loadCache`), buscar e mesclar ambos os anos para os BIs que precisam (entregas, tracking, faturamento, estoque-consolidado).
-- Atualizações agendadas e manuais continuam buscando apenas o ano vigente.
-- Na `scheduled-update`, aplicar a mesma lógica: se `pageId !== "minutas"`, buscar 2025 uma vez (verificar se cache existe e é recente), e no refresh periódico, apenas ano vigente.
+3. Blindar atualização de role para não perder permissão no meio da operação
+- Arquivo: `src/hooks/useUsersManagement.ts`
+- Substituir padrão “delete e depois insert” por fluxo seguro:
+  - Buscar vínculo(s) atual(is) do usuário.
+  - Se não mudou, não tocar em `user_roles`.
+  - Se mudou, atualizar vínculo existente (ou inserir quando não existir), sem janela de usuário “sem perfil”.
+  - Normalizar múltiplos vínculos legados sem apagar antes de garantir vínculo válido.
+  - Tratar e propagar todos os erros (inclusive erro de delete/update/insert).
+- Resultado: evita perda de perfil mesmo em cenário de edição do próprio usuário.
 
-**Arquivos**:
-- `src/hooks/useFollowupData.ts` — loadCache e fetchFollowup
-- `src/hooks/useEstoqueConsolidadoData.ts` — loadCache e refreshData
-- `supabase/functions/scheduled-update/index.ts` — lógica de chunks
+4. Estabilizar autenticação/autorização da função de troca de credenciais
+- Arquivo: `supabase/functions/update-user-auth/index.ts`
+- Ajustes:
+  - Trocar validação manual para abordagem consistente com as outras funções do projeto (`auth.getUser(token)`).
+  - Manter validação server-side de permissão via `has_admin_permission`.
+  - Padronizar respostas 401/403 com mensagem clara.
+  - Adicionar logs de diagnóstico objetivos (sem vazar dados sensíveis) para facilitar suporte futuro.
 
----
+5. Validação funcional completa (fim-a-fim)
+- Cenários obrigatórios:
+  - Desenvolvedor editar próprio nome/email/senha sem perder role.
+  - Desenvolvedor editar outro usuário (nome, status, perfil, email, senha).
+  - Usuário sem permissão de `usuarios/editar` receber bloqueio correto.
+  - Confirmar que após salvar, menu e acessos permanecem corretos sem “sumir perfil”.
+  - Repetir fluxo duas ou três vezes para validar que o problema não reaparece.
 
-## 2. Foto na tela de Produtos & Kits (Admin)
+Critérios de aceite
+- dev@iconelog.com permanece com role Desenvolvedor após alterações de credenciais.
+- Troca de email e senha retorna sucesso consistente para usuário autorizado.
+- Nenhum salvamento de usuário deixa `user_roles` vazio por efeito colateral.
+- Em falhas reais, o operador recebe mensagem clara e o modal não fecha indevidamente.
 
-**Problema**: A tabela de Produtos & Kits no Admin não mostra foto do produto.
-
-**Abordagem**:
-- Adicionar coluna "Foto" na tabela do `StockProductsManager`.
-- Buscar a imagem usando a mesma URL padrão usada no Estoque: `https://icone-api.bfranca.com.br/fotos/icone_{product_code}.jpg`.
-- Exibir thumbnail 40x40px com `object-contain` e fundo branco, com fallback para ícone de pacote quando imagem não carrega.
-
-**Arquivo**: `src/components/admin/StockProductsManager.tsx`
-
----
-
-## 3. Foto do produto no Estoque Consolidado via `foto_produto`
-
-**Problema**: O `EstoqueProductHoverCard` usa URL fixa baseada no código. Deveria usar o campo `foto_produto` retornado pela API MAPALOGISTICO.
-
-**Abordagem**:
-- No `useEstoqueConsolidadoData.ts`, adicionar campo `fotoUrl` ao `EstoqueMatrizItem` extraindo `item.foto_produto`.
-- No `EstoqueProductHoverCard`, usar `product.fotoUrl` quando disponível, com fallback para a URL por código.
-
-**Arquivos**:
-- `src/hooks/useEstoqueConsolidadoData.ts` — adicionar `fotoUrl` ao tipo e mapeamento
-- `src/components/stock/EstoqueProductHoverCard.tsx` — usar `fotoUrl` com fallback
-
----
-
-## 4. Corrigir filtro no mapa do Brasil (Tracking)
-
-**Problema**: O componente `react-brazil-heatmap` declara `onClick` na interface mas **não o desestrutura na implementação** — o prop é ignorado.
-
-**Abordagem**:
-- Adicionar event listeners DOM diretamente nos elementos SVG dos estados (`.react-brazil-heatmap__state`) usando `useEffect`.
-- Extrair o UF do `className` do elemento clicado (ex: `react-brazil-heatmap__state--sp` → `SP`).
-- Chamar `onEstadoClick` com o UF extraído.
-- Remover o prop `onClick` do `BrazilHeatmap` já que não funciona.
-
-**Arquivo**: `src/components/tracking/TrackingBrazilMap.tsx`
-
----
-
-## 5. Favicon dinâmico por empresa do BI
-
-**Problema**: O `DocumentHead` usa `getSystemLogo()` para o favicon, que é sempre o logo do sistema. Deveria usar o logo específico da empresa/BI quando em uma página de BI.
-
-**Abordagem**:
-- No `DocumentHead`, quando `pageId` está definido e não é "system", usar `getPageLogo(pageId)` para o favicon.
-- Quando não tem `pageId` ou é "system"/"admin"/"settings", continuar usando `getSystemLogo()`.
-
-**Arquivo**: `src/components/shared/DocumentHead.tsx`
-
----
-
-## 6. Barra de % no rodapé das tabelas do B-Side Entregas + títulos congelados
-
-**Problema**: As tabelas de Entrega e Reposição não mostram percentual na barra de progresso. A tabela de Reposição nem tem barra. Os títulos das colunas rolam junto com o conteúdo (embora já tenha `sticky top-0`, precisa garantir que funcione).
-
-**Abordagem**:
-- Adicionar barra de progresso com label de percentual no rodapé de **ambas** as tabelas (Entrega e Reposição).
-- Calcular `% Finalizado = (finalizado / total) * 100`.
-- Exibir o percentual centralizado sobre a barra.
-- Garantir que `TableHeader` com `sticky top-0` funcione dentro do `ScrollArea` — pode precisar ajustar o container para que o scroll seja apenas no `TableBody`.
-
-**Arquivo**: `src/components/entregas/EntregasTables.tsx`
-
----
-
-## 7. Função de tradução para inglês nos BIs (com permissão)
-
-**Abordagem**:
-- Criar um contexto de idioma (`LanguageContext`) com suporte a PT-BR e EN.
-- Criar um dicionário de traduções para os termos comuns dos BIs (KPIs, labels de gráficos, títulos de tabelas, filtros).
-- Adicionar um botão de toggle de idioma no header compartilhado (`SharedHeader`).
-- Adicionar nova permissão `tradutor` na tabela `admin_permissions` para controlar quais perfis veem o botão de tradução.
-- No `usePermissions`, adicionar verificação de `canTranslate`.
-
-**Arquivos novos**:
-- `src/contexts/LanguageContext.tsx`
-- `src/i18n/translations.ts`
-
-**Arquivos editados**:
-- `src/components/shared/SharedHeader.tsx` — botão de toggle
-- `src/hooks/usePermissions.ts` — nova permissão
-- Migração SQL — adicionar `permission_type = 'tradutor'` em `admin_permissions`
-- Componentes de BI gradualmente — usar `useTranslation()` nos labels
-
-**Nota**: A tradução será gradual. Na primeira implementação, serão traduzidos os termos mais visíveis (KPIs, títulos de seções, labels de filtros). Os dados brutos (nomes de cidades, regionais, status) permanecem em português.
-
----
-
-## Resumo de arquivos impactados
-
-| # | Mudança | Arquivos |
-|---|---------|----------|
-| 1 | Dados 2025 | `useFollowupData.ts`, `useEstoqueConsolidadoData.ts`, `scheduled-update/index.ts` |
-| 2 | Foto Produtos Admin | `StockProductsManager.tsx` |
-| 3 | Foto Estoque Consolidado | `useEstoqueConsolidadoData.ts`, `EstoqueProductHoverCard.tsx` |
-| 4 | Mapa Brasil click | `TrackingBrazilMap.tsx` |
-| 5 | Favicon dinâmico | `DocumentHead.tsx` |
-| 6 | Barra % Entregas | `EntregasTables.tsx` |
-| 7 | Tradutor EN | novos: `LanguageContext.tsx`, `translations.ts`; editados: `SharedHeader.tsx`, migração SQL |
-
+Se você aprovar, eu implemento exatamente nessa ordem para resolver de vez e deixar o fluxo estável.
