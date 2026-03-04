@@ -25,7 +25,7 @@ const TEMPO_PARADO_COLORS: Record<string, string> = {
 };
 
 export const EstoqueMatrizHoverCard = ({ product, children }: EstoqueMatrizHoverProps) => {
-  const imageUrl = `https://icone-api.bfranca.com.br/fotos/icone_${product.codigo}.jpg`;
+  const imageUrl = product.fotoUrl || `https://icone-api.bfranca.com.br/fotos/icone_${product.codigo}.jpg`;
   const tempoColor = TEMPO_PARADO_COLORS[product.tempoParado] || "text-muted-foreground bg-muted";
 
   return (

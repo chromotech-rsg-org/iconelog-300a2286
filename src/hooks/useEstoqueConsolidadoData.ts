@@ -32,6 +32,7 @@ export interface EstoqueMatrizItem {
   qtdeUltimaSaida: number;
   diasSemMovto: number;
   tempoParado: string; // faixa
+  fotoUrl?: string;
 }
 
 export interface EstoqueBaseItem {
@@ -191,6 +192,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
         qtdeUltimaSaida: parseInt(item.nr_qrde_ultima_saida || "0"),
         diasSemMovto: dias,
         tempoParado: getTempoParadoFaixa(dias),
+        fotoUrl: item.foto_produto || undefined,
       };
     });
   }, [mapaData]);
