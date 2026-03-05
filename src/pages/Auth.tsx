@@ -17,6 +17,7 @@ const Auth = () => {
   const [senha, setSenha] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
   const { login, isAuthenticated, loading } = useAuth();
   const { getSystemLogo, getSystemName } = useBiSettingsContext();
   const navigate = useNavigate();
@@ -31,6 +32,14 @@ const Auth = () => {
     }
   }, [isAuthenticated, loading, navigate]);
 
+  // Timeout to prevent infinite loading screen
+  useEffect(() => {
+    if (loading) {
+      const timer = setTimeout(() => setLoadingTimeout(true), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !senha) {
@@ -39,19 +48,24 @@ const Auth = () => {
     }
     
     setIsLoading(true);
-    const result = await login(email, senha);
-    
-    if (result.success) {
-      toast.success(result.message);
-      navigate("/");
-    } else {
-      toast.error(result.message);
+    try {
+      const result = await login(email, senha);
+      
+      if (result.success) {
+        toast.success(result.message);
+        navigate("/");
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      toast.error("Erro ao conectar. Tente novamente.");
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
-  if (loading) {
+  if (loading && !loadingTimeout) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-foreground">Carregando...</div>
