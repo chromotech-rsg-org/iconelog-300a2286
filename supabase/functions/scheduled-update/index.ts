@@ -126,27 +126,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2025 chunks (full year)
-    const chunks2025: { data_inicial: string; data_final: string }[] = [];
-    for (let m = 1; m <= 12; m++) {
-      const firstDay = new Date(2025, m - 1, 1);
-      const lastDay = new Date(2025, m, 0);
-      chunks2025.push({
-        data_inicial: `${fmt(firstDay)} 00:00`,
-        data_final: `${fmt(lastDay)} 23:59`,
-      });
-    }
-
-    // Determine which pages are NOT minutas (need 2025 data)
-    const nonMinutasPages = matchingPageIds.filter(p => p !== "minutas");
-
     // Check existing cache freshness to avoid re-fetching recently updated APIs
     const allCacheKeys = integrations.flatMap(i => codClis.map(c => `${i.name.toLowerCase()}_${c}`));
-    // Also check 2025 cache keys
-    const cache2025Keys = integrations
-      .filter(i => ["FOLLOWUP"].includes(i.name.toUpperCase()))
-      .flatMap(i => codClis.map(c => `${i.name.toLowerCase()}_2025_${c}`));
-    const allKeysToCheck = [...allCacheKeys, ...cache2025Keys];
+    const allKeysToCheck = [...allCacheKeys];
     
     const { data: existingCache } = await supabase
       .from("bi_data_cache")
@@ -273,54 +255,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // ── 2025 data: fetch once for FOLLOWUP APIs if non-minutas pages exist ──
-      if (nonMinutasPages.length > 0 && apiName === "FOLLOWUP") {
-        for (const codCli2025 of codClis) {
-          const cacheKey2025 = `${integration.name.toLowerCase()}_2025_${codCli2025}`;
-          // Only fetch if 2025 cache doesn't exist yet
-          if (cacheAgeMap.has(cacheKey2025)) {
-            console.log(`2025 cache already exists: ${cacheKey2025}`);
-            continue;
-          }
-
-          try {
-            console.log(`Fetching 2025 data: ${integration.name} for cod_cli: ${codCli2025}`);
-            let data2025: any[] = [];
-            for (const chunk of chunks2025) {
-              const body2025: Record<string, any> = { ...defaultBody, cod_cli: codCli2025, ...chunk };
-              const resp2025 = await fetch(integration.base_url, {
-                method: "POST",
-                headers,
-                body: JSON.stringify(body2025),
-              });
-              const respBody = await resp2025.json().catch(() => null);
-              const dataArr = extractDataArray(respBody);
-              const tagged = dataArr.map((r: any) => ({
-                ...r,
-                _fetch_month: parseInt(chunk.data_inicial.substring(5, 7), 10),
-                _fetch_year: 2025,
-              }));
-              data2025 = data2025.concat(tagged);
-            }
-
-            if (data2025.length > 0) {
-              await supabase.from("bi_data_cache").upsert(
-                {
-                  page_id: "_shared",
-                  cache_key: cacheKey2025,
-                  data: data2025 as any,
-                  cached_at: new Date().toISOString(),
-                },
-                { onConflict: "page_id,cache_key" }
-              );
-              console.log(`2025 cache saved: ${cacheKey2025} (${data2025.length} records)`);
-            }
-          } catch (err2025: any) {
-            console.error(`2025 fetch error for ${cacheKey2025}:`, err2025.message);
-          }
-        }
-      }
-    }
+      // 2025 data fetch temporarily disabled
 
     // Update last_update_at for all matched pages
     for (const pageId of matchingPageIds) {
