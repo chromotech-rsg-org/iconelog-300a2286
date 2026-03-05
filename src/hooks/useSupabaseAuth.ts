@@ -465,10 +465,9 @@ export const useSupabaseAuth = () => {
     return adminPermissions[section]?.excluir ?? false;
   }, [adminPermissions]);
 
-  // Check if user has any config sub-permission
+  // Check if user has any admin sub-permission (any section)
   const canViewAnyConfig = useCallback(() => {
-    const configSections: AdminSectionType[] = ["configurarBi", "empresasClientes", "integracao", "produtosEstoque", "testesApi", "logsApi", "dadosApi"];
-    return configSections.some(s => adminPermissions[s]?.ver);
+    return Object.values(adminPermissions).some(p => p?.ver);
   }, [adminPermissions]);
 
   return {
