@@ -270,7 +270,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       setRefreshStage(null);
       setRefreshing(false);
     }, 3000);
-  }, [codCli, callMainApi, saveLastUpdate, saveToCache, pageId, fetch2025InBackground]);
+  }, [codCli, callMainApi, saveLastUpdate, saveToCache, pageId]);
 
   const getMinutasData = useCallback((months: number[], years: number[], dateRange?: { from?: Date; to?: Date }) => {
     const filtered = dateRange?.from
