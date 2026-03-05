@@ -3,15 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import { Search, AlertTriangle } from "lucide-react";
 
 interface CityRegionalMapping {
@@ -157,61 +148,6 @@ export const AnaliticoCityView = ({
               <p className="text-xs text-muted-foreground">Ocorrências sem regional</p>
               <p className="text-2xl font-bold text-foreground">{totalOccurrences.toLocaleString("pt-BR")}</p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* By UF */}
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">
-              Ocorrências por UF (não mapeadas)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byUF} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                <YAxis dataKey="uf" type="category" stroke="hsl(var(--muted-foreground))" fontSize={11} width={40} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    color: "hsl(var(--foreground))",
-                  }}
-                />
-                <Bar dataKey="count" name="Ocorrências" fill="hsl(45, 100%, 50%)" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Top cities */}
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">
-              Top 20 Cidades não mapeadas
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topCities} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                <YAxis dataKey="cidade" type="category" stroke="hsl(var(--muted-foreground))" fontSize={9} width={120} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    color: "hsl(var(--foreground))",
-                  }}
-                />
-                <Bar dataKey="count" name="Ocorrências" fill="hsl(0, 84%, 60%)" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
