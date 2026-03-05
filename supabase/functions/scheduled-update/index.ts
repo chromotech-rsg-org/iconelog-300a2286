@@ -254,8 +254,9 @@ Deno.serve(async (req) => {
           });
         }
       }
+    }
 
-      // 2025 data fetch temporarily disabled
+    // 2025 data fetch temporarily disabled
 
     // Update last_update_at for all matched pages
     for (const pageId of matchingPageIds) {
