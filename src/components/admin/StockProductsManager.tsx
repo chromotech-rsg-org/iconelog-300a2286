@@ -55,14 +55,30 @@ export const StockProductsManager = () => {
   const [editingProduct, setEditingProduct] = useState<CombinedProduct | null>(null);
   const [form, setForm] = useState<ProductForm>({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "" });
 
+  const [photoMap, setPhotoMap] = useState<Map<string, string>>(new Map());
+
   const fetchData = async () => {
     setLoading(true);
-    const [prodRes, kitRes] = await Promise.all([
+    const [prodRes, kitRes, cacheRes] = await Promise.all([
       supabase.from("stock_product_whitelist").select("*").order("product_code"),
       supabase.from("stock_kit_config").select("*").order("sku_code"),
+      supabase.from("bi_data_cache").select("data").eq("page_id", "_shared").eq("cache_key", "mapalogistico_099").maybeSingle(),
     ]);
     setProducts((prodRes.data as Product[]) || []);
     setKits((kitRes.data as Kit[]) || []);
+
+    // Build photo map from mapa logístico cache
+    if (cacheRes.data?.data) {
+      const map = new Map<string, string>();
+      const items = cacheRes.data.data as any[];
+      for (const item of items) {
+        const code = (item.cd_produto || item.codigo || "").toString().trim();
+        const foto = (item.foto_produto || "").toString().trim();
+        if (code && foto) map.set(code, foto);
+      }
+      setPhotoMap(map);
+    }
+
     setLoading(false);
   };
 
