@@ -746,21 +746,21 @@ const Admin = () => {
       <DocumentHead pageId="admin" />
 
       {/* Header */}
-      <header className="bg-dashboard-card border-b border-dashboard-border p-4 flex justify-between items-center shrink-0 z-50">
-        <div className="flex items-center gap-3">
-          <img src={systemLogo} alt="Logo" className="h-10 w-10 rounded-lg object-cover border border-dashboard-accent" />
-          <span className="text-foreground font-semibold">Painel de Administração</span>
+      <header className="bg-dashboard-card border-b border-dashboard-border p-3 md:p-4 flex justify-between items-center shrink-0 z-50">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          <img src={systemLogo} alt="Logo" className="h-8 w-8 md:h-10 md:w-10 rounded-lg object-cover border border-dashboard-accent shrink-0" />
+          <span className="text-foreground font-semibold text-sm md:text-base truncate">Painel de Administração</span>
         </div>
         <NavigationMenu />
       </header>
 
       {/* Layout with sidebar */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0">
         <AdminSidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
-        <main className="flex-1 p-6 overflow-y-auto">
-          <div className="mb-6">
-            <h1 className="text-xl font-bold text-foreground">{systemName}</h1>
-            <p className="text-sm text-muted-foreground">Gerencie usuários, perfis, acessos e configurações</p>
+        <main className="flex-1 p-3 md:p-6 overflow-y-auto">
+          <div className="mb-4 md:mb-6">
+            <h1 className="text-lg md:text-xl font-bold text-foreground">{systemName}</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">Gerencie usuários, perfis, acessos e configurações</p>
           </div>
           {renderContent()}
         </main>

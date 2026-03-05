@@ -48,6 +48,7 @@ export interface EstoqueBaseItem {
   regiao: string;
   saldo: number;
   vlTotal: number;
+  fotoUrl?: string;
 }
 
 const getTempoParadoFaixa = (dias: number): string => {
@@ -149,7 +150,21 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
     setRefreshStage("saving");
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      if (mapaResult && mapaResult.length > 0) await saveToCache("mapalogistico", mapaResult);
+      if (mapaResult && mapaResult.length > 0) {
+        await saveToCache("mapalogistico", mapaResult);
+        // Update foto_url on stock_product_whitelist from API foto_produto
+        const photoMap = new Map<string, string>();
+        for (const item of mapaResult) {
+          if (item.foto_produto && item.produto) {
+            photoMap.set(item.produto, item.foto_produto);
+          }
+        }
+        if (photoMap.size > 0) {
+          for (const [code, url] of photoMap) {
+            await supabase.from("stock_product_whitelist").update({ foto_url: url } as any).eq("product_code", code);
+          }
+        }
+      }
       if (saldoResult && saldoResult.length > 0) await saveToCache("saldobase", saldoResult);
       await saveLastUpdate();
     } else {
@@ -212,6 +227,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
       regiao: item.regiao || item.regional || "",
       saldo: parseInt(item.nr_qtde_saldo || item.saldo || "0"),
       vlTotal: parseFloat(item.vl_total || "0"),
+      fotoUrl: item.foto_produto || undefined,
     }));
   }, [saldoData]);
 
