@@ -20,7 +20,7 @@
        : systemName;
  
      // Set favicon dynamically - admin pages use system logo, BI pages use BI logo
-     const nonBiPages = ["system", "admin_panel", "admin", "settings"];
+     const nonBiPages = ["system", "admin_panel", "admin", "settings", "auth"];
      const faviconUrl = pageId && !nonBiPages.includes(pageId) 
        ? getPageLogo(pageId) 
        : getSystemLogo();
