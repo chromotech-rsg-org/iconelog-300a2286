@@ -161,7 +161,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
         }
         if (photoMap.size > 0) {
           for (const [code, url] of photoMap) {
-            await supabase.from("stock_product_whitelist").update({ foto_url: url } as any).eq("product_code", code);
+            await supabase.from("stock_product_whitelist").update({ foto_url: url }).eq("product_code", code);
           }
         }
       }
@@ -212,24 +212,38 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
     });
   }, [mapaData]);
 
+  // Build photo map from mapaData (MAPALOGISTICO has foto_produto, SALDOBASE does not)
+  const mapaPhotoMap = useMemo(() => {
+    const map = new Map<string, string>();
+    mapaData.forEach(item => {
+      if (item.foto_produto && item.produto) {
+        map.set(item.produto, item.foto_produto);
+      }
+    });
+    return map;
+  }, [mapaData]);
+
   // Process SALDOBASE into EstoqueBaseItem[]
   const estoqueBase = useMemo((): EstoqueBaseItem[] => {
-    return saldoData.map((item, index) => ({
-      id: `base-${index}`,
-      base: item.base || item.ds_base || item.nm_base || "",
-      cidade: item.cidade || item.ds_cidade || item.nm_cidade || "",
-      uf: item.uf || item.ds_uf || item.sg_uf || "",
-      codigo: item.produto || item.cd_produto || "",
-      m3: parseFloat(item.M3 || item.m3 || item.nr_m3 || "0"),
-      produto: item.Descricao || item.nm_produto || item.descricao || "",
-      qtdeEntrada: parseInt(item.nr_qtde_total_entrada || item.qtde_entrada || "0"),
-      qtdeSaida: parseInt(item.nr_qtde_saida || item.qtde_saida || "0"),
-      regiao: item.regiao || item.regional || "",
-      saldo: parseInt(item.nr_qtde_saldo || item.saldo || "0"),
-      vlTotal: parseFloat(item.vl_total || "0"),
-      fotoUrl: item.foto_produto || undefined,
-    }));
-  }, [saldoData]);
+    return saldoData.map((item, index) => {
+      const codigo = item.produto || item.cd_produto || "";
+      return {
+        id: `base-${index}`,
+        base: item.base || item.ds_base || item.nm_base || "",
+        cidade: item.cidade || item.ds_cidade || item.nm_cidade || "",
+        uf: item.uf || item.ds_uf || item.sg_uf || "",
+        codigo,
+        m3: parseFloat(item.M3 || item.m3 || item.nr_m3 || "0"),
+        produto: item.Descricao || item.nm_produto || item.descricao || "",
+        qtdeEntrada: parseInt(item.nr_qtde_total_entrada || item.qtde_entrada || "0"),
+        qtdeSaida: parseInt(item.nr_qtde_saida || item.qtde_saida || "0"),
+        regiao: item.regiao || item.regional || "",
+        saldo: parseInt(item.nr_qtde_saldo || item.saldo || "0"),
+        vlTotal: parseFloat(item.vl_total || "0"),
+        fotoUrl: item.foto_produto || mapaPhotoMap.get(codigo) || undefined,
+      };
+    });
+  }, [saldoData, mapaPhotoMap]);
 
   // KPI totals
   const matrizTotals = useMemo(() => ({
