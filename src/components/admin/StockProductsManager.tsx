@@ -55,14 +55,30 @@ export const StockProductsManager = () => {
   const [editingProduct, setEditingProduct] = useState<CombinedProduct | null>(null);
   const [form, setForm] = useState<ProductForm>({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "" });
 
+  const [photoMap, setPhotoMap] = useState<Map<string, string>>(new Map());
+
   const fetchData = async () => {
     setLoading(true);
-    const [prodRes, kitRes] = await Promise.all([
+    const [prodRes, kitRes, cacheRes] = await Promise.all([
       supabase.from("stock_product_whitelist").select("*").order("product_code"),
       supabase.from("stock_kit_config").select("*").order("sku_code"),
+      supabase.from("bi_data_cache").select("data").eq("page_id", "_shared").eq("cache_key", "mapalogistico_099").maybeSingle(),
     ]);
     setProducts((prodRes.data as Product[]) || []);
     setKits((kitRes.data as Kit[]) || []);
+
+    // Build photo map from mapa logístico cache
+    if (cacheRes.data?.data) {
+      const map = new Map<string, string>();
+      const items = cacheRes.data.data as any[];
+      for (const item of items) {
+        const code = (item.cd_produto || item.codigo || "").toString().trim();
+        const foto = (item.foto_produto || "").toString().trim();
+        if (code && foto) map.set(code, foto);
+      }
+      setPhotoMap(map);
+    }
+
     setLoading(false);
   };
 
@@ -261,12 +277,19 @@ export const StockProductsManager = () => {
                 <TableRow key={item.product.id} className="border-dashboard-border">
                   <TableCell className="py-1">
                     <div className="w-10 h-10 rounded bg-white flex items-center justify-center overflow-hidden">
-                      <img
-                        src={item.product.foto_url || `https://icone-api.bfranca.com.br/fotos/icone_${item.product.product_code}.jpg`}
-                        alt={item.product.product_name || item.product.product_code}
-                        className="w-full h-full object-contain"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>'; }}
-                      />
+                      {(() => {
+                        const imgUrl = item.product.foto_url || photoMap.get(item.product.product_code) || "";
+                        return imgUrl ? (
+                          <img
+                            src={imgUrl}
+                            alt={item.product.product_name || item.product.product_code}
+                            className="w-full h-full object-contain"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>'; }}
+                          />
+                        ) : (
+                          <Package className="h-5 w-5 text-muted-foreground" />
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell className="text-foreground font-mono text-sm">{item.product.product_code}</TableCell>
@@ -357,6 +380,18 @@ export const StockProductsManager = () => {
             <DialogTitle className="text-foreground">{editingProduct ? "Editar" : "Novo"} Produto</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Photo preview (read-only) */}
+            {(() => {
+              const code = form.product_code.trim();
+              const imgUrl = editingProduct?.product.foto_url || photoMap.get(code) || "";
+              return imgUrl ? (
+                <div className="flex justify-center">
+                  <div className="w-24 h-24 rounded bg-white flex items-center justify-center overflow-hidden border border-dashboard-border">
+                    <img src={imgUrl} alt={form.product_name || code} className="w-full h-full object-contain" />
+                  </div>
+                </div>
+              ) : null;
+            })()}
             <div>
               <Label className="text-foreground text-sm">Código do Produto</Label>
               <Input
