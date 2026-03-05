@@ -72,7 +72,7 @@ export const StockProductsManager = () => {
       const map = new Map<string, string>();
       const items = cacheRes.data.data as any[];
       for (const item of items) {
-        const code = (item.cd_produto || item.codigo || "").toString().trim();
+        const code = (item.produto || "").toString().trim();
         const foto = (item.foto_produto || "").toString().trim();
         if (code && foto) map.set(code, foto);
       }
