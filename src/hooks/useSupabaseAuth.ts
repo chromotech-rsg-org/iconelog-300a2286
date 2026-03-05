@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -301,6 +301,11 @@ export const useSupabaseAuth = () => {
     }
   }, [fetchProfile, fetchUserRoles, fetchPagePermissions, fetchAdminPermissions]);
 
+  // Use ref to track if initial data load happened - survives re-renders without causing effect re-runs
+  const initialLoadDoneRef = useRef(false);
+  const loadUserDataRef = useRef(loadUserData);
+  loadUserDataRef.current = loadUserData;
+
   useEffect(() => {
     fetchPublicAccess().then(setPublicAccessState);
 
@@ -315,14 +320,10 @@ export const useSupabaseAuth = () => {
       });
     }, 15000);
 
-    // Track if initial load already happened to prevent duplicate loads
-    let initialLoadDone = false;
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // Only update session/user references, never trigger data reload on token refresh
+        // TOKEN_REFRESHED / INITIAL_SESSION: silently update refs, NO data reload
         if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
-          // Just update session reference silently, no data reload
           setSession(session);
           setUser(session?.user ?? null);
           return;
@@ -332,16 +333,15 @@ export const useSupabaseAuth = () => {
         setUser(session?.user ?? null);
 
         if (event === "SIGNED_IN") {
-          // Only load if we haven't loaded yet (prevents duplicate with getSession)
-          if (!initialLoadDone) {
-            initialLoadDone = true;
+          if (!initialLoadDoneRef.current) {
+            initialLoadDoneRef.current = true;
             setLoading(true);
             setTimeout(() => { 
-              loadUserData(session!.user.id).finally(() => setLoading(false)); 
+              loadUserDataRef.current(session!.user.id).finally(() => setLoading(false)); 
             }, 0);
           }
         } else if (event === "SIGNED_OUT") {
-          initialLoadDone = false;
+          initialLoadDoneRef.current = false;
           setProfile(null);
           setUserRoles([]);
           setPagePermissions({});
@@ -354,9 +354,9 @@ export const useSupabaseAuth = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user && !initialLoadDone) {
-        initialLoadDone = true;
-        loadUserData(session.user.id).finally(() => setLoading(false));
+      if (session?.user && !initialLoadDoneRef.current) {
+        initialLoadDoneRef.current = true;
+        loadUserDataRef.current(session.user.id).finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
@@ -366,7 +366,8 @@ export const useSupabaseAuth = () => {
       clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
-  }, [loadUserData, fetchPublicAccess]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const signUp = useCallback(async (email: string, password: string, nome: string) => {
     const redirectUrl = `${window.location.origin}/`;
