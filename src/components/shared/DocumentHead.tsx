@@ -19,11 +19,11 @@
        ? `${pageTitle} | ${systemName}`
        : systemName;
  
-    // Set favicon dynamically - use page-specific logo when on a BI page
-    const nonBiPages = ["system", "admin_panel", "settings"];
-    const faviconUrl = pageId && !nonBiPages.includes(pageId) 
-      ? getPageLogo(pageId) 
-      : getSystemLogo();
+     // Set favicon dynamically - admin pages use system logo, BI pages use BI logo
+     const nonBiPages = ["system", "admin_panel", "admin", "settings"];
+     const faviconUrl = pageId && !nonBiPages.includes(pageId) 
+       ? getPageLogo(pageId) 
+       : getSystemLogo();
     const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
     if (link) {
       link.href = faviconUrl;

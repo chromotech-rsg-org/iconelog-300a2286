@@ -48,6 +48,7 @@ export interface EstoqueBaseItem {
   regiao: string;
   saldo: number;
   vlTotal: number;
+  fotoUrl?: string;
 }
 
 const getTempoParadoFaixa = (dias: number): string => {
@@ -212,6 +213,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
       regiao: item.regiao || item.regional || "",
       saldo: parseInt(item.nr_qtde_saldo || item.saldo || "0"),
       vlTotal: parseFloat(item.vl_total || "0"),
+      fotoUrl: item.foto_produto || undefined,
     }));
   }, [saldoData]);
 

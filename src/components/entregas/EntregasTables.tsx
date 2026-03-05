@@ -107,15 +107,20 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
             </div>
           </div>
           {/* Progress bar at bottom with percentage */}
-          <div className="relative h-5 bg-dashboard-border">
-            <div 
-              className="h-full bg-dashboard-accent transition-all"
-              style={{ width: `${entregaTotals.total > 0 ? (entregaTotals.finalizado / entregaTotals.total) * 100 : 0}%` }}
-            />
-            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground mix-blend-difference">
-              {entregaTotals.total > 0 ? ((entregaTotals.finalizado / entregaTotals.total) * 100).toFixed(1) : "0.0"}%
-            </span>
-          </div>
+          {(() => {
+            const pct = entregaTotals.total > 0 ? (entregaTotals.finalizado / entregaTotals.total) * 100 : 0;
+            const emTransitoPct = entregaTotals.total > 0 ? (entregaTotals.emTransito / entregaTotals.total) * 100 : 0;
+            return (
+              <div className="relative h-6 bg-dashboard-dark flex overflow-hidden">
+                <div className="h-full bg-dashboard-accent flex items-center justify-center" style={{ width: `${pct}%` }}>
+                  {pct > 8 && <span className="text-[11px] font-bold text-dashboard-dark">{pct.toFixed(1)}%</span>}
+                </div>
+                <div className="h-full bg-muted flex items-center justify-center" style={{ width: `${emTransitoPct}%` }}>
+                  {emTransitoPct > 8 && <span className="text-[11px] font-bold text-foreground">{emTransitoPct.toFixed(1)}%</span>}
+                </div>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 
@@ -178,15 +183,20 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
             </div>
           </div>
           {/* Progress bar at bottom with percentage */}
-          <div className="relative h-5 bg-dashboard-border">
-            <div 
-              className="h-full bg-dashboard-accent transition-all"
-              style={{ width: `${reposicaoTotals.total > 0 ? (reposicaoTotals.finalizado / reposicaoTotals.total) * 100 : 0}%` }}
-            />
-            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-foreground mix-blend-difference">
-              {reposicaoTotals.total > 0 ? ((reposicaoTotals.finalizado / reposicaoTotals.total) * 100).toFixed(1) : "0.0"}%
-            </span>
-          </div>
+          {(() => {
+            const pct = reposicaoTotals.total > 0 ? (reposicaoTotals.finalizado / reposicaoTotals.total) * 100 : 0;
+            const emTransitoPct = reposicaoTotals.total > 0 ? (reposicaoTotals.emTransito / reposicaoTotals.total) * 100 : 0;
+            return (
+              <div className="relative h-6 bg-dashboard-dark flex overflow-hidden">
+                <div className="h-full bg-dashboard-accent flex items-center justify-center" style={{ width: `${pct}%` }}>
+                  {pct > 8 && <span className="text-[11px] font-bold text-dashboard-dark">{pct.toFixed(1)}%</span>}
+                </div>
+                <div className="h-full bg-muted flex items-center justify-center" style={{ width: `${emTransitoPct}%` }}>
+                  {emTransitoPct > 8 && <span className="text-[11px] font-bold text-foreground">{emTransitoPct.toFixed(1)}%</span>}
+                </div>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>
