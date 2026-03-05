@@ -274,18 +274,22 @@ export const useSupabaseAuth = () => {
         setSession(session);
         setUser(session?.user ?? null);
 
-        if (session?.user) {
-          setLoading(true);
-          setTimeout(() => { 
-            loadUserData(session.user.id).finally(() => setLoading(false)); 
-          }, 0);
-        } else {
+        // Only reload user data on actual sign-in/sign-out, not on token refresh or tab focus
+        if (event === "SIGNED_IN") {
+          if (!profile) {
+            setLoading(true);
+            setTimeout(() => { 
+              loadUserData(session!.user.id).finally(() => setLoading(false)); 
+            }, 0);
+          }
+        } else if (event === "SIGNED_OUT") {
           setProfile(null);
           setUserRoles([]);
           setPagePermissions({});
           setAdminPermissions(defaultAdminPermissions());
           setLoading(false);
         }
+        // TOKEN_REFRESHED, INITIAL_SESSION etc. → don't reload data
       }
     );
 
