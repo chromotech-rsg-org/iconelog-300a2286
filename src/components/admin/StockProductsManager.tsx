@@ -380,6 +380,18 @@ export const StockProductsManager = () => {
             <DialogTitle className="text-foreground">{editingProduct ? "Editar" : "Novo"} Produto</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Photo preview (read-only) */}
+            {(() => {
+              const code = form.product_code.trim();
+              const imgUrl = editingProduct?.product.foto_url || photoMap.get(code) || "";
+              return imgUrl ? (
+                <div className="flex justify-center">
+                  <div className="w-24 h-24 rounded bg-white flex items-center justify-center overflow-hidden border border-dashboard-border">
+                    <img src={imgUrl} alt={form.product_name || code} className="w-full h-full object-contain" />
+                  </div>
+                </div>
+              ) : null;
+            })()}
             <div>
               <Label className="text-foreground text-sm">Código do Produto</Label>
               <Input
