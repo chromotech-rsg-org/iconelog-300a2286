@@ -299,7 +299,6 @@ export const useSupabaseAuth = () => {
         setAdminPermissions(cached.adminPerms);
       }
     }
-    }
   }, [fetchProfile, fetchUserRoles, fetchPagePermissions, fetchAdminPermissions]);
 
   useEffect(() => {
