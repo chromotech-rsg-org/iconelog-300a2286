@@ -98,6 +98,7 @@ const loadPermissionsCache = (): { profile: Profile | null; roles: Role[]; pageP
 };
 const clearPermissionsCache = () => { try { localStorage.removeItem(CACHE_KEY); } catch {} };
 
+// Hook providing auth state, permissions, and session management
 export const useSupabaseAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
