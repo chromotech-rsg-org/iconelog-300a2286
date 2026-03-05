@@ -228,22 +228,31 @@ export const useSupabaseAuth = () => {
   }, []);
 
   const loadUserData = useCallback(async (userId: string) => {
-    const [profileData, roles] = await Promise.all([
-      fetchProfile(userId),
-      fetchUserRoles(userId),
-    ]);
+    try {
+      const [profileData, roles] = await Promise.all([
+        fetchProfile(userId),
+        fetchUserRoles(userId),
+      ]);
 
-    setProfile(profileData);
-    setUserRoles(roles);
+      setProfile(profileData);
+      setUserRoles(roles);
 
-    const roleIds = roles.map((r) => r.id);
-    const [pagePerm, adminPerm] = await Promise.all([
-      fetchPagePermissions(roleIds),
-      fetchAdminPermissions(roleIds),
-    ]);
-
-    setPagePermissions(pagePerm);
-    setAdminPermissions(adminPerm);
+      const roleIds = roles.map((r) => r.id);
+      if (roleIds.length > 0) {
+        const [pagePerm, adminPerm] = await Promise.all([
+          fetchPagePermissions(roleIds),
+          fetchAdminPermissions(roleIds),
+        ]);
+        setPagePermissions(pagePerm);
+        setAdminPermissions(adminPerm);
+      } else {
+        console.warn("No roles found for user, permissions will be empty");
+        setPagePermissions({});
+        setAdminPermissions(defaultAdminPermissions());
+      }
+    } catch (err) {
+      console.error("Error loading user data:", err);
+    }
   }, [fetchProfile, fetchUserRoles, fetchPagePermissions, fetchAdminPermissions]);
 
   useEffect(() => {
