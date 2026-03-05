@@ -81,6 +81,23 @@ const defaultAdminPermissions = (): AdminPermissionsState => {
   return result;
 };
 
+// LocalStorage cache helpers for resilience when DB is down
+const CACHE_KEY = "auth_permissions_cache";
+const savePermissionsCache = (data: { profile: Profile | null; roles: Role[]; pagePerms: Record<string, PagePermission>; adminPerms: AdminPermissionsState }) => {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...data, ts: Date.now() })); } catch {}
+};
+const loadPermissionsCache = (): { profile: Profile | null; roles: Role[]; pagePerms: Record<string, PagePermission>; adminPerms: AdminPermissionsState } | null => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Cache valid for 24 hours
+    if (Date.now() - parsed.ts > 24 * 60 * 60 * 1000) return null;
+    return parsed;
+  } catch { return null; }
+};
+const clearPermissionsCache = () => { try { localStorage.removeItem(CACHE_KEY); } catch {} };
+
 export const useSupabaseAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -234,6 +251,20 @@ export const useSupabaseAuth = () => {
         fetchUserRoles(userId),
       ]);
 
+      // If DB failed (null profile AND no roles), try localStorage cache
+      if (!profileData && roles.length === 0) {
+        console.warn("DB returned no data, trying local cache...");
+        const cached = loadPermissionsCache();
+        if (cached) {
+          console.log("Using cached permissions");
+          setProfile(cached.profile);
+          setUserRoles(cached.roles);
+          setPagePermissions(cached.pagePerms);
+          setAdminPermissions(cached.adminPerms);
+          return;
+        }
+      }
+
       setProfile(profileData);
       setUserRoles(roles);
 
@@ -245,13 +276,28 @@ export const useSupabaseAuth = () => {
         ]);
         setPagePermissions(pagePerm);
         setAdminPermissions(adminPerm);
+        // Save to cache for resilience
+        savePermissionsCache({ profile: profileData, roles, pagePerms: pagePerm, adminPerms: adminPerm });
       } else {
-        console.warn("No roles found for user, permissions will be empty");
-        setPagePermissions({});
-        setAdminPermissions(defaultAdminPermissions());
+        console.warn("No roles found for user, checking cache...");
+        const cached = loadPermissionsCache();
+        if (cached && cached.roles.length > 0) {
+          setPagePermissions(cached.pagePerms);
+          setAdminPermissions(cached.adminPerms);
+        } else {
+          setPagePermissions({});
+          setAdminPermissions(defaultAdminPermissions());
+        }
       }
     } catch (err) {
-      console.error("Error loading user data:", err);
+      console.error("Error loading user data, trying cache:", err);
+      const cached = loadPermissionsCache();
+      if (cached) {
+        setProfile(cached.profile);
+        setUserRoles(cached.roles);
+        setPagePermissions(cached.pagePerms);
+        setAdminPermissions(cached.adminPerms);
+      }
     }
   }, [fetchProfile, fetchUserRoles, fetchPagePermissions, fetchAdminPermissions]);
 
@@ -269,34 +315,47 @@ export const useSupabaseAuth = () => {
       });
     }, 15000);
 
+    // Track if initial load already happened to prevent duplicate loads
+    let initialLoadDone = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Only update session/user references, never trigger data reload on token refresh
+        if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
+          // Just update session reference silently, no data reload
+          setSession(session);
+          setUser(session?.user ?? null);
+          return;
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
 
-        // Only reload user data on actual sign-in/sign-out, not on token refresh or tab focus
         if (event === "SIGNED_IN") {
-          if (!profile) {
+          // Only load if we haven't loaded yet (prevents duplicate with getSession)
+          if (!initialLoadDone) {
+            initialLoadDone = true;
             setLoading(true);
             setTimeout(() => { 
               loadUserData(session!.user.id).finally(() => setLoading(false)); 
             }, 0);
           }
         } else if (event === "SIGNED_OUT") {
+          initialLoadDone = false;
           setProfile(null);
           setUserRoles([]);
           setPagePermissions({});
           setAdminPermissions(defaultAdminPermissions());
           setLoading(false);
         }
-        // TOKEN_REFRESHED, INITIAL_SESSION etc. → don't reload data
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
+      if (session?.user && !initialLoadDone) {
+        initialLoadDone = true;
         loadUserData(session.user.id).finally(() => setLoading(false));
       } else {
         setLoading(false);
@@ -346,6 +405,7 @@ export const useSupabaseAuth = () => {
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
+    clearPermissionsCache();
     setUser(null);
     setSession(null);
     setProfile(null);
