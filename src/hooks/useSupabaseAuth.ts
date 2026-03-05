@@ -269,34 +269,47 @@ export const useSupabaseAuth = () => {
       });
     }, 15000);
 
+    // Track if initial load already happened to prevent duplicate loads
+    let initialLoadDone = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Only update session/user references, never trigger data reload on token refresh
+        if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
+          // Just update session reference silently, no data reload
+          setSession(session);
+          setUser(session?.user ?? null);
+          return;
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
 
-        // Only reload user data on actual sign-in/sign-out, not on token refresh or tab focus
         if (event === "SIGNED_IN") {
-          if (!profile) {
+          // Only load if we haven't loaded yet (prevents duplicate with getSession)
+          if (!initialLoadDone) {
+            initialLoadDone = true;
             setLoading(true);
             setTimeout(() => { 
               loadUserData(session!.user.id).finally(() => setLoading(false)); 
             }, 0);
           }
         } else if (event === "SIGNED_OUT") {
+          initialLoadDone = false;
           setProfile(null);
           setUserRoles([]);
           setPagePermissions({});
           setAdminPermissions(defaultAdminPermissions());
           setLoading(false);
         }
-        // TOKEN_REFRESHED, INITIAL_SESSION etc. → don't reload data
       }
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
+      if (session?.user && !initialLoadDone) {
+        initialLoadDone = true;
         loadUserData(session.user.id).finally(() => setLoading(false));
       } else {
         setLoading(false);

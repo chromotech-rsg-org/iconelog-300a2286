@@ -21,7 +21,15 @@ import Auth from "./pages/Auth";
 import NoAccess from "./pages/NoAccess";
  import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
  const App = () => (
    <QueryClientProvider client={queryClient}>
