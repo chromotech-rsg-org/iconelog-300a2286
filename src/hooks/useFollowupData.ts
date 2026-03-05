@@ -135,26 +135,35 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       setCacheLoading(true);
       try {
         // Load current year cache
-        const { data: followupCache } = await supabase
+        const { data: followupCache, error: followupErr } = await supabase
           .from("bi_data_cache")
           .select("data")
           .eq("page_id", "_shared")
           .eq("cache_key", `followup_${codCli}`)
           .maybeSingle();
 
-        let allFollowup: FollowupItem[] = followupCache?.data ? (followupCache.data as FollowupItem[]) : [];
-
-        if (allFollowup.length > 0) setFollowupData(allFollowup);
+        if (followupErr) {
+          console.warn("Cache load error (followup):", followupErr.message);
+        } else {
+          let allFollowup: FollowupItem[] = followupCache?.data ? (followupCache.data as FollowupItem[]) : [];
+          if (allFollowup.length > 0) setFollowupData(allFollowup);
+        }
 
         if (pageId === "minutas" || pageId === "tracking") {
-          const { data: produtosCache } = await supabase
+          const { data: produtosCache, error: produtosErr } = await supabase
             .from("bi_data_cache")
             .select("data")
             .eq("page_id", "_shared")
             .eq("cache_key", `produtosdistribuidos_${codCli}`)
             .maybeSingle();
-          if (produtosCache?.data) setProdutosData(produtosCache.data as FollowupItem[]);
+          if (produtosErr) {
+            console.warn("Cache load error (produtos):", produtosErr.message);
+          } else if (produtosCache?.data) {
+            setProdutosData(produtosCache.data as FollowupItem[]);
+          }
         }
+      } catch (err) {
+        console.error("Unexpected cache load error:", err);
       } finally {
         setCacheLoaded(true);
         setCacheLoading(false);
