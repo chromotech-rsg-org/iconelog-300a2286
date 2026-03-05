@@ -48,6 +48,7 @@ interface StockLocationTablesProps {
   onSKUClick: (sku: string) => void;
   onNameClick?: (name: string) => void;
   onDateClick?: (date: string) => void;
+  onCategoryClick?: (category: string) => void;
 }
 
 type SortDirection = "asc" | "desc" | null;
@@ -64,6 +65,7 @@ export const StockLocationTables = ({
   onSKUClick,
   onNameClick,
   onDateClick,
+  onCategoryClick,
 }: StockLocationTablesProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -236,7 +238,12 @@ export const StockLocationTables = ({
                     >
                       {item.name}
                     </TableCell>
-                    <TableCell className="text-foreground font-semibold text-sm py-1.5 truncate max-w-[150px]">{item.category || "-"}</TableCell>
+                    <TableCell
+                      className="text-foreground font-semibold text-sm py-1.5 truncate max-w-[150px] cursor-pointer hover:underline"
+                      onClick={() => item.category && onCategoryClick?.(item.category)}
+                    >
+                      {item.category || "-"}
+                    </TableCell>
                     <TableCell className="text-foreground text-right text-sm py-1.5">{formatNumber(item.stockQuantity)}</TableCell>
                     <TableCell className="text-foreground text-right text-sm py-1.5">{formatNumber(item.kitsQuantity)}</TableCell>
                     <TableCell

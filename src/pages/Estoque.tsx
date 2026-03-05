@@ -43,6 +43,7 @@ const Estoque = () => {
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
   const [filterByName, setFilterByName] = useState<string | null>(null);
   const [filterByDate, setFilterByDate] = useState<string | null>(null);
+  const [filterByCategory, setFilterByCategory] = useState<string | null>(null);
 
   // Filtered items based on active filters (month/year filter by lastEntryDate)
   const displayItems = useMemo(() => {
@@ -68,8 +69,9 @@ const Estoque = () => {
     if (selectedSKU) items = items.filter(i => i.sku === selectedSKU);
     if (filterByName) items = items.filter(i => i.name === filterByName);
     if (filterByDate) items = items.filter(i => i.lastEntryDate === filterByDate);
+    if (filterByCategory) items = items.filter(i => i.category === filterByCategory);
     return items;
-  }, [stockItems, selectedMonths, selectedYears, selectedSKU, filterByName, filterByDate]);
+  }, [stockItems, selectedMonths, selectedYears, selectedSKU, filterByName, filterByDate, filterByCategory]);
 
   const handleRefreshData = useCallback(() => {
     if (codCli) {
@@ -102,24 +104,35 @@ const Estoque = () => {
     setSelectedSKU(prev => (prev === sku ? null : sku));
     setFilterByName(null);
     setFilterByDate(null);
+    setFilterByCategory(null);
   }, []);
 
   const handleNameClick = useCallback((name: string) => {
     setFilterByName(prev => (prev === name ? null : name));
     setSelectedSKU(null);
     setFilterByDate(null);
+    setFilterByCategory(null);
   }, []);
 
   const handleDateClick = useCallback((date: string) => {
     setFilterByDate(prev => (prev === date ? null : date));
     setSelectedSKU(null);
     setFilterByName(null);
+    setFilterByCategory(null);
+  }, []);
+
+  const handleCategoryClick = useCallback((category: string) => {
+    setFilterByCategory(prev => (prev === category ? null : category));
+    setSelectedSKU(null);
+    setFilterByName(null);
+    setFilterByDate(null);
   }, []);
 
   const clearAllFilters = useCallback(() => {
     setSelectedSKU(null);
     setFilterByName(null);
     setFilterByDate(null);
+    setFilterByCategory(null);
   }, []);
 
   const clearGlobalFilters = useCallback(() => {
@@ -160,7 +173,7 @@ const Estoque = () => {
     return { valor, m3, qtdeSKUs: displayItems.length, kits, kitsCompleto };
   }, [displayItems, whitelist]);
 
-  const hasActiveFilters = selectedSKU !== null || filterByName !== null || filterByDate !== null;
+  const hasActiveFilters = selectedSKU !== null || filterByName !== null || filterByDate !== null || filterByCategory !== null;
   const loading = settingsLoading || dataLoading;
   const hasData = displayItems.length > 0 || stockItems.length > 0;
 
@@ -234,6 +247,11 @@ const Estoque = () => {
               Data: {filterByDate} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
+          {filterByCategory && (
+            <Badge variant="outline" className="border-green-500 bg-green-500/10 text-green-500 cursor-pointer hover:bg-green-500/20" onClick={() => setFilterByCategory(null)}>
+              Fornecedor: {filterByCategory} <X className="ml-1 h-3 w-3" />
+            </Badge>
+          )}
           <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
             Limpar todos
           </Button>
@@ -267,6 +285,7 @@ const Estoque = () => {
             onSKUClick={handleSKUClick}
             onNameClick={handleNameClick}
             onDateClick={handleDateClick}
+            onCategoryClick={handleCategoryClick}
           />
         </div>
       )}
