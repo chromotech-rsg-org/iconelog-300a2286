@@ -323,42 +323,48 @@ export const useSupabaseAuth = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // TOKEN_REFRESHED / INITIAL_SESSION: silently update refs, NO data reload
-        if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
-          setSession(session);
-          setUser(session?.user ?? null);
-          return;
-        }
-
         setSession(session);
         setUser(session?.user ?? null);
 
-        if (event === "SIGNED_IN") {
-          if (!initialLoadDoneRef.current) {
-            initialLoadDoneRef.current = true;
-            setLoading(true);
-            setTimeout(() => { 
-              loadUserDataRef.current(session!.user.id).finally(() => setLoading(false)); 
-            }, 0);
-          }
-        } else if (event === "SIGNED_OUT") {
+        if (event === "TOKEN_REFRESHED") {
+          // Token refresh: no data reload needed
+          return;
+        }
+
+        if (event === "SIGNED_OUT") {
           initialLoadDoneRef.current = false;
           setProfile(null);
           setUserRoles([]);
           setPagePermissions({});
           setAdminPermissions(defaultAdminPermissions());
           setLoading(false);
+          return;
+        }
+
+        // INITIAL_SESSION or SIGNED_IN: load user data if not already loaded
+        if ((event === "INITIAL_SESSION" || event === "SIGNED_IN") && session?.user) {
+          if (!initialLoadDoneRef.current) {
+            initialLoadDoneRef.current = true;
+            setLoading(true);
+            setTimeout(() => { 
+              loadUserDataRef.current(session.user.id).finally(() => setLoading(false)); 
+            }, 0);
+          }
+        } else if (event === "INITIAL_SESSION" && !session) {
+          // No session on initial load
+          setLoading(false);
         }
       }
     );
 
+    // Fallback: getSession for cases where onAuthStateChange didn't fire yet
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
       if (session?.user && !initialLoadDoneRef.current) {
+        setSession(session);
+        setUser(session.user);
         initialLoadDoneRef.current = true;
         loadUserDataRef.current(session.user.id).finally(() => setLoading(false));
-      } else {
+      } else if (!session) {
         setLoading(false);
       }
     });
