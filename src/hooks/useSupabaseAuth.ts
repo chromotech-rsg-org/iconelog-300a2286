@@ -81,6 +81,23 @@ const defaultAdminPermissions = (): AdminPermissionsState => {
   return result;
 };
 
+// LocalStorage cache helpers for resilience when DB is down
+const CACHE_KEY = "auth_permissions_cache";
+const savePermissionsCache = (data: { profile: Profile | null; roles: Role[]; pagePerms: Record<string, PagePermission>; adminPerms: AdminPermissionsState }) => {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...data, ts: Date.now() })); } catch {}
+};
+const loadPermissionsCache = (): { profile: Profile | null; roles: Role[]; pagePerms: Record<string, PagePermission>; adminPerms: AdminPermissionsState } | null => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Cache valid for 24 hours
+    if (Date.now() - parsed.ts > 24 * 60 * 60 * 1000) return null;
+    return parsed;
+  } catch { return null; }
+};
+const clearPermissionsCache = () => { try { localStorage.removeItem(CACHE_KEY); } catch {} };
+
 export const useSupabaseAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
