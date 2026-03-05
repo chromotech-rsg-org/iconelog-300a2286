@@ -272,7 +272,6 @@ Deno.serve(async (req) => {
           });
         }
       }
-      }
 
       // ── 2025 data: fetch once for FOLLOWUP APIs if non-minutas pages exist ──
       if (nonMinutasPages.length > 0 && apiName === "FOLLOWUP") {
@@ -321,6 +320,7 @@ Deno.serve(async (req) => {
           }
         }
       }
+    }
 
     // Update last_update_at for all matched pages
     for (const pageId of matchingPageIds) {
