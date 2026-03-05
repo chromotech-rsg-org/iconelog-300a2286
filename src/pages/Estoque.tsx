@@ -285,6 +285,7 @@ const Estoque = () => {
             onSKUClick={handleSKUClick}
             onNameClick={handleNameClick}
             onDateClick={handleDateClick}
+            onCategoryClick={handleCategoryClick}
           />
         </div>
       )}
