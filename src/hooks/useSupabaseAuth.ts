@@ -405,6 +405,7 @@ export const useSupabaseAuth = () => {
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
+    clearPermissionsCache();
     setUser(null);
     setSession(null);
     setProfile(null);
