@@ -201,6 +201,58 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       );
   }, [codCli]);
 
+  // Background fetch of 2025 data (non-blocking)
+  const fetch2025InBackground = useCallback(async (codCliVal: string, fmt: (d: Date) => string) => {
+    const { data: existing2025 } = await supabase
+      .from("bi_data_cache")
+      .select("cached_at")
+      .eq("page_id", "_shared")
+      .eq("cache_key", `followup_2025_${codCliVal}`)
+      .maybeSingle();
+
+    if (existing2025) {
+      console.log("2025 cache already exists, skipping background fetch");
+      return;
+    }
+
+    console.log("Starting background fetch of 2025 data...");
+    const chunks2025: { data_inicial: string; data_final: string }[] = [];
+    for (let m = 1; m <= 12; m++) {
+      const firstDay = new Date(2025, m - 1, 1);
+      const lastDay = new Date(2025, m, 0);
+      chunks2025.push({
+        data_inicial: `${fmt(firstDay)} 00:00`,
+        data_final: `${fmt(lastDay)} 23:59`,
+      });
+    }
+
+    let data2025: FollowupItem[] = [];
+    for (let i = 0; i < chunks2025.length; i++) {
+      const result = await callMainApi("FOLLOWUP", codCliVal, chunks2025[i], pageId);
+      if (result) {
+        const tagged = result.map((item: FollowupItem) => ({
+          ...item,
+          _fetch_month: i + 1,
+          _fetch_year: 2025,
+        }));
+        data2025 = data2025.concat(tagged);
+      }
+    }
+
+    if (data2025.length > 0) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await saveToCache("followup_2025", data2025);
+        console.log(`2025 background fetch complete: ${data2025.length} records saved`);
+        // Merge into current state
+        setFollowupData(prev => {
+          const currentOnly = prev.filter(i => i._fetch_year !== 2025);
+          return [...data2025, ...currentOnly];
+        });
+      }
+    }
+  }, [callMainApi, saveToCache, pageId]);
+
   const fetchFollowup = useCallback(async (_months?: number[], _years?: number[]) => {
     if (!codCli) return;
     setRefreshing(true);
@@ -208,7 +260,6 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     const fmt = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-    // Build month-by-month chunks from Jan of current year to current month
     const chunks: { data_inicial: string; data_final: string }[] = [];
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
@@ -222,74 +273,24 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       });
     }
 
-    // For non-minutas pages, check if 2025 cache exists; if not, fetch it once
-    let data2025: FollowupItem[] = [];
-    if (pageId !== "minutas") {
-      const { data: existing2025 } = await supabase
-        .from("bi_data_cache")
-        .select("cached_at")
-        .eq("page_id", "_shared")
-        .eq("cache_key", `followup_2025_${codCli}`)
-        .maybeSingle();
-
-      if (!existing2025) {
-        // Fetch all 12 months of 2025
-        setRefreshStage("requesting_followup");
-        const chunks2025: { data_inicial: string; data_final: string }[] = [];
-        for (let m = 1; m <= 12; m++) {
-          const firstDay = new Date(2025, m - 1, 1);
-          const lastDay = new Date(2025, m, 0);
-          chunks2025.push({
-            data_inicial: `${fmt(firstDay)} 00:00`,
-            data_final: `${fmt(lastDay)} 23:59`,
-          });
-        }
-
-        for (let i = 0; i < chunks2025.length; i++) {
-          setRefreshRecordCount(data2025.length);
-          const result = await callMainApi("FOLLOWUP", codCli, chunks2025[i], pageId);
-          if (result) {
-            const tagged = result.map((item: FollowupItem) => ({
-              ...item,
-              _fetch_month: i + 1,
-              _fetch_year: 2025,
-            }));
-            data2025 = data2025.concat(tagged);
-          }
-        }
-
-        // Save 2025 data to separate cache key
-        if (data2025.length > 0) {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            await saveToCache("followup_2025", data2025);
-          }
-        }
-      }
-    }
-
-    // Fetch FOLLOWUP month by month for current year and merge, tagging each record with source month/year
+    // 1) Fetch current year FIRST (fast, ~3 months)
     setRefreshStage("requesting_followup");
     let allFollowup: FollowupItem[] = [];
     for (let i = 0; i < chunks.length; i++) {
       setRefreshRecordCount(allFollowup.length);
       const result = await callMainApi("FOLLOWUP", codCli, chunks[i], pageId);
       if (result) {
-        const monthIndex = i + 1; // 1-based month
         const tagged = result.map((item: FollowupItem) => ({
           ...item,
-          _fetch_month: monthIndex,
+          _fetch_month: i + 1,
           _fetch_year: currentYear,
         }));
         allFollowup = allFollowup.concat(tagged);
       }
     }
 
-    // Merge with 2025 data if we fetched it
-    if (data2025.length > 0) {
-      allFollowup = [...data2025, ...allFollowup];
-    } else if (pageId !== "minutas") {
-      // Load from cache if we didn't fetch fresh
+    // 2) Merge existing 2025 cache (if available) for immediate display
+    if (pageId !== "minutas") {
       const { data: cache2025 } = await supabase
         .from("bi_data_cache")
         .select("data")
@@ -327,7 +328,6 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     setRefreshStage("saving");
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      // Save only current year data to the main cache key
       const currentYearOnly = allFollowup.filter(i => i._fetch_year === currentYear);
       if (currentYearOnly.length > 0) await saveToCache("followup", currentYearOnly);
       if ((pageId === "minutas" || pageId === "tracking") && allProdutos.length > 0) {
@@ -341,12 +341,19 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     setRefreshStage("done");
     setRefreshRecordCount(0);
 
+    // 3) After finishing and showing data, trigger 2025 fetch in BACKGROUND (non-blocking)
+    if (pageId !== "minutas") {
+      fetch2025InBackground(codCli, fmt).catch(err => {
+        console.error("Background 2025 fetch failed:", err);
+      });
+    }
+
     if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
     doneTimerRef.current = setTimeout(() => {
       setRefreshStage(null);
       setRefreshing(false);
     }, 3000);
-  }, [codCli, callMainApi, saveLastUpdate, saveToCache, pageId]);
+  }, [codCli, callMainApi, saveLastUpdate, saveToCache, pageId, fetch2025InBackground]);
 
   const getMinutasData = useCallback((months: number[], years: number[], dateRange?: { from?: Date; to?: Date }) => {
     const filtered = dateRange?.from
