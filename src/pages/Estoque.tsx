@@ -247,6 +247,11 @@ const Estoque = () => {
               Data: {filterByDate} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
+          {filterByCategory && (
+            <Badge variant="outline" className="border-green-500 bg-green-500/10 text-green-500 cursor-pointer hover:bg-green-500/20" onClick={() => setFilterByCategory(null)}>
+              Fornecedor: {filterByCategory} <X className="ml-1 h-3 w-3" />
+            </Badge>
+          )}
           <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
             Limpar todos
           </Button>
