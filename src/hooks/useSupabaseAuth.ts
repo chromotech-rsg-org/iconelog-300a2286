@@ -251,6 +251,20 @@ export const useSupabaseAuth = () => {
         fetchUserRoles(userId),
       ]);
 
+      // If DB failed (null profile AND no roles), try localStorage cache
+      if (!profileData && roles.length === 0) {
+        console.warn("DB returned no data, trying local cache...");
+        const cached = loadPermissionsCache();
+        if (cached) {
+          console.log("Using cached permissions");
+          setProfile(cached.profile);
+          setUserRoles(cached.roles);
+          setPagePermissions(cached.pagePerms);
+          setAdminPermissions(cached.adminPerms);
+          return;
+        }
+      }
+
       setProfile(profileData);
       setUserRoles(roles);
 
@@ -262,13 +276,29 @@ export const useSupabaseAuth = () => {
         ]);
         setPagePermissions(pagePerm);
         setAdminPermissions(adminPerm);
+        // Save to cache for resilience
+        savePermissionsCache({ profile: profileData, roles, pagePerms: pagePerm, adminPerms: adminPerm });
       } else {
-        console.warn("No roles found for user, permissions will be empty");
-        setPagePermissions({});
-        setAdminPermissions(defaultAdminPermissions());
+        console.warn("No roles found for user, checking cache...");
+        const cached = loadPermissionsCache();
+        if (cached && cached.roles.length > 0) {
+          setPagePermissions(cached.pagePerms);
+          setAdminPermissions(cached.adminPerms);
+        } else {
+          setPagePermissions({});
+          setAdminPermissions(defaultAdminPermissions());
+        }
       }
     } catch (err) {
-      console.error("Error loading user data:", err);
+      console.error("Error loading user data, trying cache:", err);
+      const cached = loadPermissionsCache();
+      if (cached) {
+        setProfile(cached.profile);
+        setUserRoles(cached.roles);
+        setPagePermissions(cached.pagePerms);
+        setAdminPermissions(cached.adminPerms);
+      }
+    }
     }
   }, [fetchProfile, fetchUserRoles, fetchPagePermissions, fetchAdminPermissions]);
 
