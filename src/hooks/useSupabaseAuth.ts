@@ -258,6 +258,17 @@ export const useSupabaseAuth = () => {
   useEffect(() => {
     fetchPublicAccess().then(setPublicAccessState);
 
+    // Safety timeout: if loading takes more than 15 seconds, force it to finish
+    const loadingTimeout = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) {
+          console.warn("Auth loading timeout - forcing loading to false");
+          return false;
+        }
+        return prev;
+      });
+    }, 15000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
@@ -288,7 +299,10 @@ export const useSupabaseAuth = () => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+    };
   }, [loadUserData, fetchPublicAccess]);
 
   const signUp = useCallback(async (email: string, password: string, nome: string) => {
