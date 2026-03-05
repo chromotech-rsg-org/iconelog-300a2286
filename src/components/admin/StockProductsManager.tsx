@@ -277,12 +277,19 @@ export const StockProductsManager = () => {
                 <TableRow key={item.product.id} className="border-dashboard-border">
                   <TableCell className="py-1">
                     <div className="w-10 h-10 rounded bg-white flex items-center justify-center overflow-hidden">
-                      <img
-                        src={item.product.foto_url || `https://icone-api.bfranca.com.br/fotos/icone_${item.product.product_code}.jpg`}
-                        alt={item.product.product_name || item.product.product_code}
-                        className="w-full h-full object-contain"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>'; }}
-                      />
+                      {(() => {
+                        const imgUrl = item.product.foto_url || photoMap.get(item.product.product_code) || "";
+                        return imgUrl ? (
+                          <img
+                            src={imgUrl}
+                            alt={item.product.product_name || item.product.product_code}
+                            className="w-full h-full object-contain"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).parentElement!.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>'; }}
+                          />
+                        ) : (
+                          <Package className="h-5 w-5 text-muted-foreground" />
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell className="text-foreground font-mono text-sm">{item.product.product_code}</TableCell>
