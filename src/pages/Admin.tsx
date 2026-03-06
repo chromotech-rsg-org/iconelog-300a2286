@@ -31,6 +31,7 @@ const ApiTester = lazy(() => import("@/components/admin/ApiTester"));
 const ApiTestLogs = lazy(() => import("@/components/admin/ApiTestLogs"));
 const StockProductsManager = lazy(() => import("@/components/admin/StockProductsManager"));
 const ApiDataViewer = lazy(() => import("@/components/admin/ApiDataViewer"));
+const HistoricalDataLoader = lazy(() => import("@/components/admin/HistoricalDataLoader"));
 
 interface PagePermissionForm {
   page_id: string;
@@ -431,6 +432,8 @@ const Admin = () => {
         return canViewAdmin("produtosEstoque") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><StockProductsManager /></Suspense> : null;
       case "dados_api":
         return canViewAdmin("dadosApi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><ApiDataViewer /></Suspense> : null;
+      case "carga_historica":
+        return canViewAdmin("configurarBi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><HistoricalDataLoader /></Suspense> : null;
       default:
         return null;
     }
