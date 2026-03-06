@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Shield, Globe, MapPin, Settings, LayoutGrid, Building2, Link, FlaskConical, FileText, ChevronDown, ChevronRight, Package, Database, Menu, X } from "lucide-react";
+import { Users, Shield, Globe, MapPin, Settings, LayoutGrid, Building2, Link, FlaskConical, FileText, ChevronDown, ChevronRight, Package, Database, Menu, X, History } from "lucide-react";
 import { useAuth, AdminSectionType } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 export type AdminSection = 
   | "usuarios" | "perfis" | "publico" | "regionais"
-  | "configurar_bi" | "empresas_clientes" | "integracao" | "testes_api" | "logs_api" | "produtos_estoque" | "dados_api";
+  | "configurar_bi" | "empresas_clientes" | "integracao" | "testes_api" | "logs_api" | "produtos_estoque" | "dados_api" | "carga_historica";
 
 interface AdminSidebarProps {
   activeSection: AdminSection;
@@ -34,6 +34,7 @@ const mainItems: MenuItem[] = [
 
 const configItems: MenuItem[] = [
   { id: "configurar_bi", label: "Configurar BI", icon: LayoutGrid, permissionKey: "configurarBi" },
+  { id: "carga_historica", label: "Carga Histórica", icon: History, permissionKey: "configurarBi" },
   { id: "integracao", label: "Integração", icon: Link, permissionKey: "integracao" },
   { id: "testes_api", label: "Testes de API", icon: FlaskConical, permissionKey: "testesApi" },
   { id: "logs_api", label: "Logs", icon: FileText, permissionKey: "logsApi" },
