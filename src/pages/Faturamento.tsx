@@ -184,11 +184,11 @@ const Faturamento = () => {
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
         selectedRegions={selectedGlobalRegions}
-        onMonthsChange={setSelectedMonths}
-        onYearsChange={setSelectedYears}
-        onRegionsChange={setSelectedGlobalRegions}
+        onMonthsChange={(v) => startFilterTransition(() => setSelectedMonths(v))}
+        onYearsChange={(v) => startFilterTransition(() => setSelectedYears(v))}
+        onRegionsChange={(v) => startFilterTransition(() => setSelectedGlobalRegions(v))}
         selectedSides={selectedSides}
-        onSidesChange={setSelectedSides}
+        onSidesChange={(v) => startFilterTransition(() => setSelectedSides(v))}
         onRefreshData={handleRefreshData}
         onExportExcel={handleExportExcel}
         onClearAllFilters={clearGlobalFilters}
