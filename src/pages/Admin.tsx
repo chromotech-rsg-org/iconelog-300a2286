@@ -310,7 +310,7 @@ const Admin = () => {
   const handleToggleAllPages = () => {
     setProfileForm(prev => {
       const visiblePages = systemPages.filter(p => isDeveloper || prev.pagePermissions[p.id]?.apenas_dev);
-      const keys: (keyof PagePermissionForm)[] = ["visualizar", "exportar", "atualizar"];
+      const keys: (keyof PagePermissionForm)[] = ["visualizar", "exportar", "atualizar", "idioma"];
       const allChecked = visiblePages.every(p => keys.every(k => prev.pagePermissions[p.id]?.[k]));
       const newVal = !allChecked;
       const updated = { ...prev.pagePermissions };
