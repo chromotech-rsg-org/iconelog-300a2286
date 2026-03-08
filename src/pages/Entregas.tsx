@@ -45,6 +45,7 @@ const Entregas = () => {
   const [selectedStatus, setSelectedStatus] = useState<"Finalizado" | "Em Trânsito" | "Pendente" | null>(null);
   const [showRefreshProgress, setShowRefreshProgress] = useState(true);
   const [showError, setShowError] = useState(true);
+  const [isFiltering, startFilterTransition] = useTransition();
 
   // Sync lastUpdate from DB
   useEffect(() => {
