@@ -1,0 +1,1 @@
+ALTER TABLE public.page_permissions ADD COLUMN idioma boolean NOT NULL DEFAULT false;

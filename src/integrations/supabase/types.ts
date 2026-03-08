@@ -400,6 +400,7 @@ export type Database = {
           created_at: string
           exportar: boolean
           id: string
+          idioma: boolean
           page_id: string
           role_id: string
           visualizar: boolean
@@ -410,6 +411,7 @@ export type Database = {
           created_at?: string
           exportar?: boolean
           id?: string
+          idioma?: boolean
           page_id: string
           role_id: string
           visualizar?: boolean
@@ -420,6 +422,7 @@ export type Database = {
           created_at?: string
           exportar?: boolean
           id?: string
+          idioma?: boolean
           page_id?: string
           role_id?: string
           visualizar?: boolean
