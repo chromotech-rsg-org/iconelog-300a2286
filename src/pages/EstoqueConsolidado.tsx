@@ -504,12 +504,94 @@ const EstoqueConsolidado = () => {
             </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col">
               <style>{`
-                .estoque-base-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-                .estoque-base-scroll::-webkit-scrollbar-track { background: hsl(0, 0%, 14%); border-radius: 3px; }
-                .estoque-base-scroll::-webkit-scrollbar-thumb { background: hsl(0, 0%, 35%); border-radius: 3px; }
-                .estoque-base-scroll::-webkit-scrollbar-thumb:hover { background: hsl(0, 0%, 50%); }
-                .estoque-base-scroll { overflow: scroll !important; }
+                .estoque-matriz-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+                .estoque-matriz-scroll::-webkit-scrollbar-track { background: hsl(0, 0%, 14%); border-radius: 3px; }
+                .estoque-matriz-scroll::-webkit-scrollbar-thumb { background: hsl(0, 0%, 35%); border-radius: 3px; }
+                .estoque-matriz-scroll::-webkit-scrollbar-thumb:hover { background: hsl(0, 0%, 50%); }
+                .estoque-matriz-scroll { overflow: scroll !important; }
               `}</style>
+              <div className="estoque-matriz-scroll flex-1" style={{ overflow: "scroll", maxHeight: 400 }}>
+                <Table className="min-w-[900px]">
+                  <TableHeader>
+                    <TableRow className="border-border bg-muted/20 sticky top-0 z-10">
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Código</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Produto</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Grupo</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Entrada</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Saída</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Saldo</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Vl. Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedMatriz.map((item) => (
+                      <TableRow key={item.id} className="border-border hover:bg-muted/50 text-xs">
+                        <TableCell className="text-primary font-medium text-[11px] px-2 py-1 whitespace-nowrap">
+                          <EstoqueMatrizHoverCard product={item}>
+                            <span className="cursor-help underline decoration-dotted">{item.codigo}</span>
+                          </EstoqueMatrizHoverCard>
+                        </TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap truncate max-w-[200px]">
+                          <EstoqueMatrizHoverCard product={item}>
+                            <span className="cursor-help">{item.produto}</span>
+                          </EstoqueMatrizHoverCard>
+                        </TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.grupo}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeEntrada)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeSaida)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap font-medium">{formatNumber(item.saldo)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(item.vlTotal)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
+                <span className="text-[10px] text-muted-foreground">
+                  {searchedMatriz.length > 0 ? `${matrizPage * matrizPerPage + 1}–${Math.min((matrizPage + 1) * matrizPerPage, searchedMatriz.length)} de ${searchedMatriz.length}` : "0 registros"}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={matrizPage === 0} onClick={() => setMatrizPage(p => p - 1)}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <span className="text-[10px] text-muted-foreground min-w-[60px] text-center">
+                    {matrizTotalPages > 0 ? `${matrizPage + 1} / ${matrizTotalPages}` : "—"}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={matrizPage >= matrizTotalPages - 1} onClick={() => setMatrizPage(p => p + 1)}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Estoque Base Table */}
+          <Card className="bg-card border-border flex flex-col">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Estoque Base <span className="text-sm font-normal text-muted-foreground">({searchedBase.length} itens)</span>
+                </CardTitle>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input placeholder="Pesquisar base, cidade, código..." value={baseSearch}
+                    onChange={e => { setBaseSearch(e.target.value); setBasePage(0); }}
+                    className="h-7 text-xs pl-7 bg-muted/20 border-border" />
+                </div>
+                <Select value={String(basePerPage)} onValueChange={v => { setBasePerPage(Number(v)); setBasePage(0); }}>
+                  <SelectTrigger className="h-7 w-20 text-xs bg-muted/20 border-border"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
               <div className="estoque-base-scroll flex-1" style={{ overflow: "scroll", maxHeight: 400 }}>
                 <Table className="min-w-[900px]">
                   <TableHeader>
