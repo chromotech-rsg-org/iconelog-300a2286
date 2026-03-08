@@ -262,15 +262,17 @@ import { CalendarFilter } from "./CalendarFilter";
               <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleLanguage}
-            className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
-            title={language === "pt-BR" ? "Switch to English" : "Mudar para Português"}
-          >
-            <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          </Button>
+          {showLanguageToggle && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleLanguage}
+              className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
+              title={language === "pt-BR" ? "Switch to English" : "Mudar para Português"}
+            >
+              <span className="text-sm sm:text-base leading-none">{language === "pt-BR" ? "🇧🇷" : "🇺🇸"}</span>
+            </Button>
+          )}
           <NavigationMenu />
         </div>
       </div>

@@ -63,6 +63,7 @@ const ALL_ADMIN_TYPES = [
   { key: "testes_api", label: "Testes de API", hasCrud: false },
   { key: "logs_api", label: "Logs", hasCrud: false },
   { key: "dados_api", label: "Dados das APIs", hasCrud: false },
+  { key: "tradutor", label: "Tradutor / Idiomas", hasCrud: true },
 ];
 
 const Admin = () => {

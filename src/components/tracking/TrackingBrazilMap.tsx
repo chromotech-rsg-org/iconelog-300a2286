@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import BrazilHeatmap, { Tooltip } from "react-brazil-heatmap";
 import "react-brazil-heatmap/dist/style.css";
-import type { GeographyType, MetaItem } from "react-brazil-heatmap";
+import type { MetaItem } from "react-brazil-heatmap";
 
 interface EstadoStats {
   name: string;
@@ -29,12 +29,15 @@ const UF_NAMES: Record<string, string> = {
   SE: "Sergipe", SP: "São Paulo", TO: "Tocantins",
 };
 
+const DRAG_THRESHOLD = 5;
+
 export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }: Props) => {
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const translateStart = useRef({ x: 0, y: 0 });
+  const hasDragged = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -58,15 +61,21 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (scale <= 1) return;
     setIsDragging(true);
+    hasDragged.current = false;
     dragStart.current = { x: e.clientX, y: e.clientY };
     translateStart.current = { ...translate };
   }, [scale, translate]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+      hasDragged.current = true;
+    }
     setTranslate({
-      x: translateStart.current.x + (e.clientX - dragStart.current.x),
-      y: translateStart.current.y + (e.clientY - dragStart.current.y),
+      x: translateStart.current.x + dx,
+      y: translateStart.current.y + dy,
     });
   }, [isDragging]);
 
@@ -95,33 +104,25 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
     return m;
   }, [estadoData]);
 
-  // Attach click handlers via DOM since the library ignores onClick prop
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
+  // Use event delegation on the container for click handling
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    // If user dragged, don't treat as click
+    if (hasDragged.current) return;
 
-    const handleStateClick = (e: Event) => {
-      const target = e.currentTarget as SVGElement;
-      const classList = target.getAttribute("class") || "";
+    const target = e.target as Element;
+    // Walk up the DOM to find the state path element
+    let el: Element | null = target;
+    while (el && el !== e.currentTarget) {
+      const classList = el.getAttribute?.("class") || "";
       const match = classList.match(/react-brazil-heatmap__state--(\w{2})/);
       if (match) {
         const uf = match[1].toUpperCase();
         onEstadoClick(uf);
+        return;
       }
-    };
-
-    // Wait for SVG to render
-    const timer = setTimeout(() => {
-      const states = el.querySelectorAll(".react-brazil-heatmap__state");
-      states.forEach(s => s.addEventListener("click", handleStateClick));
-    }, 500);
-
-    return () => {
-      clearTimeout(timer);
-      const states = el.querySelectorAll(".react-brazil-heatmap__state");
-      states.forEach(s => s.removeEventListener("click", handleStateClick));
-    };
-  }, [onEstadoClick, heatmapData]);
+      el = el.parentElement;
+    }
+  }, [onEstadoClick]);
 
   const renderTooltipContent = (meta: MetaItem) => {
     if (!meta) return null;
@@ -165,12 +166,13 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
         <div
           ref={containerRef}
           className="h-full overflow-hidden"
-          style={{ cursor: scale > 1 ? (isDragging ? "grabbing" : "grab") : "default" }}
+          style={{ cursor: scale > 1 ? (isDragging ? "grabbing" : "grab") : "pointer" }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onClick={handleContainerClick}
         >
           <div
             className="brazil-map-container h-full"
@@ -184,6 +186,7 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
             <style>{`
               .react-brazil-heatmap__state {
                 cursor: pointer;
+                pointer-events: all;
                 transition: opacity 0.2s ease, filter 0.2s ease;
                 stroke: hsl(0, 0%, 30%);
                 stroke-width: 0.5;
