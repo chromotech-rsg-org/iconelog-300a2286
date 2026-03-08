@@ -85,10 +85,10 @@ import { CalendarFilter } from "./CalendarFilter";
     followupData = [],
     cityMappings = [],
   }: SharedHeaderProps) => {
-   const { canExport, canRefresh, isAuthenticated, isPublicAccess, isPublicExport, isPublicRefresh, canViewAdmin } = useAuth();
+   const { canExport, canRefresh, isAuthenticated, isPublicAccess, isPublicExport, isPublicRefresh, canViewAdmin, canIdioma } = useAuth();
     const { getPageTitle, getPageLogo, getRefreshInterval } = useBiSettingsContext();
     const { language, toggleLanguage } = useLanguage();
-    const showLanguageToggle = canViewAdmin("tradutor");
+    const showLanguageToggle = canIdioma(pageId);
     
     // Use dynamic title from settings, fallback to prop
     const pageTitle = propPageTitle || getPageTitle(pageId);
