@@ -21,6 +21,7 @@ export interface PagePermission {
   visualizar: boolean;
   exportar: boolean;
   atualizar: boolean;
+  idioma: boolean;
   apenas_dev: boolean;
 }
 
@@ -175,11 +176,12 @@ export const useSupabaseAuth = () => {
       const perms: Record<string, PagePermission> = {};
       data?.forEach((p) => {
         if (!perms[p.page_id]) {
-          perms[p.page_id] = { visualizar: false, exportar: false, atualizar: false, apenas_dev: false };
+          perms[p.page_id] = { visualizar: false, exportar: false, atualizar: false, idioma: false, apenas_dev: false };
         }
         perms[p.page_id].visualizar = perms[p.page_id].visualizar || p.visualizar;
         perms[p.page_id].exportar = perms[p.page_id].exportar || p.exportar;
         perms[p.page_id].atualizar = perms[p.page_id].atualizar || p.atualizar;
+        perms[p.page_id].idioma = perms[p.page_id].idioma || (p as any).idioma;
         perms[p.page_id].apenas_dev = perms[p.page_id].apenas_dev || p.apenas_dev;
       });
       return perms;
@@ -446,6 +448,7 @@ export const useSupabaseAuth = () => {
   const canExport = useCallback((pageId: string) => pagePermissions[pageId]?.exportar ?? false, [pagePermissions]);
   const canRefresh = useCallback((pageId: string) => pagePermissions[pageId]?.atualizar ?? false, [pagePermissions]);
   const isDevOnly = useCallback((pageId: string) => pagePermissions[pageId]?.apenas_dev ?? false, [pagePermissions]);
+  const canIdioma = useCallback((pageId: string) => pagePermissions[pageId]?.idioma ?? false, [pagePermissions]);
   const isPublicAccess = useCallback((pageId: string) => publicAccess[pageId]?.is_public === true, [publicAccess]);
   const isPublicExport = useCallback((pageId: string) => publicAccess[pageId]?.allow_export === true, [publicAccess]);
   const isPublicRefresh = useCallback((pageId: string) => publicAccess[pageId]?.allow_refresh === true, [publicAccess]);
@@ -489,6 +492,7 @@ export const useSupabaseAuth = () => {
     canExport,
     canRefresh,
     isDevOnly,
+    canIdioma,
     isPublicAccess,
     isPublicExport,
     isPublicRefresh,

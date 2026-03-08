@@ -39,6 +39,7 @@ interface PagePermissionForm {
   visualizar: boolean;
   exportar: boolean;
   atualizar: boolean;
+  idioma: boolean;
   apenas_dev: boolean;
 }
 
@@ -114,7 +115,7 @@ const Admin = () => {
   const initializePagePermissions = (): Record<string, PagePermissionForm> => {
     const perms: Record<string, PagePermissionForm> = {};
     systemPages.forEach(page => {
-      perms[page.id] = { page_id: page.id, visualizar: false, exportar: false, atualizar: false, apenas_dev: false };
+      perms[page.id] = { page_id: page.id, visualizar: false, exportar: false, atualizar: false, idioma: false, apenas_dev: false };
     });
     return perms;
   };
@@ -228,7 +229,7 @@ const Admin = () => {
     const pagePerms = initializePagePermissions();
     Object.entries(role.pagePermissions).forEach(([pageId, perm]) => {
       if (pagePerms[pageId]) {
-        pagePerms[pageId] = { page_id: pageId, visualizar: perm.visualizar, exportar: perm.exportar, atualizar: perm.atualizar, apenas_dev: perm.apenas_dev };
+        pagePerms[pageId] = { page_id: pageId, visualizar: perm.visualizar, exportar: perm.exportar, atualizar: perm.atualizar, idioma: perm.idioma ?? false, apenas_dev: perm.apenas_dev };
       }
     });
 
@@ -248,7 +249,7 @@ const Admin = () => {
 
     const pagePerms: Record<string, Omit<RolePagePermission, "id" | "role_id">> = {};
     Object.entries(profileForm.pagePermissions).forEach(([pageId, perm]) => {
-      pagePerms[pageId] = { page_id: pageId, visualizar: perm.visualizar, exportar: perm.exportar, atualizar: perm.atualizar, apenas_dev: perm.apenas_dev };
+      pagePerms[pageId] = { page_id: pageId, visualizar: perm.visualizar, exportar: perm.exportar, atualizar: perm.atualizar, idioma: perm.idioma, apenas_dev: perm.apenas_dev };
     });
 
     const adminPerms: Record<string, Omit<RoleAdminPermission, "id" | "role_id" | "permission_type">> = {};
@@ -282,7 +283,7 @@ const Admin = () => {
   };
 
   // Bulk toggle: all page permissions for a specific column
-  const handleToggleAllPageColumn = (key: "visualizar" | "exportar" | "atualizar" | "apenas_dev") => {
+  const handleToggleAllPageColumn = (key: "visualizar" | "exportar" | "atualizar" | "idioma" | "apenas_dev") => {
     setProfileForm(prev => {
       const visiblePages = systemPages.filter(p => isDeveloper || prev.pagePermissions[p.id]?.apenas_dev);
       const allChecked = visiblePages.every(p => prev.pagePermissions[p.id]?.[key]);
@@ -297,10 +298,10 @@ const Admin = () => {
   const handleTogglePageRow = (pageId: string) => {
     setProfileForm(prev => {
       const perm = prev.pagePermissions[pageId];
-      const keys: (keyof PagePermissionForm)[] = ["visualizar", "exportar", "atualizar"];
+      const keys: (keyof PagePermissionForm)[] = ["visualizar", "exportar", "atualizar", "idioma"];
       const allChecked = keys.every(k => perm?.[k]);
       const newVal = !allChecked;
-      const updated = { ...prev.pagePermissions, [pageId]: { ...perm, visualizar: newVal, exportar: newVal, atualizar: newVal } };
+      const updated = { ...prev.pagePermissions, [pageId]: { ...perm, visualizar: newVal, exportar: newVal, atualizar: newVal, idioma: newVal } };
       return { ...prev, pagePermissions: updated };
     });
   };
@@ -309,7 +310,7 @@ const Admin = () => {
   const handleToggleAllPages = () => {
     setProfileForm(prev => {
       const visiblePages = systemPages.filter(p => isDeveloper || prev.pagePermissions[p.id]?.apenas_dev);
-      const keys: (keyof PagePermissionForm)[] = ["visualizar", "exportar", "atualizar"];
+      const keys: (keyof PagePermissionForm)[] = ["visualizar", "exportar", "atualizar", "idioma"];
       const allChecked = visiblePages.every(p => keys.every(k => prev.pagePermissions[p.id]?.[k]));
       const newVal = !allChecked;
       const updated = { ...prev.pagePermissions };
@@ -616,6 +617,7 @@ const Admin = () => {
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("visualizar")}>Visualizar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("exportar")}>Exportar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("atualizar")}>Atualizar</TableHead>
+                      <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("idioma")}>Idioma</TableHead>
                       {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("apenas_dev")}>Todos</TableHead>}
                       <TableHead className="text-muted-foreground text-center w-[50px]">∀</TableHead>
                     </TableRow>
@@ -632,6 +634,7 @@ const Admin = () => {
                           <TableCell className="text-center"><Switch checked={perm?.visualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "visualizar")} /></TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.exportar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "exportar")} /></TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.atualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "atualizar")} /></TableCell>
+                          <TableCell className="text-center"><Switch checked={perm?.idioma ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "idioma")} /></TableCell>
                           {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "apenas_dev")} /></TableCell>}
                           <TableCell className="text-center">
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleTogglePageRow(page.id)}>

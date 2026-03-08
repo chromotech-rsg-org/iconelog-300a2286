@@ -24,6 +24,7 @@ interface AuthContextType {
   canExport: (pageId: string) => boolean;
   canRefresh: (pageId: string) => boolean;
   isDevOnly: (pageId: string) => boolean;
+  canIdioma: (pageId: string) => boolean;
   isPublicAccess: (pageId: string) => boolean;
   isPublicExport: (pageId: string) => boolean;
   isPublicRefresh: (pageId: string) => boolean;
@@ -44,7 +45,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const {
     user, profile, pagePermissions, publicAccess, loading,
     isAuthenticated, isDeveloper, signUp, signIn, signOut,
-    canView, canExport, canRefresh, isDevOnly, isPublicAccess,
+    canView, canExport, canRefresh, isDevOnly, canIdioma, isPublicAccess,
     isPublicExport, isPublicRefresh,
     canViewAdmin, canEditAdmin, canCreateAdmin, canDeleteAdmin,
     canViewAnyConfig, isAdminDevOnly, updatePublicAccess, refreshUserData,
@@ -70,7 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       value={{
         user, profile, isAuthenticated, isDeveloper, loading,
         login, logout, signUp, getPermission,
-        canView, canExport, canRefresh, isDevOnly, isPublicAccess,
+        canView, canExport, canRefresh, isDevOnly, canIdioma, isPublicAccess,
         isPublicExport, isPublicRefresh,
         canViewAdmin, canEditAdmin, canCreateAdmin, canDeleteAdmin,
         canViewAnyConfig, isAdminDevOnly, publicAccess, setPublicAccess, refreshUserData,
