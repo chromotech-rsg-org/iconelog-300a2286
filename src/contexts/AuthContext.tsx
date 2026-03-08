@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const {
     user, profile, pagePermissions, publicAccess, loading,
     isAuthenticated, isDeveloper, signUp, signIn, signOut,
-    canView, canExport, canRefresh, isDevOnly, isPublicAccess,
+    canView, canExport, canRefresh, isDevOnly, canIdioma, isPublicAccess,
     isPublicExport, isPublicRefresh,
     canViewAdmin, canEditAdmin, canCreateAdmin, canDeleteAdmin,
     canViewAnyConfig, isAdminDevOnly, updatePublicAccess, refreshUserData,
