@@ -229,7 +229,7 @@ const Admin = () => {
     const pagePerms = initializePagePermissions();
     Object.entries(role.pagePermissions).forEach(([pageId, perm]) => {
       if (pagePerms[pageId]) {
-        pagePerms[pageId] = { page_id: pageId, visualizar: perm.visualizar, exportar: perm.exportar, atualizar: perm.atualizar, apenas_dev: perm.apenas_dev };
+        pagePerms[pageId] = { page_id: pageId, visualizar: perm.visualizar, exportar: perm.exportar, atualizar: perm.atualizar, idioma: perm.idioma ?? false, apenas_dev: perm.apenas_dev };
       }
     });
 
