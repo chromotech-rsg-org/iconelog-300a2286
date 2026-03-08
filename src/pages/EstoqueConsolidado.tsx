@@ -490,16 +490,6 @@ const EstoqueConsolidado = () => {
                     <SelectItem value="100">100</SelectItem>
                   </SelectContent>
                 </Select>
-...
-                  <SelectTrigger className="h-7 w-20 text-xs bg-muted/20 border-border"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5</SelectItem>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col">
