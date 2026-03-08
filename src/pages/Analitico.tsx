@@ -34,6 +34,7 @@ const Analitico = () => {
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedGlobalRegions, setSelectedGlobalRegions] = useState<string[]>([]);
   const [showRefreshProgress, setShowRefreshProgress] = useState(true);
+  const [isFiltering, startFilterTransition] = useTransition();
 
   useEffect(() => {
     if (lastUpdateAt) setLastUpdate(lastUpdateAt);
