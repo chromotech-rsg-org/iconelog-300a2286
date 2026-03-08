@@ -617,6 +617,7 @@ const Admin = () => {
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("visualizar")}>Visualizar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("exportar")}>Exportar</TableHead>
                       <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("atualizar")}>Atualizar</TableHead>
+                      <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("idioma")}>Idioma</TableHead>
                       {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableHead className="text-muted-foreground text-center cursor-pointer hover:text-foreground" onClick={() => handleToggleAllPageColumn("apenas_dev")}>Todos</TableHead>}
                       <TableHead className="text-muted-foreground text-center w-[50px]">∀</TableHead>
                     </TableRow>
