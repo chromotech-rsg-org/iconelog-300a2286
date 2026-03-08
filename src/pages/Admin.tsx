@@ -249,7 +249,7 @@ const Admin = () => {
 
     const pagePerms: Record<string, Omit<RolePagePermission, "id" | "role_id">> = {};
     Object.entries(profileForm.pagePermissions).forEach(([pageId, perm]) => {
-      pagePerms[pageId] = { page_id: pageId, visualizar: perm.visualizar, exportar: perm.exportar, atualizar: perm.atualizar, apenas_dev: perm.apenas_dev };
+      pagePerms[pageId] = { page_id: pageId, visualizar: perm.visualizar, exportar: perm.exportar, atualizar: perm.atualizar, idioma: perm.idioma, apenas_dev: perm.apenas_dev };
     });
 
     const adminPerms: Record<string, Omit<RoleAdminPermission, "id" | "role_id" | "permission_type">> = {};
