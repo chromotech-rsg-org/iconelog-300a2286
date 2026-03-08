@@ -31,9 +31,10 @@ const queryClient = new QueryClient({
   },
 });
 
- const App = () => (
-   <QueryClientProvider client={queryClient}>
-     <AuthProvider>
+const App = () => {
+  return (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
        <BiSettingsProvider>
          <LanguageProvider>
          <TooltipProvider>
