@@ -115,7 +115,7 @@ const Admin = () => {
   const initializePagePermissions = (): Record<string, PagePermissionForm> => {
     const perms: Record<string, PagePermissionForm> = {};
     systemPages.forEach(page => {
-      perms[page.id] = { page_id: page.id, visualizar: false, exportar: false, atualizar: false, apenas_dev: false };
+      perms[page.id] = { page_id: page.id, visualizar: false, exportar: false, atualizar: false, idioma: false, apenas_dev: false };
     });
     return perms;
   };
