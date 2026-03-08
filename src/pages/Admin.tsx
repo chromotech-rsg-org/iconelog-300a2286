@@ -298,10 +298,10 @@ const Admin = () => {
   const handleTogglePageRow = (pageId: string) => {
     setProfileForm(prev => {
       const perm = prev.pagePermissions[pageId];
-      const keys: (keyof PagePermissionForm)[] = ["visualizar", "exportar", "atualizar"];
+      const keys: (keyof PagePermissionForm)[] = ["visualizar", "exportar", "atualizar", "idioma"];
       const allChecked = keys.every(k => perm?.[k]);
       const newVal = !allChecked;
-      const updated = { ...prev.pagePermissions, [pageId]: { ...perm, visualizar: newVal, exportar: newVal, atualizar: newVal } };
+      const updated = { ...prev.pagePermissions, [pageId]: { ...perm, visualizar: newVal, exportar: newVal, atualizar: newVal, idioma: newVal } };
       return { ...prev, pagePermissions: updated };
     });
   };
