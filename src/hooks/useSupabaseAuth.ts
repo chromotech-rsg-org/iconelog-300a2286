@@ -492,6 +492,7 @@ export const useSupabaseAuth = () => {
     canExport,
     canRefresh,
     isDevOnly,
+    canIdioma,
     isPublicAccess,
     isPublicExport,
     isPublicRefresh,
