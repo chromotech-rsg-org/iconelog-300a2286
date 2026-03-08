@@ -56,6 +56,7 @@ const Faturamento = () => {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [showError, setShowError] = useState(true);
   const [showRefreshProgress, setShowRefreshProgress] = useState(true);
+  const [isFiltering, startFilterTransition] = useTransition();
   // B-SIDE / D-SIDE multi-select filter (empty = show all)
   const [selectedSides, setSelectedSides] = useState<string[]>([]);
 
