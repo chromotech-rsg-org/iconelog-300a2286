@@ -40,6 +40,7 @@ const Estoque = () => {
   const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [isFiltering, startFilterTransition] = useTransition();
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
   const [filterByName, setFilterByName] = useState<string | null>(null);
   const [filterByDate, setFilterByDate] = useState<string | null>(null);
