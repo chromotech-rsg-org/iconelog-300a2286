@@ -31,9 +31,10 @@ const queryClient = new QueryClient({
   },
 });
 
- const App = () => (
-   <QueryClientProvider client={queryClient}>
-     <AuthProvider>
+const App = () => {
+  return (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
        <BiSettingsProvider>
          <LanguageProvider>
          <TooltipProvider>
@@ -61,8 +62,9 @@ const queryClient = new QueryClient({
          </TooltipProvider>
          </LanguageProvider>
        </BiSettingsProvider>
-     </AuthProvider>
-   </QueryClientProvider>
- );
+    </AuthProvider>
+  </QueryClientProvider>
+  );
+};
 
 export default App;
