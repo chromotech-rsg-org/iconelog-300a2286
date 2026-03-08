@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 export type AdminSection = 
   | "usuarios" | "perfis" | "publico" | "regionais"
-  | "configurar_bi" | "empresas_clientes" | "integracao" | "testes_api" | "logs_api" | "produtos_estoque" | "dados_api" | "carga_historica";
+  | "configurar_bi" | "empresas_clientes" | "integracao" | "testes_api" | "logs_api" | "produtos_estoque" | "dados_api" | "carga_historica" | "traducoes";
 
 interface AdminSidebarProps {
   activeSection: AdminSection;
