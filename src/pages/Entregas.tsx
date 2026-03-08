@@ -165,9 +165,9 @@ const Entregas = () => {
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
         selectedRegions={selectedRegions}
-        onMonthsChange={(v) => { setSelectedMonths(v); if (v.length > 0 && selectedYears.length === 0) setSelectedYears([currentYear]); }}
-        onYearsChange={setSelectedYears}
-        onRegionsChange={setSelectedRegions}
+        onMonthsChange={(v) => startFilterTransition(() => { setSelectedMonths(v); if (v.length > 0 && selectedYears.length === 0) setSelectedYears([currentYear]); })}
+        onYearsChange={(v) => startFilterTransition(() => setSelectedYears(v))}
+        onRegionsChange={(v) => startFilterTransition(() => setSelectedRegions(v))}
         onRefreshData={handleRefreshData}
         followupData={followupData}
         cityMappings={cityMappings}
