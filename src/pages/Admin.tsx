@@ -32,6 +32,7 @@ const ApiTestLogs = lazy(() => import("@/components/admin/ApiTestLogs"));
 const StockProductsManager = lazy(() => import("@/components/admin/StockProductsManager"));
 const ApiDataViewer = lazy(() => import("@/components/admin/ApiDataViewer"));
 const HistoricalDataLoader = lazy(() => import("@/components/admin/HistoricalDataLoader"));
+const TranslationsManager = lazy(() => import("@/components/admin/TranslationsManager"));
 
 interface PagePermissionForm {
   page_id: string;
