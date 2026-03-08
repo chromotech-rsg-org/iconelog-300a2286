@@ -200,9 +200,9 @@ const Estoque = () => {
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
         selectedRegions={selectedRegions}
-        onMonthsChange={setSelectedMonths}
-        onYearsChange={setSelectedYears}
-        onRegionsChange={setSelectedRegions}
+        onMonthsChange={(v) => startFilterTransition(() => setSelectedMonths(v))}
+        onYearsChange={(v) => startFilterTransition(() => setSelectedYears(v))}
+        onRegionsChange={(v) => startFilterTransition(() => setSelectedRegions(v))}
         onRefreshData={handleRefreshData}
         onExportExcel={handleExportExcel}
         onClearAllFilters={clearGlobalFilters}
