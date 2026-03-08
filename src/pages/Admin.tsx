@@ -436,6 +436,8 @@ const Admin = () => {
         return canViewAdmin("dadosApi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><ApiDataViewer /></Suspense> : null;
       case "carga_historica":
         return canViewAdmin("configurarBi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><HistoricalDataLoader /></Suspense> : null;
+      case "traducoes":
+        return canViewAdmin("tradutor") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><TranslationsManager /></Suspense> : null;
       default:
         return null;
     }
