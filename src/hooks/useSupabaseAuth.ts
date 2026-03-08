@@ -448,6 +448,7 @@ export const useSupabaseAuth = () => {
   const canExport = useCallback((pageId: string) => pagePermissions[pageId]?.exportar ?? false, [pagePermissions]);
   const canRefresh = useCallback((pageId: string) => pagePermissions[pageId]?.atualizar ?? false, [pagePermissions]);
   const isDevOnly = useCallback((pageId: string) => pagePermissions[pageId]?.apenas_dev ?? false, [pagePermissions]);
+  const canIdioma = useCallback((pageId: string) => pagePermissions[pageId]?.idioma ?? false, [pagePermissions]);
   const isPublicAccess = useCallback((pageId: string) => publicAccess[pageId]?.is_public === true, [publicAccess]);
   const isPublicExport = useCallback((pageId: string) => publicAccess[pageId]?.allow_export === true, [publicAccess]);
   const isPublicRefresh = useCallback((pageId: string) => publicAccess[pageId]?.allow_refresh === true, [publicAccess]);
