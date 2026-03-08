@@ -523,7 +523,7 @@ const EstoqueConsolidado = () => {
                         </TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap truncate max-w-[200px]">
                           <EstoqueMatrizHoverCard product={item}>
-                            <span className="cursor-help">{item.produto}</span>
+                            <span className="cursor-help">{item.descricao}</span>
                           </EstoqueMatrizHoverCard>
                         </TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.grupo}</TableCell>
