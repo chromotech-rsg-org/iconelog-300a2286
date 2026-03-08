@@ -178,6 +178,7 @@ export const useRolesManagement = () => {
             visualizar: perm.visualizar,
             exportar: perm.exportar,
             atualizar: perm.atualizar,
+            idioma: perm.idioma,
             apenas_dev: perm.apenas_dev,
           })
           .eq("id", existingId);
