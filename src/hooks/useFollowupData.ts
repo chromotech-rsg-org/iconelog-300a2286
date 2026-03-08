@@ -281,7 +281,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
         : [];
 
       // Keep historical (non-current-year) records, add fresh current-year records
-      const historicalData = existingData.filter(i => i._fetch_year && i._fetch_year !== currentYear);
+      const historicalData = existingData.filter(i => i._fetch_year && Number(i._fetch_year) !== currentYear);
       const currentYearOnly = allFollowup.filter(i => i._fetch_year === currentYear);
       const merged = [...historicalData, ...currentYearOnly];
 
