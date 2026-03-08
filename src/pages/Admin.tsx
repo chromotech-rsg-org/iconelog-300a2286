@@ -634,6 +634,7 @@ const Admin = () => {
                           <TableCell className="text-center"><Switch checked={perm?.visualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "visualizar")} /></TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.exportar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "exportar")} /></TableCell>
                           <TableCell className="text-center"><Switch checked={perm?.atualizar ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "atualizar")} /></TableCell>
+                          <TableCell className="text-center"><Switch checked={perm?.idioma ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "idioma")} /></TableCell>
                           {isDeveloper && editingRole?.id === "00000000-0000-0000-0000-000000000002" && <TableCell className="text-center"><Switch checked={perm?.apenas_dev ?? false} onCheckedChange={() => handleTogglePagePermission(page.id, "apenas_dev")} /></TableCell>}
                           <TableCell className="text-center">
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleTogglePageRow(page.id)}>
