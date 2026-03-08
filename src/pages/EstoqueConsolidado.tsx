@@ -485,8 +485,9 @@ const EstoqueConsolidado = () => {
                   <SelectContent>
                     <SelectItem value="5">5</SelectItem>
                     <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
                     <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -500,71 +501,36 @@ const EstoqueConsolidado = () => {
                 .estoque-matriz-scroll { overflow: scroll !important; }
               `}</style>
               <div className="estoque-matriz-scroll flex-1" style={{ overflow: "scroll", maxHeight: 400 }}>
-                <Table className="min-w-[1400px]">
+                <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow className="border-border bg-muted/20 sticky top-0 z-10">
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Base</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Código</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Descrição</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Produto</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Grupo</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">SubGrupo</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Categoria</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Entrada</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Saída</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Estoque</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Vl. Item</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Saldo</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Vl. Total</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M3 Unit.</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M3 Total</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Dt. Últ. Entrada</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Últ. Entrada</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Dt. Últ. Saída</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Últ. Saída</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Dias s/ Movto.</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Tempo Parado</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {pagedMatriz.map((item) => (
-                      <TableRow key={item.id}
-                        className={`border-border hover:bg-muted/50 cursor-pointer text-xs ${selectedSKU === item.codigo ? 'bg-primary/10' : ''}`}
-                        onClick={() => setSelectedSKU(prev => prev === item.codigo ? null : item.codigo)}>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.base}</TableCell>
+                      <TableRow key={item.id} className="border-border hover:bg-muted/50 text-xs">
                         <TableCell className="text-primary font-medium text-[11px] px-2 py-1 whitespace-nowrap">
                           <EstoqueMatrizHoverCard product={item}>
                             <span className="cursor-help underline decoration-dotted">{item.codigo}</span>
                           </EstoqueMatrizHoverCard>
                         </TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap truncate max-w-[150px]">
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap truncate max-w-[200px]">
                           <EstoqueMatrizHoverCard product={item}>
                             <span className="cursor-help">{item.descricao}</span>
                           </EstoqueMatrizHoverCard>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-[11px] px-2 py-1 whitespace-nowrap cursor-pointer hover:text-foreground"
-                          onClick={(e) => { e.stopPropagation(); setSelectedGrupo(prev => prev === item.grupo ? null : item.grupo); }}>
-                          {item.grupo}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.subGrupo}</TableCell>
-                        <TableCell className="text-muted-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.categoria}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.grupo}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeEntrada)}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeSaida)}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap font-medium">{formatNumber(item.estoque)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(item.vlItem)}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(item.vlTotal)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3Unitario.toFixed(4)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3Total.toFixed(2)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.dtUltimaEntrada}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeUltimaEntrada)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.dtUltimaSaida}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeUltimaSaida)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.diasSemMovto}</TableCell>
-                        <TableCell className="px-2 py-1 whitespace-nowrap">
-                          <Badge variant="outline" className="text-[10px] cursor-pointer"
-                            onClick={(e) => { e.stopPropagation(); setSelectedTempoParado(prev => prev === item.tempoParado ? null : item.tempoParado); }}
-                            style={{ borderColor: TEMPO_PARADO_COLORS[item.tempoParado], color: TEMPO_PARADO_COLORS[item.tempoParado] }}>
-                            {item.tempoParado}
-                          </Badge>
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -600,7 +566,7 @@ const EstoqueConsolidado = () => {
               <div className="flex items-center gap-2 mt-1">
                 <div className="relative flex-1">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input placeholder="Pesquisar código, produto, base..." value={baseSearch}
+                  <Input placeholder="Pesquisar base, cidade, código..." value={baseSearch}
                     onChange={e => { setBaseSearch(e.target.value); setBasePage(0); }}
                     className="h-7 text-xs pl-7 bg-muted/20 border-border" />
                 </div>
@@ -609,8 +575,9 @@ const EstoqueConsolidado = () => {
                   <SelectContent>
                     <SelectItem value="5">5</SelectItem>
                     <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
                     <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

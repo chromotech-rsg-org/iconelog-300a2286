@@ -153,11 +153,11 @@ const ApiDataViewer = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-dashboard-card border-dashboard-border">
-                    <SelectItem value="25">25 linhas</SelectItem>
-                    <SelectItem value="50">50 linhas</SelectItem>
-                    <SelectItem value="100">100 linhas</SelectItem>
-                    <SelectItem value="250">250 linhas</SelectItem>
-                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button variant="outline" size="sm" onClick={exportToExcel} className="gap-1.5 border-dashboard-border">
