@@ -661,8 +661,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           const ms = months || [];
           const ys = years || [];
           if (item._fetch_month != null && item._fetch_year != null) {
-            const matchYear = ys.length === 0 || ys.includes(item._fetch_year);
-            const matchMonth = ms.length === 0 || ms.includes(item._fetch_month);
+            const matchYear = ys.length === 0 || ys.includes(Number(item._fetch_year));
+            const matchMonth = ms.length === 0 || ms.includes(Number(item._fetch_month));
             return matchYear && matchMonth;
           }
           return dateMatchesMonthYear(item.dt_expedicao, ms, ys) ||

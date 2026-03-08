@@ -68,7 +68,7 @@ const dbTypeToSection: Record<string, string> = Object.fromEntries(
 
 const allAdminSections = [
   "usuarios", "perfis", "acesso_publico", "painel_controle", "cadastro_cidades",
-  "configurar_bi", "empresas_clientes", "integracao", "produtos_estoque", "testes_api", "logs_api", "dados_api",
+  "configurar_bi", "empresas_clientes", "integracao", "produtos_estoque", "testes_api", "logs_api", "dados_api", "tradutor",
 ];
 
 type AdminPermissionsState = Record<string, AdminPermission>;
