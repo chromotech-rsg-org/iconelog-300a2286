@@ -45,6 +45,15 @@ const dateMatchesMonthYear = (dt: any, months: number[], years: number[]): boole
 const filterByMonthYear = (items: FollowupItem[], months: number[], years: number[]): FollowupItem[] => {
   if (!months.length && !years.length) return items;
   return items.filter(item => {
+    // First try _fetch_year/_fetch_month metadata (historical data)
+    if (item._fetch_year && Number(item._fetch_year) > 2000) {
+      const metaYear = Number(item._fetch_year);
+      const metaMonth = Number(item._fetch_month) || 1;
+      const matchYear = years.length === 0 || years.includes(metaYear);
+      const matchMonth = months.length === 0 || months.includes(metaMonth);
+      if (matchYear && matchMonth) return true;
+    }
+    // Fallback to date field parsing
     return dateMatchesMonthYear(item.dt_expedicao, months, years) ||
            dateMatchesMonthYear(item.dt_baixa_minuta, months, years);
   });
