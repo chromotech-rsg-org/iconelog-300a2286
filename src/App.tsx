@@ -62,8 +62,8 @@ const App = () => {
          </TooltipProvider>
          </LanguageProvider>
        </BiSettingsProvider>
-     </AuthProvider>
-   </QueryClientProvider>
- );
+    </AuthProvider>
+  </QueryClientProvider>
+  );
+};
 
-export default App;
