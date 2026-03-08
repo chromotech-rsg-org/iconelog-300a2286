@@ -21,6 +21,7 @@ export interface PagePermission {
   visualizar: boolean;
   exportar: boolean;
   atualizar: boolean;
+  idioma: boolean;
   apenas_dev: boolean;
 }
 
