@@ -454,8 +454,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           const ys = years || [];
           // Prefer fetch tags if available
           if (item._fetch_month != null && item._fetch_year != null) {
-            const matchYear = ys.length === 0 || ys.includes(item._fetch_year);
-            const matchMonth = ms.length === 0 || ms.includes(item._fetch_month);
+            const matchYear = ys.length === 0 || ys.includes(Number(item._fetch_year));
+            const matchMonth = ms.length === 0 || ms.includes(Number(item._fetch_month));
             return matchYear && matchMonth;
           }
           // Fallback to date field matching for legacy cached data
@@ -538,8 +538,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       filtered = filtered.filter(item => {
         // Prefer _fetch_month/_fetch_year tags for accurate filtering (same as getEntregasData)
         if (item._fetch_month != null && item._fetch_year != null) {
-          const matchYear = ys.length === 0 || ys.includes(item._fetch_year);
-          const matchMonth = ms.length === 0 || ms.includes(item._fetch_month);
+          const matchYear = ys.length === 0 || ys.includes(Number(item._fetch_year));
+          const matchMonth = ms.length === 0 || ms.includes(Number(item._fetch_month));
           return matchYear && matchMonth;
         }
         // Fallback for legacy cached data without tags
