@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useTransition } from "react";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { EntregasKPICards } from "@/components/entregas/EntregasKPICards";
@@ -45,6 +45,7 @@ const Entregas = () => {
   const [selectedStatus, setSelectedStatus] = useState<"Finalizado" | "Em Trânsito" | "Pendente" | null>(null);
   const [showRefreshProgress, setShowRefreshProgress] = useState(true);
   const [showError, setShowError] = useState(true);
+  const [isFiltering, startFilterTransition] = useTransition();
 
   // Sync lastUpdate from DB
   useEffect(() => {
@@ -164,9 +165,9 @@ const Entregas = () => {
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
         selectedRegions={selectedRegions}
-        onMonthsChange={(v) => { setSelectedMonths(v); if (v.length > 0 && selectedYears.length === 0) setSelectedYears([currentYear]); }}
-        onYearsChange={setSelectedYears}
-        onRegionsChange={setSelectedRegions}
+        onMonthsChange={(v) => startFilterTransition(() => { setSelectedMonths(v); if (v.length > 0 && selectedYears.length === 0) setSelectedYears([currentYear]); })}
+        onYearsChange={(v) => startFilterTransition(() => setSelectedYears(v))}
+        onRegionsChange={(v) => startFilterTransition(() => setSelectedRegions(v))}
         onRefreshData={handleRefreshData}
         followupData={followupData}
         cityMappings={cityMappings}
@@ -239,7 +240,15 @@ const Entregas = () => {
           </div>
         </div>
       ) : (
-        <div className="p-6 space-y-4">
+        <div className="relative p-6 space-y-4">
+          {isFiltering && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px] rounded-lg">
+              <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-5 py-3 shadow-md">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-sm font-medium text-foreground">Processando filtros...</span>
+              </div>
+            </div>
+          )}
           <EntregasKPICards
             entregaFinalizado={totals.entregaFinalizado}
             entregaEmTransito={totals.entregaEmTransito}

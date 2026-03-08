@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useTransition } from "react";
 import { allMonthValues } from "@/data/mockData";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { DocumentHead } from "@/components/shared/DocumentHead";
@@ -40,6 +40,7 @@ const Estoque = () => {
   const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonthValues);
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [isFiltering, startFilterTransition] = useTransition();
   const [selectedSKU, setSelectedSKU] = useState<string | null>(null);
   const [filterByName, setFilterByName] = useState<string | null>(null);
   const [filterByDate, setFilterByDate] = useState<string | null>(null);
@@ -199,9 +200,9 @@ const Estoque = () => {
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
         selectedRegions={selectedRegions}
-        onMonthsChange={setSelectedMonths}
-        onYearsChange={setSelectedYears}
-        onRegionsChange={setSelectedRegions}
+        onMonthsChange={(v) => startFilterTransition(() => setSelectedMonths(v))}
+        onYearsChange={(v) => startFilterTransition(() => setSelectedYears(v))}
+        onRegionsChange={(v) => startFilterTransition(() => setSelectedRegions(v))}
         onRefreshData={handleRefreshData}
         onExportExcel={handleExportExcel}
         onClearAllFilters={clearGlobalFilters}
@@ -270,7 +271,15 @@ const Estoque = () => {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="p-6 space-y-4">
+        <div className="relative p-6 space-y-4">
+          {isFiltering && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px] rounded-lg">
+              <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-5 py-3 shadow-md">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-sm font-medium text-foreground">Processando filtros...</span>
+              </div>
+            </div>
+          )}
           <StockDualKPICards
             matrizValor={filteredTotals.valor}
             matrizM3={filteredTotals.m3}

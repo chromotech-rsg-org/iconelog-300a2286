@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import { allMonthValues } from "@/data/mockData";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
@@ -34,6 +34,7 @@ const Analitico = () => {
   const [selectedYears, setSelectedYears] = useState<number[]>([currentYear]);
   const [selectedGlobalRegions, setSelectedGlobalRegions] = useState<string[]>([]);
   const [showRefreshProgress, setShowRefreshProgress] = useState(true);
+  const [isFiltering, startFilterTransition] = useTransition();
 
   useEffect(() => {
     if (lastUpdateAt) setLastUpdate(lastUpdateAt);
@@ -86,9 +87,9 @@ const Analitico = () => {
         selectedMonths={selectedMonths}
         selectedYears={selectedYears}
         selectedRegions={selectedGlobalRegions}
-        onMonthsChange={setSelectedMonths}
-        onYearsChange={setSelectedYears}
-        onRegionsChange={setSelectedGlobalRegions}
+        onMonthsChange={(v) => startFilterTransition(() => setSelectedMonths(v))}
+        onYearsChange={(v) => startFilterTransition(() => setSelectedYears(v))}
+        onRegionsChange={(v) => startFilterTransition(() => setSelectedGlobalRegions(v))}
         onRefreshData={handleRefreshData}
         followupData={followupData}
         cityMappings={cityMappings}
@@ -127,7 +128,15 @@ const Analitico = () => {
           </div>
         </div>
       ) : (
-        <div className="p-6">
+        <div className="relative p-6">
+          {isFiltering && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px] rounded-lg">
+              <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-5 py-3 shadow-md">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-sm font-medium text-foreground">Processando filtros...</span>
+              </div>
+            </div>
+          )}
           <AnaliticoCityView
             followupData={followupData}
             cityMappings={cityMappings}
