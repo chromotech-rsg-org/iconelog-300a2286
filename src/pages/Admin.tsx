@@ -283,7 +283,7 @@ const Admin = () => {
   };
 
   // Bulk toggle: all page permissions for a specific column
-  const handleToggleAllPageColumn = (key: "visualizar" | "exportar" | "atualizar" | "apenas_dev") => {
+  const handleToggleAllPageColumn = (key: "visualizar" | "exportar" | "atualizar" | "idioma" | "apenas_dev") => {
     setProfileForm(prev => {
       const visiblePages = systemPages.filter(p => isDeveloper || prev.pagePermissions[p.id]?.apenas_dev);
       const allChecked = visiblePages.every(p => prev.pagePermissions[p.id]?.[key]);
