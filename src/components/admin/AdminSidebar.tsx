@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 export type AdminSection = 
   | "usuarios" | "perfis" | "publico" | "regionais"
-  | "configurar_bi" | "empresas_clientes" | "integracao" | "testes_api" | "logs_api" | "produtos_estoque" | "dados_api" | "carga_historica";
+  | "configurar_bi" | "empresas_clientes" | "integracao" | "testes_api" | "logs_api" | "produtos_estoque" | "dados_api" | "carga_historica" | "traducoes";
 
 interface AdminSidebarProps {
   activeSection: AdminSection;
@@ -39,6 +39,7 @@ const configItems: MenuItem[] = [
   { id: "testes_api", label: "Testes de API", icon: FlaskConical, permissionKey: "testesApi" },
   { id: "logs_api", label: "Logs", icon: FileText, permissionKey: "logsApi" },
   { id: "dados_api", label: "Dados das APIs", icon: Database, permissionKey: "dadosApi" },
+  { id: "traducoes", label: "Traduções / Idiomas", icon: Globe, permissionKey: "tradutor" },
 ];
 
 export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarProps) => {

@@ -43,7 +43,7 @@ export interface PainelControlePermission {
 
 export type AdminSectionType = 
   | "usuarios" | "perfis" | "acessoPublico" | "painelControle" | "cadastroCidades"
-  | "configurarBi" | "empresasClientes" | "integracao" | "produtosEstoque" | "testesApi" | "logsApi" | "dadosApi";
+  | "configurarBi" | "empresasClientes" | "integracao" | "produtosEstoque" | "testesApi" | "logsApi" | "dadosApi" | "tradutor";
 
 // Maps camelCase keys to snake_case DB values
 const adminSectionToDbType: Record<string, string> = {
@@ -59,6 +59,7 @@ const adminSectionToDbType: Record<string, string> = {
   testesApi: "testes_api",
   logsApi: "logs_api",
   dadosApi: "dados_api",
+  tradutor: "tradutor",
 };
 
 const dbTypeToSection: Record<string, string> = Object.fromEntries(
@@ -67,7 +68,7 @@ const dbTypeToSection: Record<string, string> = Object.fromEntries(
 
 const allAdminSections = [
   "usuarios", "perfis", "acesso_publico", "painel_controle", "cadastro_cidades",
-  "configurar_bi", "empresas_clientes", "integracao", "produtos_estoque", "testes_api", "logs_api", "dados_api",
+  "configurar_bi", "empresas_clientes", "integracao", "produtos_estoque", "testes_api", "logs_api", "dados_api", "tradutor",
 ];
 
 type AdminPermissionsState = Record<string, AdminPermission>;

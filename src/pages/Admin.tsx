@@ -32,6 +32,7 @@ const ApiTestLogs = lazy(() => import("@/components/admin/ApiTestLogs"));
 const StockProductsManager = lazy(() => import("@/components/admin/StockProductsManager"));
 const ApiDataViewer = lazy(() => import("@/components/admin/ApiDataViewer"));
 const HistoricalDataLoader = lazy(() => import("@/components/admin/HistoricalDataLoader"));
+const TranslationsManager = lazy(() => import("@/components/admin/TranslationsManager"));
 
 interface PagePermissionForm {
   page_id: string;
@@ -63,6 +64,7 @@ const ALL_ADMIN_TYPES = [
   { key: "testes_api", label: "Testes de API", hasCrud: false },
   { key: "logs_api", label: "Logs", hasCrud: false },
   { key: "dados_api", label: "Dados das APIs", hasCrud: false },
+  { key: "tradutor", label: "Tradutor / Idiomas", hasCrud: true },
 ];
 
 const Admin = () => {
@@ -434,6 +436,8 @@ const Admin = () => {
         return canViewAdmin("dadosApi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><ApiDataViewer /></Suspense> : null;
       case "carga_historica":
         return canViewAdmin("configurarBi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><HistoricalDataLoader /></Suspense> : null;
+      case "traducoes":
+        return canViewAdmin("tradutor") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><TranslationsManager /></Suspense> : null;
       default:
         return null;
     }

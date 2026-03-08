@@ -282,7 +282,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
 
       // Keep historical (non-current-year) records, add fresh current-year records
       const historicalData = existingData.filter(i => i._fetch_year && Number(i._fetch_year) !== currentYear);
-      const currentYearOnly = allFollowup.filter(i => i._fetch_year === currentYear);
+      const currentYearOnly = allFollowup.filter(i => Number(i._fetch_year) === currentYear);
       const merged = [...historicalData, ...currentYearOnly];
 
       if (merged.length > 0) {
@@ -661,8 +661,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           const ms = months || [];
           const ys = years || [];
           if (item._fetch_month != null && item._fetch_year != null) {
-            const matchYear = ys.length === 0 || ys.includes(item._fetch_year);
-            const matchMonth = ms.length === 0 || ms.includes(item._fetch_month);
+            const matchYear = ys.length === 0 || ys.includes(Number(item._fetch_year));
+            const matchMonth = ms.length === 0 || ms.includes(Number(item._fetch_month));
             return matchYear && matchMonth;
           }
           return dateMatchesMonthYear(item.dt_expedicao, ms, ys) ||

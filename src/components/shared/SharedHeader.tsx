@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Clock, RotateCcw, Download, RefreshCw, ChevronDown, CalendarIcon, SlidersHorizontal, Globe } from "lucide-react";
+import { Clock, RotateCcw, Download, RefreshCw, ChevronDown, CalendarIcon, SlidersHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -85,9 +85,10 @@ import { CalendarFilter } from "./CalendarFilter";
     followupData = [],
     cityMappings = [],
   }: SharedHeaderProps) => {
-   const { canExport, canRefresh, isAuthenticated, isPublicAccess, isPublicExport, isPublicRefresh } = useAuth();
+   const { canExport, canRefresh, isAuthenticated, isPublicAccess, isPublicExport, isPublicRefresh, canViewAdmin } = useAuth();
     const { getPageTitle, getPageLogo, getRefreshInterval } = useBiSettingsContext();
     const { language, toggleLanguage } = useLanguage();
+    const showLanguageToggle = canViewAdmin("tradutor");
     
     // Use dynamic title from settings, fallback to prop
     const pageTitle = propPageTitle || getPageTitle(pageId);
@@ -261,15 +262,17 @@ import { CalendarFilter } from "./CalendarFilter";
               <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleLanguage}
-            className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
-            title={language === "pt-BR" ? "Switch to English" : "Mudar para Português"}
-          >
-            <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          </Button>
+          {showLanguageToggle && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleLanguage}
+              className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
+              title={language === "pt-BR" ? "Switch to English" : "Mudar para Português"}
+            >
+              <span className="text-sm sm:text-base leading-none">{language === "pt-BR" ? "🇧🇷" : "🇺🇸"}</span>
+            </Button>
+          )}
           <NavigationMenu />
         </div>
       </div>
