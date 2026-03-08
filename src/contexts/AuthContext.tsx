@@ -24,6 +24,7 @@ interface AuthContextType {
   canExport: (pageId: string) => boolean;
   canRefresh: (pageId: string) => boolean;
   isDevOnly: (pageId: string) => boolean;
+  canIdioma: (pageId: string) => boolean;
   isPublicAccess: (pageId: string) => boolean;
   isPublicExport: (pageId: string) => boolean;
   isPublicRefresh: (pageId: string) => boolean;
