@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Clock, RotateCcw, Download, RefreshCw, ChevronDown, CalendarIcon, SlidersHorizontal, Globe } from "lucide-react";
+import { Clock, RotateCcw, Download, RefreshCw, ChevronDown, CalendarIcon, SlidersHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
