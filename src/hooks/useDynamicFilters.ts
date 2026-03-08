@@ -6,6 +6,10 @@ interface FollowupItem {
 }
 
 const parseDateField = (item: FollowupItem): { month: number; year: number } | null => {
+  // First check _fetch_year metadata
+  if (item._fetch_year && Number(item._fetch_year) > 2000) {
+    return { year: Number(item._fetch_year), month: Number(item._fetch_month) || 1 };
+  }
   const dt = item.dt_inicio || item.dt_expedicao || item.dt_baixa_minuta;
   if (!dt) return null;
   const str = typeof dt === "string" ? dt : String(dt);
@@ -19,6 +23,7 @@ export const useDynamicFilters = (
   _cityMappings: any[] = []
 ) => {
   const [dbRegions, setDbRegions] = useState<string[]>([]);
+  const [cacheYears, setCacheYears] = useState<number[]>([]);
 
   // Fetch all unique regions from city_regional_mapping table
   useEffect(() => {
@@ -41,21 +46,52 @@ export const useDynamicFilters = (
     fetchRegions();
   }, []);
 
-  // Extract unique years from followup data, fallback to current year
+  // Fetch available years from bi_data_cache to discover historical data
+  useEffect(() => {
+    const fetchCacheYears = async () => {
+      const { data } = await supabase
+        .from("bi_data_cache")
+        .select("data");
+
+      if (data) {
+        const yearsSet = new Set<number>();
+        data.forEach(row => {
+          const items = Array.isArray(row.data) ? row.data : [];
+          (items as any[]).forEach((item: any) => {
+            if (item._fetch_year && Number(item._fetch_year) > 2000) {
+              yearsSet.add(Number(item._fetch_year));
+            }
+          });
+        });
+        if (yearsSet.size > 0) {
+          setCacheYears(Array.from(yearsSet).sort((a, b) => a - b));
+        }
+      }
+    };
+    fetchCacheYears();
+  }, []);
+
+  // Extract unique years from followup data + cache years, fallback to current year
   const uniqueYears = useMemo(() => {
     const yearsSet = new Set<number>();
+    
+    // From in-memory data
     followupData.forEach(item => {
       const parsed = parseDateField(item);
       if (parsed && parsed.year > 2000) {
         yearsSet.add(parsed.year);
       }
     });
+    
+    // From cache scan
+    cacheYears.forEach(y => yearsSet.add(y));
+    
     // Always include current year as fallback
     if (yearsSet.size === 0) {
       yearsSet.add(new Date().getFullYear());
     }
     return Array.from(yearsSet).sort((a, b) => a - b);
-  }, [followupData]);
+  }, [followupData, cacheYears]);
 
   return { uniqueYears, uniqueRegions: dbRegions };
 };
