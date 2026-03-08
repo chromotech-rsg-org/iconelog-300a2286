@@ -592,6 +592,14 @@ const EstoqueConsolidado = () => {
                 </Select>
               </div>
             </CardHeader>
+            <CardContent className="p-0 flex-1 flex flex-col">
+              <style>{`
+                .estoque-base-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+                .estoque-base-scroll::-webkit-scrollbar-track { background: hsl(0, 0%, 14%); border-radius: 3px; }
+                .estoque-base-scroll::-webkit-scrollbar-thumb { background: hsl(0, 0%, 35%); border-radius: 3px; }
+                .estoque-base-scroll::-webkit-scrollbar-thumb:hover { background: hsl(0, 0%, 50%); }
+                .estoque-base-scroll { overflow: scroll !important; }
+              `}</style>
               <div className="estoque-base-scroll flex-1" style={{ overflow: "scroll", maxHeight: 400 }}>
                 <Table className="min-w-[900px]">
                   <TableHeader>
