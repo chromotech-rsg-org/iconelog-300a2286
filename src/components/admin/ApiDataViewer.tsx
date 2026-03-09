@@ -30,20 +30,37 @@ const ApiDataViewer = () => {
   const [rowsPerPage, setRowsPerPage] = useState<number | "all">(50);
 
   useEffect(() => {
-    loadCacheEntries();
+    loadCacheKeys();
   }, []);
 
-  const loadCacheEntries = async () => {
+  // Only load metadata first, not the heavy data column
+  const loadCacheKeys = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("bi_data_cache")
-      .select("*")
+      .select("id, cache_key, page_id, cached_at")
       .order("cached_at", { ascending: false });
 
     if (!error && data) {
-      setCacheEntries(data as CacheEntry[]);
+      // Initialize with empty data, will load on selection
+      setCacheEntries(data.map(d => ({ ...d, data: null })) as CacheEntry[]);
     }
     setLoading(false);
+  };
+
+  // Load data only when a specific key is selected
+  const loadCacheData = async (cacheKey: string) => {
+    const { data, error } = await supabase
+      .from("bi_data_cache")
+      .select("data")
+      .eq("cache_key", cacheKey)
+      .maybeSingle();
+
+    if (!error && data) {
+      setCacheEntries(prev => prev.map(e => 
+        e.cache_key === cacheKey ? { ...e, data: data.data } : e
+      ));
+    }
   };
 
   const cacheKeys = useMemo(() => {
