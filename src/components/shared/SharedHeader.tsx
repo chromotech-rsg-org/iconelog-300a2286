@@ -327,7 +327,7 @@ import { CalendarFilter } from "./CalendarFilter";
                               : "text-muted-foreground hover:text-dashboard-accent"
                           }`}
                         >
-                          {month.short}
+                          {t(month.short)}
                         </Button>
                       ))}
                     </div>
