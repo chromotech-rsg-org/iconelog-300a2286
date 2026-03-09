@@ -11,6 +11,7 @@ import {
  import { useAuth } from "@/contexts/AuthContext";
  import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const pathMap: Record<string, string> = {
   minutas: "/minutas",
@@ -25,8 +26,9 @@ const pathMap: Record<string, string> = {
 export const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
-   const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin } = useAuth();
+  const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin } = useAuth();
   const { getPageTitle, getOrderedBiSettings } = useBiSettingsContext();
+  const { t } = useLanguage();
 
   // Get ordered navigation items from settings
   const navigationItems = getOrderedBiSettings().map(setting => ({
@@ -37,7 +39,7 @@ export const NavigationMenu = () => {
   const handleNavClick = (item: { id: string; path: string }) => {
     // Verifica se o usuário pode acessar a página
     if (isAuthenticated && !canView(item.id) && !isPublicAccess(item.id)) {
-      toast.error("Você não tem permissão para acessar esta página.");
+      toast.error(t("Você não tem permissão para acessar esta página."));
       return;
     }
     navigate(item.path);
@@ -49,13 +51,13 @@ export const NavigationMenu = () => {
     } else if (!isAuthenticated) {
       navigate("/auth");
     } else {
-      toast.error("Você não tem permissão para acessar o painel de administração.");
+      toast.error(t("Você não tem permissão para acessar o painel de administração."));
     }
   };
 
   const handleLogout = async () => {
     await logout();
-    toast.success("Logout realizado com sucesso!");
+    toast.success(t("Logout realizado com sucesso!"));
     navigate("/auth");
   };
 
@@ -130,7 +132,7 @@ export const NavigationMenu = () => {
             }`}
           >
             <Settings className="mr-2 h-4 w-4" />
-            Painel de Administração
+            {t("Painel de Administração")}
           </DropdownMenuItem>
         )}
 
@@ -148,7 +150,7 @@ export const NavigationMenu = () => {
               className="cursor-pointer text-destructive hover:bg-destructive/20 hover:text-destructive"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Sair
+              {t("Sair")}
             </DropdownMenuItem>
           </>
         ) : (
@@ -157,7 +159,7 @@ export const NavigationMenu = () => {
             className="cursor-pointer text-foreground hover:bg-dashboard-border hover:text-dashboard-accent"
           >
             <User className="mr-2 h-4 w-4" />
-            Entrar
+            {t("Entrar")}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

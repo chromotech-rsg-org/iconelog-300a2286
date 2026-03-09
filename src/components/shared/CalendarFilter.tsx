@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { DateRange } from "react-day-picker";
 import { useState, useRef } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface CalendarFilterProps {
   selectedDateRange?: { from: Date | undefined; to: Date | undefined };
@@ -20,13 +21,14 @@ interface CalendarFilterProps {
 export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: CalendarFilterProps) => {
   const [open, setOpen] = useState(false);
   const clickCountRef = useRef(0);
+  const { t } = useLanguage();
 
   const hasFrom = !!selectedDateRange?.from;
   const isRange = hasFrom && selectedDateRange?.to &&
     selectedDateRange.from!.toDateString() !== selectedDateRange.to.toDateString();
 
   const getLabel = () => {
-    if (!hasFrom) return <span className="text-muted-foreground">Período</span>;
+    if (!hasFrom) return <span className="text-muted-foreground">{t("Período")}</span>;
     if (!selectedDateRange?.to) {
       return (
         <>
@@ -96,7 +98,7 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 bg-dashboard-card border-dashboard-border z-50" align="start">
         <div className="p-3 pb-1 text-xs text-muted-foreground">
-          Clique uma vez para um dia · Clique em outro dia para período
+          {t("Clique uma vez para um dia · Clique em outro dia para período")}
         </div>
         <Calendar
           mode="range"
@@ -116,7 +118,7 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
               onClick={() => handleClear()}
               className="w-full text-xs text-muted-foreground hover:text-dashboard-accent"
             >
-              Limpar seleção
+              {t("Limpar seleção")}
             </Button>
           </div>
         )}

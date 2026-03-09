@@ -208,25 +208,27 @@ import { CalendarFilter } from "./CalendarFilter";
     }
   };
 
+  const { t } = useLanguage();
+
   const getMonthsLabel = () => {
-    if (selectedMonths.length === 0) return "Selecione";
+    if (selectedMonths.length === 0) return t("Selecione");
     if (selectedMonths.length === 1) {
       return months.find(m => m.value === selectedMonths[0])?.short || "";
     }
-    if (selectedMonths.length === 12) return "Todos os meses";
-    return `${selectedMonths.length} meses`;
+    if (selectedMonths.length === 12) return t("Todos os meses");
+    return `${selectedMonths.length} ${t("meses")}`;
   };
 
   const getYearsLabel = () => {
-    if (selectedYears.length === 0) return "Selecione";
+    if (selectedYears.length === 0) return t("Selecione");
     if (selectedYears.length === 1) return selectedYears[0].toString();
-    return `${selectedYears.length} anos`;
+    return `${selectedYears.length} ${t("anos")}`;
   };
 
   const getRegionsLabel = () => {
-    if (selectedRegions.length === 0) return "Todas as Regionais";
+    if (selectedRegions.length === 0) return t("Todas as Regionais");
     if (selectedRegions.length === 1) return selectedRegions[0];
-    return `${selectedRegions.length} regionais`;
+    return `${selectedRegions.length} ${t("regionais")}`;
   };
 
   return (
@@ -248,7 +250,7 @@ import { CalendarFilter } from "./CalendarFilter";
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span>Última atualização: {formatLastUpdate(lastUpdate)}</span>
+            <span>{t("Última atualização")}: {formatLastUpdate(lastUpdate)}</span>
           </div>
           <span className="sm:hidden text-[10px] text-muted-foreground whitespace-nowrap">{formatLastUpdate(lastUpdate)}</span>
           {showRefresh && onRefreshData && (
@@ -257,7 +259,7 @@ import { CalendarFilter } from "./CalendarFilter";
               size="icon"
               onClick={handleRefresh}
               className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
-              title="Atualizar dados"
+              title={t("Atualizar dados")}
             >
               <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
@@ -286,7 +288,7 @@ import { CalendarFilter } from "./CalendarFilter";
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="border-dashboard-border text-foreground hover:bg-dashboard-border flex-1">
                   <SlidersHorizontal className="mr-2 h-4 w-4" />
-                  Filtros
+                  {t("Filtros")}
                   {(hasActiveFilters || (selectedSides && selectedSides.length > 0)) && (
                     <span className="ml-2 h-5 w-5 rounded-full bg-dashboard-accent text-dashboard-dark text-[10px] font-bold flex items-center justify-center">!</span>
                   )}
@@ -294,12 +296,12 @@ import { CalendarFilter } from "./CalendarFilter";
               </SheetTrigger>
               <SheetContent side="bottom" className="bg-dashboard-card border-dashboard-border max-h-[85vh] overflow-y-auto popover-dark-scroll">
                 <SheetHeader>
-                  <SheetTitle className="text-foreground">Filtros</SheetTitle>
+                  <SheetTitle className="text-foreground">{t("Filtros")}</SheetTitle>
                 </SheetHeader>
                 <div className="space-y-5 pt-4">
                   {/* Months */}
                   <div>
-                    <p className="text-xs text-muted-foreground font-semibold mb-2">Meses</p>
+                    <p className="text-xs text-muted-foreground font-semibold mb-2">{t("Meses")}</p>
                     <div className="flex flex-wrap gap-2">
                       <Button
                         variant="ghost"
@@ -311,7 +313,7 @@ import { CalendarFilter } from "./CalendarFilter";
                             : "text-muted-foreground border-dashboard-border"
                         }`}
                       >
-                        {selectedMonths.length === 12 ? "Desmarcar todos" : "Selecionar todos"}
+                        {selectedMonths.length === 12 ? t("Desmarcar todos") : t("Selecionar todos")}
                       </Button>
                       {months.map((month) => (
                         <Button
@@ -333,7 +335,7 @@ import { CalendarFilter } from "./CalendarFilter";
 
                   {/* Years */}
                   <div>
-                    <p className="text-xs text-muted-foreground font-semibold mb-2">Ano</p>
+                    <p className="text-xs text-muted-foreground font-semibold mb-2">{t("Ano")}</p>
                     <div className="flex flex-wrap gap-2">
                       {uniqueYears.map((year) => (
                         <Button
@@ -355,7 +357,7 @@ import { CalendarFilter } from "./CalendarFilter";
 
                   {/* Regional */}
                   <div>
-                    <p className="text-xs text-muted-foreground font-semibold mb-2">Regional</p>
+                    <p className="text-xs text-muted-foreground font-semibold mb-2">{t("Regional")}</p>
                     <div className="flex flex-col gap-1">
                       <div
                         className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-dashboard-border ${
@@ -363,7 +365,7 @@ import { CalendarFilter } from "./CalendarFilter";
                         }`}
                         onClick={() => toggleRegion("all")}
                       >
-                        <span className="text-sm text-foreground">Todas as Regionais</span>
+                        <span className="text-sm text-foreground">{t("Todas as Regionais")}</span>
                       </div>
                       {uniqueRegions.map((region) => (
                         <div key={region} className="flex items-center space-x-2 p-1">
@@ -384,7 +386,7 @@ import { CalendarFilter } from "./CalendarFilter";
                   {/* Calendar */}
                   {onDateRangeChange && (
                     <div>
-                      <p className="text-xs text-muted-foreground font-semibold mb-2">Período</p>
+                      <p className="text-xs text-muted-foreground font-semibold mb-2">{t("Período")}</p>
                       <CalendarFilter selectedDateRange={selectedDateRange} onDateRangeChange={onDateRangeChange} />
                     </div>
                   )}
@@ -427,13 +429,13 @@ import { CalendarFilter } from "./CalendarFilter";
                     {showExport && onExportExcel && (
                       <Button variant="outline" size="sm" onClick={() => { onExportExcel(); setMobileFilterOpen(false); }} className="border-dashboard-border text-foreground">
                         <Download className="mr-2 h-4 w-4" />
-                        Exportar
+                        {t("Exportar Excel")}
                       </Button>
                     )}
                     {hasActiveFilters && onClearAllFilters && (
                       <Button variant="outline" size="sm" onClick={() => { onClearAllFilters(); setMobileFilterOpen(false); }} className="border-dashboard-accent/50 text-dashboard-accent">
                         <RotateCcw className="mr-2 h-4 w-4" />
-                        Limpar Filtros
+                        {t("Limpar Filtros")}
                       </Button>
                     )}
                   </div>
@@ -455,7 +457,7 @@ import { CalendarFilter } from "./CalendarFilter";
                     ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent hover:bg-dashboard-accent/80"
                     : "text-muted-foreground border-dashboard-border hover:text-dashboard-accent hover:bg-dashboard-border"
                 }`}
-                title={selectedMonths.length === 12 ? "Desmarcar todos" : "Selecionar todos"}
+                title={selectedMonths.length === 12 ? t("Desmarcar todos") : t("Selecionar todos")}
               >
                 {selectedMonths.length === 12 ? "✓" : "∀"}
               </Button>
@@ -517,7 +519,7 @@ import { CalendarFilter } from "./CalendarFilter";
                     }`}
                     onClick={() => toggleRegion("all")}
                   >
-                    <span className="text-sm text-foreground">Todas as Regionais</span>
+                    <span className="text-sm text-foreground">{t("Todas as Regionais")}</span>
                   </div>
                   {uniqueRegions.map((region) => (
                     <div key={region} className="flex items-center space-x-2 p-1">
@@ -572,7 +574,7 @@ import { CalendarFilter } from "./CalendarFilter";
             {showExport && onExportExcel && (
               <Button variant="outline" size="sm" onClick={onExportExcel} className="border-dashboard-border text-foreground hover:bg-dashboard-accent hover:text-dashboard-dark">
                 <Download className="mr-2 h-4 w-4" />
-                Exportar Excel
+                {t("Exportar Excel")}
               </Button>
             )}
 
@@ -580,7 +582,7 @@ import { CalendarFilter } from "./CalendarFilter";
             {hasActiveFilters && onClearAllFilters && (
               <Button variant="outline" size="sm" onClick={onClearAllFilters} className="ml-auto border-dashboard-accent/50 text-dashboard-accent hover:bg-dashboard-accent hover:text-dashboard-dark">
                 <RotateCcw className="mr-2 h-4 w-4" />
-                Limpar Filtros
+                {t("Limpar Filtros")}
               </Button>
             )}
           </div>
@@ -592,7 +594,7 @@ import { CalendarFilter } from "./CalendarFilter";
         <div className="flex items-center gap-4 px-4 sm:px-6 py-2 border-t border-dashboard-border">
           <Button variant="outline" size="sm" onClick={onExportExcel} className="border-dashboard-border text-foreground hover:bg-dashboard-accent hover:text-dashboard-dark">
             <Download className="mr-2 h-4 w-4" />
-            Exportar Excel
+             {t("Exportar Excel")}
           </Button>
         </div>
       )}
@@ -604,14 +606,14 @@ import { CalendarFilter } from "./CalendarFilter";
         <DialogHeader>
           <DialogTitle className="text-dashboard-accent flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Atualização indisponível
+            {t("Atualização indisponível")}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground pt-2 text-base">
-            Não é possível atualizar os dados agora. A última atualização foi realizada recentemente.
+            {t("Não é possível atualizar os dados agora. A última atualização foi realizada recentemente.")}
           </DialogDescription>
         </DialogHeader>
         <div className="bg-dashboard-dark rounded-lg p-4 border border-dashboard-border">
-          <p className="text-sm text-muted-foreground">Tempo restante para próxima atualização:</p>
+          <p className="text-sm text-muted-foreground">{t("Tempo restante para próxima atualização:")}</p>
           <p className="text-2xl font-bold text-dashboard-accent mt-1">
             {formatCooldown(cooldownRemainingMinutes)}
           </p>
@@ -622,7 +624,7 @@ import { CalendarFilter } from "./CalendarFilter";
             onClick={() => setShowCooldownModal(false)}
             className="border-dashboard-border text-foreground hover:bg-dashboard-border"
           >
-            Entendido
+            {t("Entendido")}
           </Button>
         </DialogFooter>
       </DialogContent>
