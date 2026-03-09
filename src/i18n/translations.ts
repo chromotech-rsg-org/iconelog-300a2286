@@ -170,6 +170,25 @@ export const translations: Record<Language, Record<string, string>> = {
     "Recuperando dados da última atualização...": "Recuperando dados da última atualização...",
     "Configuração necessária": "Configuração necessária",
     "Clique no botão Atualizar no cabeçalho para buscar os dados.": "Clique no botão Atualizar no cabeçalho para buscar os dados.",
+    
+    // Header / Nav / Filters
+    "Selecione": "Selecione",
+    "Todos os meses": "Todos os meses",
+    "meses": "meses",
+    "anos": "anos",
+    "regionais": "regionais",
+    "Atualização indisponível": "Atualização indisponível",
+    "Não é possível atualizar os dados agora. A última atualização foi realizada recentemente.": "Não é possível atualizar os dados agora. A última atualização foi realizada recentemente.",
+    "Tempo restante para próxima atualização:": "Tempo restante para próxima atualização:",
+    "Entendido": "Entendido",
+    "Clique uma vez para um dia · Clique em outro dia para período": "Clique uma vez para um dia · Clique em outro dia para período",
+    "Limpar seleção": "Limpar seleção",
+    "Painel de Administração": "Painel de Administração",
+    "Sair": "Sair",
+    "Entrar": "Entrar",
+    "Você não tem permissão para acessar esta página.": "Você não tem permissão para acessar esta página.",
+    "Você não tem permissão para acessar o painel de administração.": "Você não tem permissão para acessar o painel de administração.",
+    "Logout realizado com sucesso!": "Logout realizado com sucesso!",
   },
   "en": {
     // KPI labels
