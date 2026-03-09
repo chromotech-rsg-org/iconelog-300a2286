@@ -78,7 +78,7 @@ export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: Regio
         
         {/* Total Geral - fixed at bottom */}
         <div className="flex justify-between items-center px-4 py-3 border-t border-dashboard-border">
-          <span className="text-sm text-muted-foreground">Total Geral</span>
+          <span className="text-sm text-muted-foreground">{t("Total Geral")}</span>
           <span className="text-xl font-bold text-dashboard-accent">{formatNumber(totalGeral)}</span>
         </div>
       </CardContent>
