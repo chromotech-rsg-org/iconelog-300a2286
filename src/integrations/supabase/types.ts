@@ -649,7 +649,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_cache_years: { Args: never; Returns: number[] }
       get_user_role_ids: { Args: { user_uuid: string }; Returns: string[] }
       has_admin_permission: {
         Args: { action: string; perm_type: string; user_uuid: string }
