@@ -60,8 +60,8 @@ const App = () => {
              </Routes>
            </BrowserRouter>
          </TooltipProvider>
-         </LanguageProvider>
        </BiSettingsProvider>
+         </LanguageProvider>
     </AuthProvider>
   </QueryClientProvider>
   );
