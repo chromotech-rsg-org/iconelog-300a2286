@@ -189,6 +189,30 @@ export const translations: Record<Language, Record<string, string>> = {
     "Você não tem permissão para acessar esta página.": "Você não tem permissão para acessar esta página.",
     "Você não tem permissão para acessar o painel de administração.": "Você não tem permissão para acessar o painel de administração.",
     "Logout realizado com sucesso!": "Logout realizado com sucesso!",
+    
+    // Month names
+    "Jan": "Jan",
+    "Fev": "Fev",
+    "Mar": "Mar",
+    "Abr": "Abr",
+    "Mai": "Mai",
+    "Jun": "Jun",
+    "Jul": "Jul",
+    "Ago": "Ago",
+    "Set": "Set",
+    "Out": "Out",
+    "Nov": "Nov",
+    "Dez": "Dez",
+    
+    // Page titles
+    "Minutas Expedidas x Baixadas": "Minutas Expedidas x Baixadas",
+    "B-Side Estoque": "B-Side Estoque",
+    "B-Side Entregas": "B-Side Entregas",
+    "Tracking Consolidado": "Tracking Consolidado",
+    "Estoque Consolidado": "Estoque Consolidado",
+    "Analítico": "Analítico",
+    "Configurações": "Configurações",
+    "Relatórios Ícone Log": "Relatórios Ícone Log",
   },
   "en": {
     // KPI labels
