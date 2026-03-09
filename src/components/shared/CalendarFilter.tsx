@@ -28,7 +28,7 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
     selectedDateRange.from!.toDateString() !== selectedDateRange.to.toDateString();
 
   const getLabel = () => {
-    if (!hasFrom) return <span className="text-muted-foreground">Período</span>;
+    if (!hasFrom) return <span className="text-muted-foreground">{t("Período")}</span>;
     if (!selectedDateRange?.to) {
       return (
         <>
