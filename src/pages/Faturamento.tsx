@@ -479,7 +479,7 @@ const Faturamento = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedCampanha ? 'ring-2 ring-purple-500' : ''}`}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Faturamento | Campanha</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">{t("Faturamento")} | {t("Campanha")}</CardTitle>
                   </CardHeader>
                   <CardContent className="max-h-[300px] overflow-y-auto popover-dark-scroll">
                     <div style={{ height: Math.max(220, campanhaData.length * 30) }}>
