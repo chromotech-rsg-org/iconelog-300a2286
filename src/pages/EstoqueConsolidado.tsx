@@ -286,29 +286,29 @@ const EstoqueConsolidado = () => {
 
       {hasActiveFilters && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-card/50 animate-fade-in">
-          <span className="text-xs text-muted-foreground">Filtros:</span>
+          <span className="text-xs text-muted-foreground">{t("Filtros")}:</span>
           {selectedGrupo && (
             <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedGrupo(null)}>
-              Grupo: {selectedGrupo} <X className="ml-1 h-3 w-3" />
+              {t("Grupo:")} {selectedGrupo} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedSKU && (
             <Badge variant="outline" className="border-blue-500 bg-blue-500/10 text-blue-400 cursor-pointer" onClick={() => setSelectedSKU(null)}>
-              SKU: {selectedSKU} <X className="ml-1 h-3 w-3" />
+              {t("SKU:")} {selectedSKU} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedBase && (
             <Badge variant="outline" className="border-orange-500 bg-orange-500/10 text-orange-400 cursor-pointer" onClick={() => setSelectedBase(null)}>
-              Base: {selectedBase} <X className="ml-1 h-3 w-3" />
+              {t("Base:")} {selectedBase} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedTempoParado && (
             <Badge variant="outline" className="border-destructive bg-destructive/10 text-destructive cursor-pointer" onClick={() => setSelectedTempoParado(null)}>
-              Tempo: {selectedTempoParado} <X className="ml-1 h-3 w-3" />
+              {t("Tempo:")} {selectedTempoParado} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
-            Limpar todos
+            {t("Limpar todos")}
           </Button>
         </div>
       )}
