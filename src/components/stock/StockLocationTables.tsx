@@ -263,7 +263,7 @@ export const StockLocationTables = ({
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-2 border-t border-dashboard-border">
               <span className="text-xs text-muted-foreground">
-                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredAndSortedItems.length)} de {filteredAndSortedItems.length}
+                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredAndSortedItems.length)} {t("de")} {filteredAndSortedItems.length}
               </span>
               <div className="flex items-center gap-1">
                 <Button variant="outline" size="icon" className="h-6 w-6 border-dashboard-border" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>
