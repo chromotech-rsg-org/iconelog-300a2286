@@ -429,7 +429,7 @@ import { CalendarFilter } from "./CalendarFilter";
                     {showExport && onExportExcel && (
                       <Button variant="outline" size="sm" onClick={() => { onExportExcel(); setMobileFilterOpen(false); }} className="border-dashboard-border text-foreground">
                         <Download className="mr-2 h-4 w-4" />
-                        Exportar
+                        {t("Exportar Excel")}
                       </Button>
                     )}
                     {hasActiveFilters && onClearAllFilters && (
