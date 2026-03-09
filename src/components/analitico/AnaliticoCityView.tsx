@@ -206,7 +206,7 @@ export const AnaliticoCityView = ({
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <CardTitle className="text-sm font-bold text-primary uppercase">
-                Regionais não encontradas
+                {t("Regionais não encontradas")}
               </CardTitle>
               <span className="text-xs text-muted-foreground">({filtered.length})</span>
               {columnFilter && (
