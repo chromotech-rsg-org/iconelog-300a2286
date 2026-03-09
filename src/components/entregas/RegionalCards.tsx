@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatNumber } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DeliveryData {
   id: string;
