@@ -299,7 +299,7 @@ import { CalendarFilter } from "./CalendarFilter";
                 <div className="space-y-5 pt-4">
                   {/* Months */}
                   <div>
-                    <p className="text-xs text-muted-foreground font-semibold mb-2">Meses</p>
+                    <p className="text-xs text-muted-foreground font-semibold mb-2">{t("Meses")}</p>
                     <div className="flex flex-wrap gap-2">
                       <Button
                         variant="ghost"
