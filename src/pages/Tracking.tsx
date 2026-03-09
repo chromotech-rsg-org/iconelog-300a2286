@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useTransition } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
