@@ -49,7 +49,7 @@ export const useDynamicFilters = (
   // Fetch available years via lightweight RPC function
   useEffect(() => {
     const fetchCacheYears = async () => {
-      const { data } = await supabase.rpc("get_cache_years");
+      const { data } = await supabase.rpc("get_cache_years" as any);
       if (data && Array.isArray(data) && data.length > 0) {
         setCacheYears((data as number[]).sort((a, b) => a - b));
       }
