@@ -17,6 +17,7 @@ import { saveAs } from "file-saver";
 import type { RefreshStage } from "@/components/dashboard/RefreshProgress";
 
 const Estoque = () => {
+  const { t } = useLanguage();
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 
