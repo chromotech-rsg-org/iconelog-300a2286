@@ -1,0 +1,1 @@
+ALTER TABLE public.translations ADD COLUMN page_id text DEFAULT 'global';
