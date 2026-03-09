@@ -37,6 +37,7 @@ export const AnaliticoCityView = ({
   selectedMonths,
   selectedYears,
 }: AnaliticoCityViewProps) => {
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [perPage, setPerPage] = useState(20);
