@@ -185,7 +185,7 @@ export const AnaliticoCityView = ({
         <Card className="bg-card border-border">
           <CardContent className="pt-4 pb-3 px-4">
             <div>
-              <p className="text-xs text-muted-foreground">UFs envolvidas</p>
+              <p className="text-xs text-muted-foreground">{t("UFs envolvidas")}</p>
               <p className="text-2xl font-bold text-foreground">{byUF.length}</p>
             </div>
           </CardContent>
