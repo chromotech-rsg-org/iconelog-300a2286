@@ -1,5 +1,6 @@
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { formatNumber } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface KPICardsProps {
   totalExpedidas: number;
