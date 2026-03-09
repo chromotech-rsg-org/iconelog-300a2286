@@ -288,7 +288,7 @@ import { CalendarFilter } from "./CalendarFilter";
               <SheetTrigger asChild>
                 <Button variant="outline" size="sm" className="border-dashboard-border text-foreground hover:bg-dashboard-border flex-1">
                   <SlidersHorizontal className="mr-2 h-4 w-4" />
-                  Filtros
+                  {t("Filtros")}
                   {(hasActiveFilters || (selectedSides && selectedSides.length > 0)) && (
                     <span className="ml-2 h-5 w-5 rounded-full bg-dashboard-accent text-dashboard-dark text-[10px] font-bold flex items-center justify-center">!</span>
                   )}
