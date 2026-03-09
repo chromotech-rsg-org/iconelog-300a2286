@@ -47,6 +47,7 @@ export const useDynamicFilters = (
   }, []);
 
   // Fetch available years from cache_key names (lightweight - no JSONB parsing)
+  // Supports both old format (followup_099_2025) and new monthly format (followup_099_2025_01)
   useEffect(() => {
     const fetchCacheYears = async () => {
       const { data } = await supabase
@@ -55,8 +56,8 @@ export const useDynamicFilters = (
       if (data && Array.isArray(data)) {
         const yearsSet = new Set<number>();
         data.forEach(row => {
-          // Extract year from suffixed keys like followup_099_2025
-          const match = row.cache_key?.match(/_(\d{4})$/);
+          // Match year from keys like followup_099_2025 or followup_099_2025_01
+          const match = row.cache_key?.match(/_(\d{4})(?:_\d{2})?$/);
           if (match) {
             const y = parseInt(match[1], 10);
             if (y > 2000) yearsSet.add(y);

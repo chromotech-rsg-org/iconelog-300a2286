@@ -205,24 +205,25 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
             setProdutosData(allProdutos);
           }
 
-          // Load historical produtos caches
-          const { data: historicalProdutos, error: histProdErr } = await supabase
+          // Load historical/monthly fragment produtos caches
+          const { data: fragmentProdutos, error: fragProdErr } = await supabase
             .from("bi_data_cache")
             .select("cache_key")
             .eq("page_id", "_shared")
             .like("cache_key", `produtosdistribuidos_${codCli}_%`);
 
-          if (!histProdErr && historicalProdutos && historicalProdutos.length > 0) {
-            for (const cache of historicalProdutos) {
-              const { data: histData } = await supabase
+          if (!fragProdErr && fragmentProdutos && fragmentProdutos.length > 0) {
+            for (const cache of fragmentProdutos) {
+              const { data: fragData } = await supabase
                 .from("bi_data_cache")
                 .select("data")
+                .eq("page_id", "_shared")
                 .eq("cache_key", cache.cache_key)
                 .maybeSingle();
               
-              if (histData?.data && Array.isArray(histData.data)) {
-                allProdutos = allProdutos.concat(histData.data as FollowupItem[]);
-                console.log(`Loaded ${(histData.data as FollowupItem[]).length} produtos records from ${cache.cache_key}`);
+              if (fragData?.data && Array.isArray(fragData.data) && (fragData.data as FollowupItem[]).length > 0) {
+                allProdutos = allProdutos.concat(fragData.data as FollowupItem[]);
+                console.log(`Loaded ${(fragData.data as FollowupItem[]).length} produtos records from ${cache.cache_key}`);
                 setProdutosData([...allProdutos]);
               }
             }

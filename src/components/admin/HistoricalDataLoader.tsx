@@ -77,40 +77,14 @@ const HistoricalDataLoader = () => {
 
     const totalSteps = selectedMonths.length * apis.length;
     let completedSteps = 0;
+    let totalRecords = 0;
 
     for (const apiName of apis) {
-      const cacheKey = `${apiName.toLowerCase()}_${codCli}`;
-
-      // Load existing cache
-      setStatusMessage(`Carregando cache existente de ${apiName}...`);
-      const { data: existingCache } = await supabase
-        .from("bi_data_cache")
-        .select("data")
-        .eq("page_id", "_shared")
-        .eq("cache_key", cacheKey)
-        .maybeSingle();
-
-      let existingData: FollowupItem[] = existingCache?.data
-        ? (existingCache.data as FollowupItem[])
-        : [];
-
-      // Remove existing data for the selected year+months to avoid duplication
-      const beforeCount = existingData.length;
-      existingData = existingData.filter(item => {
-        if (item._fetch_year === selectedYear && selectedMonths.includes(item._fetch_month)) {
-          return false; // Remove — will be replaced
-        }
-        return true;
-      });
-      const removedCount = beforeCount - existingData.length;
-      if (removedCount > 0) {
-        console.log(`Removed ${removedCount} existing records for ${apiName} ${selectedYear} months ${selectedMonths.join(",")}`);
-      }
-
-      let newData: FollowupItem[] = [];
-
       for (const month of selectedMonths) {
-        setStatusMessage(`Buscando ${apiName} — ${selectedYear}/${String(month).padStart(2, "0")}...`);
+        const monthStr = String(month).padStart(2, "0");
+        const monthCacheKey = `${apiName.toLowerCase()}_${codCli}_${selectedYear}_${monthStr}`;
+
+        setStatusMessage(`Buscando ${apiName} — ${selectedYear}/${monthStr}...`);
 
         const firstDay = new Date(selectedYear, month - 1, 1);
         const lastDay = new Date(selectedYear, month, 0);
@@ -126,54 +100,55 @@ const HistoricalDataLoader = () => {
             _fetch_month: month,
             _fetch_year: selectedYear,
           }));
-          newData = newData.concat(tagged);
+
+          setStatusMessage(`Salvando ${apiName} ${selectedYear}/${monthStr} (${tagged.length} registros)...`);
+
+          await supabase
+            .from("bi_data_cache")
+            .upsert(
+              {
+                page_id: "_shared",
+                cache_key: monthCacheKey,
+                data: tagged as any,
+                cached_at: new Date().toISOString(),
+              },
+              { onConflict: "page_id,cache_key" }
+            );
+
+          totalRecords += tagged.length;
+        } else {
+          // No data for this month — save empty to mark as loaded
+          await supabase
+            .from("bi_data_cache")
+            .upsert(
+              {
+                page_id: "_shared",
+                cache_key: monthCacheKey,
+                data: [] as any,
+                cached_at: new Date().toISOString(),
+              },
+              { onConflict: "page_id,cache_key" }
+            );
         }
 
         completedSteps++;
         setProgress(Math.round((completedSteps / totalSteps) * 100));
-        setRecordCount(prev => prev + (result?.length || 0));
+        setRecordCount(totalRecords);
       }
 
-      // Merge: existing (without removed months) + new data
-      const merged = [...existingData, ...newData];
-
-      setStatusMessage(`Salvando ${apiName} (${merged.length} registros)...`);
-
-      // Check payload size (~4MB limit)
-      const payloadSize = JSON.stringify(merged).length;
-      if (payloadSize > 4 * 1024 * 1024) {
-        toast.warning(`Payload de ${apiName} excede 4MB (${(payloadSize / 1024 / 1024).toFixed(1)}MB). Salvando apenas dados novos do período selecionado.`);
-        // Save only new data as a separate cache entry with year suffix
-        await supabase
-          .from("bi_data_cache")
-          .upsert(
-            {
-              page_id: "_shared",
-              cache_key: `${apiName.toLowerCase()}_${codCli}_${selectedYear}`,
-              data: newData as any,
-              cached_at: new Date().toISOString(),
-            },
-            { onConflict: "page_id,cache_key" }
-          );
-      } else {
-        await supabase
-          .from("bi_data_cache")
-          .upsert(
-            {
-              page_id: "_shared",
-              cache_key: cacheKey,
-              data: merged as any,
-              cached_at: new Date().toISOString(),
-            },
-            { onConflict: "page_id,cache_key" }
-          );
-      }
+      // Clean up old yearly aggregate key if it exists (migration)
+      const oldYearlyKey = `${apiName.toLowerCase()}_${codCli}_${selectedYear}`;
+      await supabase
+        .from("bi_data_cache")
+        .delete()
+        .eq("page_id", "_shared")
+        .eq("cache_key", oldYearlyKey);
     }
 
     setStatusMessage("Carga histórica concluída!");
     setLoading(false);
-    toast.success(`Carga histórica de ${selectedYear} concluída! ${recordCount} registros carregados.`);
-  }, [codCli, selectedYear, selectedMonths, apis, callMainApi, recordCount]);
+    toast.success(`Carga histórica de ${selectedYear} concluída! ${totalRecords} registros carregados.`);
+  }, [codCli, selectedYear, selectedMonths, apis, callMainApi]);
 
   return (
     <div className="space-y-6">
