@@ -176,7 +176,7 @@ export const AnaliticoCityView = ({
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
               <div>
-                <p className="text-xs text-muted-foreground">Cidades não encontradas</p>
+                <p className="text-xs text-muted-foreground">{t("Cidades não encontradas")}</p>
                 <p className="text-2xl font-bold text-foreground">{unmatchedCities.length}</p>
               </div>
             </div>
