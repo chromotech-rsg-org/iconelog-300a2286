@@ -333,7 +333,7 @@ import { CalendarFilter } from "./CalendarFilter";
 
                   {/* Years */}
                   <div>
-                    <p className="text-xs text-muted-foreground font-semibold mb-2">Ano</p>
+                    <p className="text-xs text-muted-foreground font-semibold mb-2">{t("Ano")}</p>
                     <div className="flex flex-wrap gap-2">
                       {uniqueYears.map((year) => (
                         <Button
