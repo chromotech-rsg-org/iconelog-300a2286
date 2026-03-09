@@ -311,7 +311,7 @@ import { CalendarFilter } from "./CalendarFilter";
                             : "text-muted-foreground border-dashboard-border"
                         }`}
                       >
-                        {selectedMonths.length === 12 ? "Desmarcar todos" : "Selecionar todos"}
+                        {selectedMonths.length === 12 ? t("Desmarcar todos") : t("Selecionar todos")}
                       </Button>
                       {months.map((month) => (
                         <Button
