@@ -213,7 +213,8 @@ import { CalendarFilter } from "./CalendarFilter";
   const getMonthsLabel = () => {
     if (selectedMonths.length === 0) return t("Selecione");
     if (selectedMonths.length === 1) {
-      return months.find(m => m.value === selectedMonths[0])?.short || "";
+      const m = months.find(m => m.value === selectedMonths[0]);
+      return m ? t(m.short) : "";
     }
     if (selectedMonths.length === 12) return t("Todos os meses");
     return `${selectedMonths.length} ${t("meses")}`;
@@ -327,7 +328,7 @@ import { CalendarFilter } from "./CalendarFilter";
                               : "text-muted-foreground hover:text-dashboard-accent"
                           }`}
                         >
-                          {month.short}
+                          {t(month.short)}
                         </Button>
                       ))}
                     </div>
@@ -473,7 +474,7 @@ import { CalendarFilter } from "./CalendarFilter";
                       : "text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
                   }`}
                 >
-                  {month.short}
+                  {t(month.short)}
                 </Button>
               ))}
             </div>

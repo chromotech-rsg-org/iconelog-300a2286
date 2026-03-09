@@ -1,5 +1,6 @@
-import React, { createContext, useContext, ReactNode, useMemo } from "react";
+import React, { createContext, useContext, ReactNode, useMemo, useCallback } from "react";
 import { useBiSettings, BiSetting, type BiSetting as BiSettingType } from "@/hooks/useBiSettings";
+import { useLanguage } from "@/contexts/LanguageContext";
  import defaultLogo from "@/assets/logo.jpg";
  
 interface BiSettingsContextType {
@@ -32,9 +33,13 @@ interface BiSettingsContextType {
  export const BiSettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { settings, loading, getSettingByPageId, getSystemSetting, getOrderedBiSettings, refetch } = useBiSettings();
  
+   const { t } = useLanguage();
+
    const getPageTitle = (pageId: string): string => {
      const setting = getSettingByPageId(pageId);
-     return setting?.display_name || defaultTitles[pageId] || pageId;
+     // If DB has a custom name, translate it; otherwise translate the default
+     const title = setting?.display_name || defaultTitles[pageId] || pageId;
+     return t(title);
    };
  
    const getPageLogo = (pageId: string): string => {

@@ -189,6 +189,30 @@ export const translations: Record<Language, Record<string, string>> = {
     "Você não tem permissão para acessar esta página.": "Você não tem permissão para acessar esta página.",
     "Você não tem permissão para acessar o painel de administração.": "Você não tem permissão para acessar o painel de administração.",
     "Logout realizado com sucesso!": "Logout realizado com sucesso!",
+    
+    // Month names
+    "Jan": "Jan",
+    "Fev": "Fev",
+    "Mar": "Mar",
+    "Abr": "Abr",
+    "Mai": "Mai",
+    "Jun": "Jun",
+    "Jul": "Jul",
+    "Ago": "Ago",
+    "Set": "Set",
+    "Out": "Out",
+    "Nov": "Nov",
+    "Dez": "Dez",
+    
+    // Page titles
+    "Minutas Expedidas x Baixadas": "Minutas Expedidas x Baixadas",
+    "B-Side Estoque": "B-Side Estoque",
+    "B-Side Entregas": "B-Side Entregas",
+    "Tracking Consolidado": "Tracking Consolidado",
+    "Estoque Consolidado": "Estoque Consolidado",
+    "Analítico": "Analítico",
+    "Configurações": "Configurações",
+    "Relatórios Ícone Log": "Relatórios Ícone Log",
   },
   "en": {
     // KPI labels
@@ -378,5 +402,29 @@ export const translations: Record<Language, Record<string, string>> = {
     "Você não tem permissão para acessar esta página.": "You do not have permission to access this page.",
     "Você não tem permissão para acessar o painel de administração.": "You do not have permission to access the admin panel.",
     "Logout realizado com sucesso!": "Logged out successfully!",
+    
+    // Month names
+    "Jan": "Jan",
+    "Fev": "Feb",
+    "Mar": "Mar",
+    "Abr": "Apr",
+    "Mai": "May",
+    "Jun": "Jun",
+    "Jul": "Jul",
+    "Ago": "Aug",
+    "Set": "Sep",
+    "Out": "Oct",
+    "Nov": "Nov",
+    "Dez": "Dec",
+    
+    // Page titles
+    "Minutas Expedidas x Baixadas": "Dispatched vs Delivered Notes",
+    "B-Side Estoque": "B-Side Stock",
+    "B-Side Entregas": "B-Side Deliveries",
+    "Tracking Consolidado": "Consolidated Tracking",
+    "Estoque Consolidado": "Consolidated Stock",
+    "Analítico": "Analytics",
+    "Configurações": "Settings",
+    "Relatórios Ícone Log": "Ícone Log Reports",
   },
 };
