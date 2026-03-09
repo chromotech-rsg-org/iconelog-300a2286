@@ -67,6 +67,7 @@ export const StockLocationTables = ({
   onDateClick,
   onCategoryClick,
 }: StockLocationTablesProps) => {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
