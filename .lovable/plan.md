@@ -1,58 +1,38 @@
 
-Objetivo: corrigir de forma definitiva a perda recorrente do perfil de Desenvolvedor e estabilizar a troca de login/email e senha no painel de usuários.
 
-Diagnóstico confirmado
-1) O usuário desenvolvedor (dev@iconelog.com) está sem vínculo em `user_roles` no banco (perfil realmente removido).
-2) A causa raiz está no fluxo de edição de usuário:
-- `src/pages/Admin.tsx` sempre envia `role_id` ao salvar, mesmo sem mudança de perfil.
-- `src/hooks/useUsersManagement.ts` faz `delete` + `insert` em `user_roles`.
-- Quando o próprio desenvolvedor edita a própria conta, o `delete` remove a role que dava permissão e o `insert` seguinte pode falhar por RLS, deixando o usuário sem perfil.
-3) O modal fecha mesmo com erro (falha silenciosa para o operador).
-4) A função de backend `update-user-auth` está frágil na autenticação manual (`getClaims`), com histórico de “Auth session missing” em logs, o que contribui para erros 401/“non-2xx”.
+## Diagnóstico
 
-Implementação proposta (sequência)
-1. Correção imediata de dados (desbloqueio)
-- Recriar o vínculo do desenvolvedor com a role `Desenvolvedor` em `user_roles` (upsert seguro).
-- Validar que `dev@iconelog.com` voltou a ter role.
+**Situação atual do banco:**
+- Tamanho total: **18 MB** (muito pequeno, o limite do plano é 500MB)
+- `followup_099_2025` (só Dez): 1.3MB, 22K registros
+- `followup_099` (2026): 978KB, 17K registros
+- `statement_timeout`: 2 minutos
 
-2. Corrigir o fluxo de salvar usuário no frontend
-- Arquivo: `src/pages/Admin.tsx`
-- Ajustes:
-  - Só enviar `role_id` para atualização quando houver mudança real de perfil.
-  - Não fechar o modal se `updateUser` falhar.
-  - Interromper o fluxo de troca de credenciais quando a etapa de atualização do usuário falhar.
-  - Melhorar feedback de erro para exibir causa real quando backend retornar não-2xx.
+**O problema NÃO é o tamanho do banco.** É que o sistema armazena todos os meses de um ano em **uma única célula JSONB**. Se você carregar 12 meses de 2025, o `followup_099_2025` teria ~250K registros (~15MB numa única célula), e ler/gravar isso pode ultrapassar o timeout de 2 min.
 
-3. Blindar atualização de role para não perder permissão no meio da operação
-- Arquivo: `src/hooks/useUsersManagement.ts`
-- Substituir padrão “delete e depois insert” por fluxo seguro:
-  - Buscar vínculo(s) atual(is) do usuário.
-  - Se não mudou, não tocar em `user_roles`.
-  - Se mudou, atualizar vínculo existente (ou inserir quando não existir), sem janela de usuário “sem perfil”.
-  - Normalizar múltiplos vínculos legados sem apagar antes de garantir vínculo válido.
-  - Tratar e propagar todos os erros (inclusive erro de delete/update/insert).
-- Resultado: evita perda de perfil mesmo em cenário de edição do próprio usuário.
+**Não precisa aumentar o banco.** O que precisa é **fragmentar o cache por mês** em vez de juntar tudo em uma linha só.
 
-4. Estabilizar autenticação/autorização da função de troca de credenciais
-- Arquivo: `supabase/functions/update-user-auth/index.ts`
-- Ajustes:
-  - Trocar validação manual para abordagem consistente com as outras funções do projeto (`auth.getUser(token)`).
-  - Manter validação server-side de permissão via `has_admin_permission`.
-  - Padronizar respostas 401/403 com mensagem clara.
-  - Adicionar logs de diagnóstico objetivos (sem vazar dados sensíveis) para facilitar suporte futuro.
+## Plano: Fragmentação por mês
 
-5. Validação funcional completa (fim-a-fim)
-- Cenários obrigatórios:
-  - Desenvolvedor editar próprio nome/email/senha sem perder role.
-  - Desenvolvedor editar outro usuário (nome, status, perfil, email, senha).
-  - Usuário sem permissão de `usuarios/editar` receber bloqueio correto.
-  - Confirmar que após salvar, menu e acessos permanecem corretos sem “sumir perfil”.
-  - Repetir fluxo duas ou três vezes para validar que o problema não reaparece.
+### 1. Alterar o HistoricalDataLoader para salvar um registro por mês
+Em vez de acumular tudo em `followup_099_2025`, salvar como:
+- `followup_099_2025_01`, `followup_099_2025_02`, ..., `followup_099_2025_12`
 
-Critérios de aceite
-- dev@iconelog.com permanece com role Desenvolvedor após alterações de credenciais.
-- Troca de email e senha retorna sucesso consistente para usuário autorizado.
-- Nenhum salvamento de usuário deixa `user_roles` vazio por efeito colateral.
-- Em falhas reais, o operador recebe mensagem clara e o modal não fecha indevidamente.
+Cada registro terá no máximo ~22K registros (~1.3MB) — leitura rápida e sem risco de timeout.
 
-Se você aprovar, eu implemento exatamente nessa ordem para resolver de vez e deixar o fluxo estável.
+Remover a lógica de "merge" que carrega o cache inteiro, filtra e re-salva. Cada mês é independente.
+
+### 2. Alterar o useFollowupData para carregar fragmentos por mês
+Já carrega sequencialmente. Basta ajustar o pattern de busca:
+- `followup_099_%` já captura `followup_099_2025_01`, etc.
+- Carregar cada fragmento e concatenar no state (já funciona assim).
+
+### 3. Migrar dados existentes
+O `followup_099_2025` atual (Dez) será lido e re-salvo como `followup_099_2025_12`, depois o registro antigo é removido. Isso pode ser feito no próprio loader na primeira execução ou via um ajuste manual.
+
+### 4. Resultado
+- Cada célula JSONB fica com ~1-2MB no máximo
+- Leitura paralela ou sequencial de fragmentos pequenos — sem timeout
+- Pode carregar todos os 12 meses de 2025 sem problema
+- Sem necessidade de aumentar o plano do banco
+
