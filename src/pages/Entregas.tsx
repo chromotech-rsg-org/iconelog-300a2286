@@ -247,7 +247,7 @@ const Entregas = () => {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]">
               <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-5 py-3 shadow-md">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span className="text-sm font-medium text-foreground">Processando filtros...</span>
+                <span className="text-sm font-medium text-foreground">{t("Processando filtros...")}</span>
               </div>
             </div>
           )}
