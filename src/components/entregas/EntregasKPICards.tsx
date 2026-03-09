@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Package, Truck, RotateCcw, Clock } from "lucide-react";
 import { formatNumber } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface EntregasKPICardsProps {
   entregaFinalizado: number;
