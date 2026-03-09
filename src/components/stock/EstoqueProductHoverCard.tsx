@@ -116,6 +116,7 @@ export const EstoqueMatrizHoverCard = ({ product, children }: EstoqueMatrizHover
 };
 
 export const EstoqueBaseHoverCard = ({ product, children }: EstoqueBaseHoverProps) => {
+  const { t } = useLanguage();
   const imageUrl = product.fotoUrl || `https://icone-api.bfranca.com.br/fotos/icone_${product.codigo}.jpg`;
 
   return (
