@@ -326,39 +326,14 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     setRefreshStage("saving");
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      // Preserve historical data (non-current-year) from existing cache
-      const { data: existingCache } = await supabase
-        .from("bi_data_cache")
-        .select("data")
-        .eq("page_id", "_shared")
-        .eq("cache_key", `followup_${codCli}`)
-        .maybeSingle();
-
-      const existingData: FollowupItem[] = existingCache?.data
-        ? (existingCache.data as FollowupItem[])
-        : [];
-
-      // Keep historical (non-current-year) records, add fresh current-year records
-      const historicalData = existingData.filter(i => i._fetch_year && Number(i._fetch_year) !== currentYear);
+      // Save current year data only to main cache key (historical data lives in monthly fragments)
       const currentYearOnly = allFollowup.filter(i => Number(i._fetch_year) === currentYear);
-      const merged = [...historicalData, ...currentYearOnly];
-
-      if (merged.length > 0) {
-        // Check payload size (~4MB limit)
-        const payloadSize = JSON.stringify(merged).length;
-        if (payloadSize > 4 * 1024 * 1024) {
-          // Too large - save only current year
-          console.warn(`Merged followup payload too large (${(payloadSize / 1024 / 1024).toFixed(1)}MB), saving current year only`);
-          if (currentYearOnly.length > 0) await saveToCache("followup", currentYearOnly);
-        } else {
-          await saveToCache("followup", merged);
-        }
+      if (currentYearOnly.length > 0) {
+        await saveToCache("followup", currentYearOnly);
       }
 
-      // Also update in-memory state to include historical data
-      if (historicalData.length > 0 && currentYearOnly.length > 0) {
-        setFollowupData(merged);
-      }
+      // Re-merge with historical fragments already in memory for display
+      // (no need to re-read from DB, they're already in followupData state)
 
       if ((pageId === "minutas" || pageId === "tracking") && allProdutos.length > 0) {
         await saveToCache("produtosdistribuidos", allProdutos);
