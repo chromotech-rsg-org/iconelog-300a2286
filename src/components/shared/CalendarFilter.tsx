@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { DateRange } from "react-day-picker";
 import { useState, useRef } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface CalendarFilterProps {
   selectedDateRange?: { from: Date | undefined; to: Date | undefined };
