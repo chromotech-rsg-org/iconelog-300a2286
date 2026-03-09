@@ -148,18 +148,18 @@ export const EstoqueBaseHoverCard = ({ product, children }: EstoqueBaseHoverProp
 
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-muted/50 rounded p-2">
-              <span className="text-muted-foreground">Saldo</span>
+              <span className="text-muted-foreground">{t("Saldo")}</span>
               <p className="font-bold text-foreground">{formatNumber(product.saldo)}</p>
             </div>
             <div className="bg-muted/50 rounded p-2">
-              <span className="text-muted-foreground">M³</span>
+              <span className="text-muted-foreground">{t("M³")}</span>
               <p className="font-bold text-foreground">{product.m3.toFixed(4)}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-border">
             <div>
-              <span className="text-muted-foreground">Vl. Total</span>
+              <span className="text-muted-foreground">{t("Vl. Total")}</span>
               <p className="font-semibold text-primary">{formatCurrency(product.vlTotal)}</p>
             </div>
             <div>

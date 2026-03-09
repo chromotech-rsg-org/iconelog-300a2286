@@ -332,7 +332,7 @@ const Faturamento = () => {
                   {/* Faturamento Mensal line chart */}
                   <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all flex-1 ${selectedMonth ? 'ring-2 ring-dashboard-accent' : ''}`}>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-foreground">Faturamento Mensal</CardTitle>
+                      <CardTitle className="text-sm font-medium text-foreground">{t("Faturamento Mensal")}</CardTitle>
                     </CardHeader>
                     <CardContent className="h-[250px]">
                       <ResponsiveContainer width="100%" height="100%">
@@ -369,7 +369,7 @@ const Faturamento = () => {
                 {/* Right: Transporte Mensal — 1/4 width, full height */}
                 <Card className="bg-dashboard-card border-dashboard-border lg:col-span-1 flex flex-col">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Transporte Mensal</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">{t("Transporte Mensal")}</CardTitle>
                   </CardHeader>
                   <CardContent className="flex-1 min-h-[350px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -391,7 +391,7 @@ const Faturamento = () => {
                 {/* Por Regional */}
                 <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedRegional ? 'ring-2 ring-dashboard-blue' : ''}`}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Faturamento | Região</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">{t("Faturamento")} | {t("Regional")}</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[220px]">
                     <ResponsiveContainer width="100%" height="100%">
