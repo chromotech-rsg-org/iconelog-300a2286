@@ -26,7 +26,7 @@ const pathMap: Record<string, string> = {
 export const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin } = useAuth();
+  const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin, canViewAnyConfig } = useAuth();
   const { getPageTitle, getOrderedBiSettings } = useBiSettingsContext();
   const { t } = useLanguage();
 
