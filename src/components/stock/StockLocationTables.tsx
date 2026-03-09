@@ -330,7 +330,7 @@ export const StockLocationTables = ({
                   <span className="text-dashboard-accent">{modalItem.sku}</span>
                   <span className="text-foreground">{modalItem.name}</span>
                 </DialogTitle>
-                <p className="text-sm text-muted-foreground mt-1">Fornecedor: <span className="text-foreground font-medium">{modalItem.category || "-"}</span></p>
+                <p className="text-sm text-muted-foreground mt-1">{t("Fornecedor")}: <span className="text-foreground font-medium">{modalItem.category || "-"}</span></p>
               </DialogHeader>
               <div className="space-y-6">
                 {/* Large product image */}
