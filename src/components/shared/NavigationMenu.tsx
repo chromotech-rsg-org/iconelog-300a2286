@@ -159,7 +159,7 @@ export const NavigationMenu = () => {
             className="cursor-pointer text-foreground hover:bg-dashboard-border hover:text-dashboard-accent"
           >
             <User className="mr-2 h-4 w-4" />
-            Entrar
+            {t("Entrar")}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

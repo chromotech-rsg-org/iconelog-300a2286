@@ -208,25 +208,27 @@ import { CalendarFilter } from "./CalendarFilter";
     }
   };
 
+  const { t } = useLanguage();
+
   const getMonthsLabel = () => {
-    if (selectedMonths.length === 0) return "Selecione";
+    if (selectedMonths.length === 0) return t("Selecione");
     if (selectedMonths.length === 1) {
       return months.find(m => m.value === selectedMonths[0])?.short || "";
     }
-    if (selectedMonths.length === 12) return "Todos os meses";
-    return `${selectedMonths.length} meses`;
+    if (selectedMonths.length === 12) return t("Todos os meses");
+    return `${selectedMonths.length} ${t("meses")}`;
   };
 
   const getYearsLabel = () => {
-    if (selectedYears.length === 0) return "Selecione";
+    if (selectedYears.length === 0) return t("Selecione");
     if (selectedYears.length === 1) return selectedYears[0].toString();
-    return `${selectedYears.length} anos`;
+    return `${selectedYears.length} ${t("anos")}`;
   };
 
   const getRegionsLabel = () => {
-    if (selectedRegions.length === 0) return "Todas as Regionais";
+    if (selectedRegions.length === 0) return t("Todas as Regionais");
     if (selectedRegions.length === 1) return selectedRegions[0];
-    return `${selectedRegions.length} regionais`;
+    return `${selectedRegions.length} ${t("regionais")}`;
   };
 
   return (

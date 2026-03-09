@@ -118,7 +118,7 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
               onClick={() => handleClear()}
               className="w-full text-xs text-muted-foreground hover:text-dashboard-accent"
             >
-              Limpar seleção
+              {t("Limpar seleção")}
             </Button>
           </div>
         )}
