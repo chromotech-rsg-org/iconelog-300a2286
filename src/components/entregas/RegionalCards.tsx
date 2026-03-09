@@ -68,7 +68,7 @@ export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: Regio
                   </div>
                   
                   <div className="text-xs text-muted-foreground">
-                    Finalizados: {formatNumber(finalizados)} • Em trânsito: {formatNumber(emTransito)}
+                    {t("Finalizados")}: {formatNumber(finalizados)} • {t("Em Trânsito")}: {formatNumber(emTransito)}
                   </div>
                 </div>
               );
