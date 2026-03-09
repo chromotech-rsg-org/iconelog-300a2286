@@ -33,9 +33,13 @@ interface BiSettingsContextType {
  export const BiSettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { settings, loading, getSettingByPageId, getSystemSetting, getOrderedBiSettings, refetch } = useBiSettings();
  
+   const { t } = useLanguage();
+
    const getPageTitle = (pageId: string): string => {
      const setting = getSettingByPageId(pageId);
-     return setting?.display_name || defaultTitles[pageId] || pageId;
+     // If DB has a custom name, translate it; otherwise translate the default
+     const title = setting?.display_name || defaultTitles[pageId] || pageId;
+     return t(title);
    };
  
    const getPageLogo = (pageId: string): string => {
