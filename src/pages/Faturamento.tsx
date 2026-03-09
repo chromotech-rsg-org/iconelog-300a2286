@@ -256,7 +256,7 @@ const Faturamento = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]">
             <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-5 py-3 shadow-md">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span className="text-sm font-medium text-foreground">Processando filtros...</span>
+              <span className="text-sm font-medium text-foreground">{t("Processando filtros...")}</span>
             </div>
           </div>
         )}
@@ -264,7 +264,7 @@ const Faturamento = () => {
         {isLoading && !hasData && (
           <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
             <Loader2 className="h-8 w-8 animate-spin text-dashboard-accent mb-4" />
-            <p className="text-muted-foreground">Carregando dados do faturamento...</p>
+            <p className="text-muted-foreground">{t("Carregando dados do faturamento...")}</p>
           </div>
         )}
 
@@ -272,10 +272,10 @@ const Faturamento = () => {
         {!isLoading && cacheLoaded && !hasData && (
           <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
             <InboxIcon className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">Nenhum dado disponível</h3>
-            <p className="text-muted-foreground mb-4">Clique em atualizar para buscar os dados da API.</p>
+            <h3 className="text-lg font-medium text-foreground mb-2">{t("Nenhum dado disponível")}</h3>
+            <p className="text-muted-foreground mb-4">{t("Clique em atualizar para buscar os dados da API.")}</p>
             <Button onClick={handleRefreshData} className="bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent/90">
-              Atualizar Dados
+              {t("Atualizar Dados")}
             </Button>
           </div>
         )}
