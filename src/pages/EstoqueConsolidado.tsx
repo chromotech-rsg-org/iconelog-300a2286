@@ -395,7 +395,7 @@ const EstoqueConsolidado = () => {
           {/* 2. Valor Estoque | Grupo - Blue Bar */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
             <CardHeader className="pb-1">
-              <CardTitle className="text-sm font-medium text-foreground">Valor Estoque | Grupo</CardTitle>
+              <CardTitle className="text-sm font-medium text-foreground">{t("Valor do Estoque | Grupo")}</CardTitle>
             </CardHeader>
             <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
