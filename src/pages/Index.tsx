@@ -16,7 +16,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 const Index = () => {
-  const currentDate = new Date();
+  const { t } = useLanguage();
   const currentMonth = currentDate.getMonth() + 1;
   const currentYear = currentDate.getFullYear();
 
