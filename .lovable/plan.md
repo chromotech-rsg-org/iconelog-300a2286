@@ -1,72 +1,58 @@
 
+Objetivo: corrigir de forma definitiva a perda recorrente do perfil de Desenvolvedor e estabilizar a troca de login/email e senha no painel de usuários.
 
-## Plano: Corrigir atualização automática + Traduzir elementos restantes
+Diagnóstico confirmado
+1) O usuário desenvolvedor (dev@iconelog.com) está sem vínculo em `user_roles` no banco (perfil realmente removido).
+2) A causa raiz está no fluxo de edição de usuário:
+- `src/pages/Admin.tsx` sempre envia `role_id` ao salvar, mesmo sem mudança de perfil.
+- `src/hooks/useUsersManagement.ts` faz `delete` + `insert` em `user_roles`.
+- Quando o próprio desenvolvedor edita a própria conta, o `delete` remove a role que dava permissão e o `insert` seguinte pode falhar por RLS, deixando o usuário sem perfil.
+3) O modal fecha mesmo com erro (falha silenciosa para o operador).
+4) A função de backend `update-user-auth` está frágil na autenticação manual (`getClaims`), com histórico de “Auth session missing” em logs, o que contribui para erros 401/“non-2xx”.
 
-### Problema 1: Atualização automática não funciona
+Implementação proposta (sequência)
+1. Correção imediata de dados (desbloqueio)
+- Recriar o vínculo do desenvolvedor com a role `Desenvolvedor` em `user_roles` (upsert seguro).
+- Validar que `dev@iconelog.com` voltou a ter role.
 
-**Causa raiz:** Não existe nenhum cron job configurado no banco de dados. As extensões `pg_cron` e `pg_net` estão habilitadas, mas nunca foi criado o job que chama a edge function `scheduled-update` periodicamente.
+2. Corrigir o fluxo de salvar usuário no frontend
+- Arquivo: `src/pages/Admin.tsx`
+- Ajustes:
+  - Só enviar `role_id` para atualização quando houver mudança real de perfil.
+  - Não fechar o modal se `updateUser` falhar.
+  - Interromper o fluxo de troca de credenciais quando a etapa de atualização do usuário falhar.
+  - Melhorar feedback de erro para exibir causa real quando backend retornar não-2xx.
 
-**Correção:** Criar um cron job que invoca a edge function `scheduled-update` a cada 30 minutos (para cobrir os intervalos de 60 min configurados). O cron chama via `net.http_post` a URL da edge function com o anon key.
+3. Blindar atualização de role para não perder permissão no meio da operação
+- Arquivo: `src/hooks/useUsersManagement.ts`
+- Substituir padrão “delete e depois insert” por fluxo seguro:
+  - Buscar vínculo(s) atual(is) do usuário.
+  - Se não mudou, não tocar em `user_roles`.
+  - Se mudou, atualizar vínculo existente (ou inserir quando não existir), sem janela de usuário “sem perfil”.
+  - Normalizar múltiplos vínculos legados sem apagar antes de garantir vínculo válido.
+  - Tratar e propagar todos os erros (inclusive erro de delete/update/insert).
+- Resultado: evita perda de perfil mesmo em cenário de edição do próprio usuário.
 
-```sql
-SELECT cron.schedule(
-  'invoke-scheduled-update',
-  '*/30 * * * *',
-  $$ SELECT net.http_post(
-    url := 'https://meqiwdekvksgidwszqrm.supabase.co/functions/v1/scheduled-update',
-    headers := '{"Content-Type":"application/json","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}'::jsonb,
-    body := '{}'::jsonb
-  ) AS request_id; $$
-);
-```
+4. Estabilizar autenticação/autorização da função de troca de credenciais
+- Arquivo: `supabase/functions/update-user-auth/index.ts`
+- Ajustes:
+  - Trocar validação manual para abordagem consistente com as outras funções do projeto (`auth.getUser(token)`).
+  - Manter validação server-side de permissão via `has_admin_permission`.
+  - Padronizar respostas 401/403 com mensagem clara.
+  - Adicionar logs de diagnóstico objetivos (sem vazar dados sensíveis) para facilitar suporte futuro.
 
-Após criar, testar com `supabase--curl_edge_functions` para garantir que a function responde corretamente.
+5. Validação funcional completa (fim-a-fim)
+- Cenários obrigatórios:
+  - Desenvolvedor editar próprio nome/email/senha sem perder role.
+  - Desenvolvedor editar outro usuário (nome, status, perfil, email, senha).
+  - Usuário sem permissão de `usuarios/editar` receber bloqueio correto.
+  - Confirmar que após salvar, menu e acessos permanecem corretos sem “sumir perfil”.
+  - Repetir fluxo duas ou três vezes para validar que o problema não reaparece.
 
-### Problema 2: Traduções faltantes
+Critérios de aceite
+- dev@iconelog.com permanece com role Desenvolvedor após alterações de credenciais.
+- Troca de email e senha retorna sucesso consistente para usuário autorizado.
+- Nenhum salvamento de usuário deixa `user_roles` vazio por efeito colateral.
+- Em falhas reais, o operador recebe mensagem clara e o modal não fecha indevidamente.
 
-Os seguintes componentes ainda têm textos hardcoded em português:
-
-**A) Faturamento - meses nos gráficos**
-- `src/hooks/useFollowupData.ts` (linha 741): `mesesNomes` usa nomes completos em PT ("Janeiro", "Fevereiro"...) que aparecem nos eixos dos gráficos
-- Não é possível usar `useLanguage` num hook sem React component, então a solução é: o hook retorna os dados com meses em PT, e no componente Faturamento traduzimos o `mes` label antes de renderizar nos gráficos
-
-**B) B-Side Estoque - tabela `StockLocationTables.tsx`**
-- Headers hardcoded: "Estoque Matriz (Barueri)", "Foto", "Código", "Nome", "Fornecedor", "Qtde", "Kits", "Ult. Ent. Data", "Ult. Ent. Qtd", "Buscar...", "itens"
-- Adicionar `useLanguage` + `t()` 
-
-**C) Estoque Consolidado - tabelas**
-- `EstoqueConsolidado.tsx` linhas 509-610: Headers das tabelas Matriz e Base hardcoded: "Código", "Produto", "Grupo", "Qtde. Entrada", "Qtde. Saída", "Saldo", "Vl. Total", "Base", "Cidade", "UF", "M3", "Região"
-- Títulos: "Estoque Matriz", "Estoque Base", "Pesquisar...", "itens", "registros"
-
-**D) Analítico - `AnaliticoCityView.tsx`**
-- KPI labels: "Cidades não encontradas", "UFs envolvidas", "Ocorrências sem regional"
-- Título tabela: "Regionais não encontradas", "Pesquisar...", "Pedido", "Campanha", "Cidade", "UF"
-
-**E) Page title "Minutas Expedidas x Baixadas"**
-- Já existe a chave no dicionário EN. Verificar se o `BiSettingsContext.getPageTitle` realmente traduz (foi corrigido na mensagem anterior com `t(title)`)
-
-### Novas chaves de tradução (~25)
-
-Adicionar ao `src/i18n/translations.ts`:
-- Meses completos: "Janeiro"→"January", "Fevereiro"→"February", etc.
-- Tabela Estoque: "Foto"→"Photo", "Código"→"Code", "Nome"→"Name", "Fornecedor"→"Supplier", "Qtde"→"Qty", "Kits"→"Kits", "Ult. Ent. Data"→"Last Entry Date", "Ult. Ent. Qtd"→"Last Entry Qty", "Buscar..."→"Search...", "itens"→"items"
-- Tabela Estoque Consolidado: "Produto"→"Product", "Qtde. Entrada"→"Qty In", "Qtde. Saída"→"Qty Out", "Região"→"Region"
-- Analítico: "Cidades não encontradas"→"Cities not found", "UFs envolvidas"→"States involved", "Ocorrências sem regional"→"Occurrences without region", "Regionais não encontradas"→"Regions not found"
-
-### Arquivos a modificar
-
-| Arquivo | Mudança |
-|---------|---------|
-| `src/i18n/translations.ts` | +25 chaves pt-BR/en |
-| `src/components/stock/StockLocationTables.tsx` | +useLanguage, t() em títulos/headers |
-| `src/pages/EstoqueConsolidado.tsx` | t() nos headers das tabelas Matriz e Base |
-| `src/components/analitico/AnaliticoCityView.tsx` | +useLanguage, t() em KPIs e tabela |
-| `src/pages/Faturamento.tsx` | t() nos labels de meses dos gráficos (transformar `mensal` data) |
-| Cron job SQL (via insert tool) | Criar job `invoke-scheduled-update` a cada 30 min |
-
-### Ordem de execução
-
-1. Criar cron job para atualização automática + testar edge function
-2. Expandir dicionário de traduções
-3. Atualizar os 4 componentes com `t()`
-
+Se você aprovar, eu implemento exatamente nessa ordem para resolver de vez e deixar o fluxo estável.

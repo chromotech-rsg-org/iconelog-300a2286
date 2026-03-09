@@ -103,7 +103,8 @@ const Faturamento = () => {
   }, [getFaturamentoData, selectedMonths, selectedYears, selectedSides, chartInteractiveFilters]);
 
   const { totals: displayTotals, tipoServico: tipoServicoData, modalidade: modalidadeData, campanha: campanhaData, regional: regionalData } = faturamentoResult;
-  const { mensal } = chartResult;
+  const { mensal: mensalRaw } = chartResult;
+  const mensal = useMemo(() => mensalRaw.map(item => ({ ...item, mes: t(item.mes) })), [mensalRaw, t]);
 
   useEffect(() => {
     if (lastUpdateAt) setLastUpdate(lastUpdateAt);

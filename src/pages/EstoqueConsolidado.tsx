@@ -472,13 +472,13 @@ const EstoqueConsolidado = () => {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between gap-2">
                 <CardTitle className="text-base font-semibold text-foreground">
-                  Estoque Matriz <span className="text-sm font-normal text-muted-foreground">({searchedMatriz.length} itens)</span>
+                  {t("Estoque Matriz")} <span className="text-sm font-normal text-muted-foreground">({searchedMatriz.length} {t("itens")})</span>
                 </CardTitle>
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <div className="relative flex-1">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input placeholder="Pesquisar código, descrição, grupo..." value={matrizSearch}
+                  <Input placeholder={t("Pesquisar código, descrição, grupo...")} value={matrizSearch}
                     onChange={e => { setMatrizSearch(e.target.value); setMatrizPage(0); }}
                     className="h-7 text-xs pl-7 bg-muted/20 border-border" />
                 </div>
@@ -506,13 +506,13 @@ const EstoqueConsolidado = () => {
                 <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow className="border-border bg-muted/20 sticky top-0 z-10">
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Código</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Produto</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Grupo</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Entrada</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Saída</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Saldo</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Vl. Total</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Código")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Produto")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Grupo")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Qtde. Entrada")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Qtde. Saída")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Saldo")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Vl. Total")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -540,7 +540,7 @@ const EstoqueConsolidado = () => {
               </div>
               <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
                 <span className="text-[10px] text-muted-foreground">
-                  {searchedMatriz.length > 0 ? `${matrizPage * matrizPerPage + 1}–${Math.min((matrizPage + 1) * matrizPerPage, searchedMatriz.length)} de ${searchedMatriz.length}` : "0 registros"}
+                  {searchedMatriz.length > 0 ? `${matrizPage * matrizPerPage + 1}–${Math.min((matrizPage + 1) * matrizPerPage, searchedMatriz.length)} ${t("de")} ${searchedMatriz.length}` : `0 ${t("registros")}`}
                 </span>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" className="h-6 w-6" disabled={matrizPage === 0} onClick={() => setMatrizPage(p => p - 1)}>
@@ -562,13 +562,13 @@ const EstoqueConsolidado = () => {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between gap-2">
                 <CardTitle className="text-base font-semibold text-foreground">
-                  Estoque Base <span className="text-sm font-normal text-muted-foreground">({searchedBase.length} itens)</span>
+                  {t("Estoque Base")} <span className="text-sm font-normal text-muted-foreground">({searchedBase.length} {t("itens")})</span>
                 </CardTitle>
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <div className="relative flex-1">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input placeholder="Pesquisar base, cidade, código..." value={baseSearch}
+                  <Input placeholder={t("Pesquisar base, cidade, código...")} value={baseSearch}
                     onChange={e => { setBaseSearch(e.target.value); setBasePage(0); }}
                     className="h-7 text-xs pl-7 bg-muted/20 border-border" />
                 </div>
@@ -596,17 +596,17 @@ const EstoqueConsolidado = () => {
                 <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow className="border-border bg-muted/20 sticky top-0 z-10">
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Base</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Cidade</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">UF</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Código</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Base")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Cidade")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("UF")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Código")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M3</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Produto</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Entrada</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Saída</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Região</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Saldo</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Vl. Total</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Produto")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Qtde. Entrada")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Qtde. Saída")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Região")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Saldo")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Vl. Total")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -640,7 +640,7 @@ const EstoqueConsolidado = () => {
               </div>
               <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
                 <span className="text-[10px] text-muted-foreground">
-                  {searchedBase.length > 0 ? `${basePage * basePerPage + 1}–${Math.min((basePage + 1) * basePerPage, searchedBase.length)} de ${searchedBase.length}` : "0 registros"}
+                  {searchedBase.length > 0 ? `${basePage * basePerPage + 1}–${Math.min((basePage + 1) * basePerPage, searchedBase.length)} ${t("de")} ${searchedBase.length}` : `0 ${t("registros")}`}
                 </span>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" className="h-6 w-6" disabled={basePage === 0} onClick={() => setBasePage(p => p - 1)}>

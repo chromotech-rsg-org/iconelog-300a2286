@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ export const AnaliticoCityView = ({
   selectedMonths,
   selectedYears,
 }: AnaliticoCityViewProps) => {
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [perPage, setPerPage] = useState(20);
@@ -174,7 +176,7 @@ export const AnaliticoCityView = ({
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
               <div>
-                <p className="text-xs text-muted-foreground">Cidades não encontradas</p>
+                <p className="text-xs text-muted-foreground">{t("Cidades não encontradas")}</p>
                 <p className="text-2xl font-bold text-foreground">{unmatchedCities.length}</p>
               </div>
             </div>
@@ -183,7 +185,7 @@ export const AnaliticoCityView = ({
         <Card className="bg-card border-border">
           <CardContent className="pt-4 pb-3 px-4">
             <div>
-              <p className="text-xs text-muted-foreground">UFs envolvidas</p>
+              <p className="text-xs text-muted-foreground">{t("UFs envolvidas")}</p>
               <p className="text-2xl font-bold text-foreground">{byUF.length}</p>
             </div>
           </CardContent>
@@ -191,7 +193,7 @@ export const AnaliticoCityView = ({
         <Card className="bg-card border-border">
           <CardContent className="pt-4 pb-3 px-4">
             <div>
-              <p className="text-xs text-muted-foreground">Ocorrências sem regional</p>
+              <p className="text-xs text-muted-foreground">{t("Ocorrências sem regional")}</p>
               <p className="text-2xl font-bold text-foreground">{totalOccurrences.toLocaleString("pt-BR")}</p>
             </div>
           </CardContent>
@@ -204,7 +206,7 @@ export const AnaliticoCityView = ({
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <CardTitle className="text-sm font-bold text-primary uppercase">
-                Regionais não encontradas
+                {t("Regionais não encontradas")}
               </CardTitle>
               <span className="text-xs text-muted-foreground">({filtered.length})</span>
               {columnFilter && (
@@ -216,8 +218,8 @@ export const AnaliticoCityView = ({
             <div className="flex items-center gap-2">
               <div className="relative">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Pesquisar..."
+                 <Input
+                   placeholder={t("Pesquisar...")}
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setPage(0); }}
                   className="h-7 text-xs pl-7 bg-muted/20 border-border w-60"
@@ -247,25 +249,25 @@ export const AnaliticoCityView = ({
                     className="text-muted-foreground text-[10px] px-3 whitespace-nowrap cursor-pointer hover:text-foreground select-none"
                     onClick={() => handleSort("pedido")}
                   >
-                    Pedido <SortIcon col="pedido" />
+                    {t("Pedido")} <SortIcon col="pedido" />
                   </TableHead>
                   <TableHead
                     className="text-muted-foreground text-[10px] px-3 whitespace-nowrap cursor-pointer hover:text-foreground select-none"
                     onClick={() => handleSort("campanha")}
                   >
-                    Campanha <SortIcon col="campanha" />
+                    {t("Campanha")} <SortIcon col="campanha" />
                   </TableHead>
                   <TableHead
                     className="text-muted-foreground text-[10px] px-3 whitespace-nowrap cursor-pointer hover:text-foreground select-none"
                     onClick={() => handleSort("cidade")}
                   >
-                    Cidade Destino <SortIcon col="cidade" />
+                    {t("Cidade Destino")} <SortIcon col="cidade" />
                   </TableHead>
                   <TableHead
                     className="text-muted-foreground text-[10px] px-3 whitespace-nowrap cursor-pointer hover:text-foreground select-none"
                     onClick={() => handleSort("uf")}
                   >
-                    UF <SortIcon col="uf" />
+                    {t("UF")} <SortIcon col="uf" />
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -302,8 +304,8 @@ export const AnaliticoCityView = ({
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                       {unmatchedRecords.length === 0
-                        ? "Todas as cidades da API estão mapeadas! ✅"
-                        : "Nenhum registro encontrado"}
+                        ? t("Todas as cidades da API estão mapeadas! ✅")
+                        : t("Nenhum registro encontrado")}
                     </TableCell>
                   </TableRow>
                 )}
@@ -314,8 +316,8 @@ export const AnaliticoCityView = ({
           <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
             <span className="text-[10px] text-muted-foreground">
               {filtered.length > 0
-                ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, filtered.length)} de ${filtered.length}`
-                : "0 registros"}
+                ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, filtered.length)} ${t("de")} ${filtered.length}`
+                : `0 ${t("registros")}`}
             </span>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-6 w-6" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
