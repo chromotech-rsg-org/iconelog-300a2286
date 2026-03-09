@@ -150,7 +150,7 @@ export const NavigationMenu = () => {
               className="cursor-pointer text-destructive hover:bg-destructive/20 hover:text-destructive"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Sair
+              {t("Sair")}
             </DropdownMenuItem>
           </>
         ) : (
