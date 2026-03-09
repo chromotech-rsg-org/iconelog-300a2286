@@ -472,7 +472,7 @@ const EstoqueConsolidado = () => {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between gap-2">
                 <CardTitle className="text-base font-semibold text-foreground">
-                  Estoque Matriz <span className="text-sm font-normal text-muted-foreground">({searchedMatriz.length} itens)</span>
+                  {t("Estoque Matriz")} <span className="text-sm font-normal text-muted-foreground">({searchedMatriz.length} {t("itens")})</span>
                 </CardTitle>
               </div>
               <div className="flex items-center gap-2 mt-1">
