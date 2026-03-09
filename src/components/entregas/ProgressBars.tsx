@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { formatNumber } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ProgressBarsProps {
   entregaFinalizado: number;
