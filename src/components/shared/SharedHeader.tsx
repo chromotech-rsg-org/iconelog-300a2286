@@ -384,7 +384,7 @@ import { CalendarFilter } from "./CalendarFilter";
                   {/* Calendar */}
                   {onDateRangeChange && (
                     <div>
-                      <p className="text-xs text-muted-foreground font-semibold mb-2">Período</p>
+                      <p className="text-xs text-muted-foreground font-semibold mb-2">{t("Período")}</p>
                       <CalendarFilter selectedDateRange={selectedDateRange} onDateRangeChange={onDateRangeChange} />
                     </div>
                   )}
