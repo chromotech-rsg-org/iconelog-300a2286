@@ -8,6 +8,7 @@ import { ActiveFilters } from "@/components/dashboard/ActiveFilters";
 import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
 import { useFollowupData } from "@/hooks/useFollowupData";
 import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { months as allMonths, allMonthValues } from "@/data/mockData";
 import { AlertCircle, InboxIcon, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 const Index = () => {
+  const { t } = useLanguage();
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth() + 1;
   const currentYear = currentDate.getFullYear();
@@ -215,7 +217,7 @@ const Index = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-2">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
-          <h2 className="text-lg font-semibold text-foreground">Configuração necessária</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("Configuração necessária")}</h2>
           <p className="text-sm text-muted-foreground">Configure o código do cliente (cod_cli) para "minutas" em Configurar BI.</p>
         </div>
       </div>
@@ -289,9 +291,9 @@ const Index = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="rounded-lg border border-border bg-card p-8 shadow-lg flex flex-col items-center gap-4 max-w-sm">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <h3 className="text-lg font-semibold text-foreground">Carregando dados</h3>
+            <h3 className="text-lg font-semibold text-foreground">{t("Carregando dados")}</h3>
             <p className="text-sm text-muted-foreground text-center">
-              Recuperando dados da última atualização...
+              {t("Recuperando dados da última atualização...")}
             </p>
           </div>
         </div>
@@ -301,8 +303,8 @@ const Index = () => {
         <div className="flex items-center justify-center h-[60vh]">
           <div className="text-center space-y-3">
             <InboxIcon className="h-12 w-12 mx-auto text-muted-foreground" />
-            <h2 className="text-lg font-semibold text-foreground">Nenhum dado disponível</h2>
-            <p className="text-sm text-muted-foreground">Clique no botão <strong>Atualizar</strong> no cabeçalho para buscar os dados.</p>
+            <h2 className="text-lg font-semibold text-foreground">{t("Nenhum dado disponível")}</h2>
+            <p className="text-sm text-muted-foreground">{t("Clique no botão Atualizar no cabeçalho para buscar os dados.")}</p>
           </div>
         </div>
       ) : (
@@ -311,7 +313,7 @@ const Index = () => {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]">
               <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-5 py-3 shadow-md">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <span className="text-sm font-medium text-foreground">Processando filtros...</span>
+                <span className="text-sm font-medium text-foreground">{t("Processando filtros...")}</span>
               </div>
             </div>
           )}

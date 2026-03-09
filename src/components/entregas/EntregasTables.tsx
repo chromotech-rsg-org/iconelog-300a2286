@@ -1,13 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatNumber } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DeliveryData {
   id: string;
@@ -20,7 +17,6 @@ interface DeliveryData {
   reposicaoEmTransito: number;
   reposicaoTotal: number;
 }
-import { formatNumber } from "@/data/mockData";
 
 interface EntregasTablesProps {
   data: DeliveryData[];
@@ -29,11 +25,10 @@ interface EntregasTablesProps {
 }
 
 export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: EntregasTablesProps) => {
-  // Sort data by total descending
+  const { t } = useLanguage();
   const entregaData = [...data].sort((a, b) => b.entregaTotal - a.entregaTotal);
   const reposicaoData = [...data].sort((a, b) => b.reposicaoTotal - a.reposicaoTotal);
   
-  // Calculate totals
   const entregaTotals = data.reduce((acc, item) => ({
     finalizado: acc.finalizado + item.entregaFinalizado,
     emTransito: acc.emTransito + item.entregaEmTransito,
@@ -48,11 +43,10 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* ENTREGA Table */}
       <Card className="bg-dashboard-card border-dashboard-border">
         <CardHeader className="py-2 px-4 bg-dashboard-accent">
           <CardTitle className="text-sm font-bold text-dashboard-dark uppercase tracking-wide">
-            ENTREGA
+            {t("ENTREGA")}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -60,11 +54,11 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
             <Table>
               <TableHeader className="sticky top-0 bg-dashboard-accent z-10">
                 <TableRow className="border-none hover:bg-transparent">
-                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">REGIONAL</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">UF</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">FINALIZADO</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">EM TRÂNSITO</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">TOTAL</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">{t("REGIONAL")}</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">{t("UF")}</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">{t("FINALIZADO")}</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">{t("EM TRÂNSITO")}</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">{t("TOTAL")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -79,34 +73,24 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
                       <TableCell className={`text-sm py-2 ${isSelected ? 'text-dashboard-accent font-medium' : 'text-foreground'}`}>
                         {item.regional}
                       </TableCell>
-                      <TableCell className="text-sm py-2 text-muted-foreground">
-                        {item.uf || "BR"}
-                      </TableCell>
-                      <TableCell className="text-sm py-2 text-right text-foreground">
-                        {formatNumber(item.entregaFinalizado)}
-                      </TableCell>
-                      <TableCell className="text-sm py-2 text-right text-foreground">
-                        {formatNumber(item.entregaEmTransito)}
-                      </TableCell>
-                      <TableCell className="text-sm py-2 text-right font-medium text-foreground">
-                        {formatNumber(item.entregaTotal)}
-                      </TableCell>
+                      <TableCell className="text-sm py-2 text-muted-foreground">{item.uf || "BR"}</TableCell>
+                      <TableCell className="text-sm py-2 text-right text-foreground">{formatNumber(item.entregaFinalizado)}</TableCell>
+                      <TableCell className="text-sm py-2 text-right text-foreground">{formatNumber(item.entregaEmTransito)}</TableCell>
+                      <TableCell className="text-sm py-2 text-right font-medium text-foreground">{formatNumber(item.entregaTotal)}</TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
             </Table>
           </ScrollArea>
-          {/* Total Row */}
           <div className="flex items-center justify-between px-4 py-2 border-t border-dashboard-border bg-dashboard-card">
-            <span className="text-sm font-bold text-foreground">Total</span>
+            <span className="text-sm font-bold text-foreground">{t("Total")}</span>
             <div className="flex gap-8 text-sm">
               <span className="font-bold text-foreground">{formatNumber(entregaTotals.finalizado)}</span>
               <span className="font-bold text-foreground">{formatNumber(entregaTotals.emTransito)}</span>
               <span className="font-bold text-dashboard-accent">{formatNumber(entregaTotals.total)}</span>
             </div>
           </div>
-          {/* Progress bar at bottom with percentage */}
           {(() => {
             const pct = entregaTotals.total > 0 ? (entregaTotals.finalizado / entregaTotals.total) * 100 : 0;
             const emTransitoPct = entregaTotals.total > 0 ? (entregaTotals.emTransito / entregaTotals.total) * 100 : 0;
@@ -124,11 +108,10 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
         </CardContent>
       </Card>
 
-      {/* REPOSIÇÃO Table */}
       <Card className="bg-dashboard-card border-dashboard-border">
         <CardHeader className="py-2 px-4 bg-dashboard-accent">
           <CardTitle className="text-sm font-bold text-dashboard-dark uppercase tracking-wide">
-            REPOSIÇÃO
+            {t("REPOSIÇÃO")}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -136,11 +119,11 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
             <Table>
               <TableHeader className="sticky top-0 bg-dashboard-accent z-10">
                 <TableRow className="border-none hover:bg-transparent">
-                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">REGIONAL</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">UF</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">FINALIZADO</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">EM TRÂNSITO</TableHead>
-                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">TOTAL</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">{t("REGIONAL")}</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2">{t("UF")}</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">{t("FINALIZADO")}</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">{t("EM TRÂNSITO")}</TableHead>
+                  <TableHead className="text-dashboard-dark font-bold text-sm py-2 text-right">{t("TOTAL")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -155,34 +138,24 @@ export const EntregasTables = ({ data, onRegionalClick, selectedRegional }: Entr
                       <TableCell className={`text-sm py-2 ${isSelected ? 'text-dashboard-accent font-medium' : 'text-foreground'}`}>
                         {item.regional}
                       </TableCell>
-                      <TableCell className="text-sm py-2 text-muted-foreground">
-                        {item.uf || "BR"}
-                      </TableCell>
-                      <TableCell className="text-sm py-2 text-right text-foreground">
-                        {formatNumber(item.reposicaoFinalizado)}
-                      </TableCell>
-                      <TableCell className="text-sm py-2 text-right text-foreground">
-                        {formatNumber(item.reposicaoEmTransito)}
-                      </TableCell>
-                      <TableCell className="text-sm py-2 text-right font-medium text-foreground">
-                        {formatNumber(item.reposicaoTotal)}
-                      </TableCell>
+                      <TableCell className="text-sm py-2 text-muted-foreground">{item.uf || "BR"}</TableCell>
+                      <TableCell className="text-sm py-2 text-right text-foreground">{formatNumber(item.reposicaoFinalizado)}</TableCell>
+                      <TableCell className="text-sm py-2 text-right text-foreground">{formatNumber(item.reposicaoEmTransito)}</TableCell>
+                      <TableCell className="text-sm py-2 text-right font-medium text-foreground">{formatNumber(item.reposicaoTotal)}</TableCell>
                     </TableRow>
                   );
                 })}
               </TableBody>
             </Table>
           </ScrollArea>
-          {/* Total Row */}
           <div className="flex items-center justify-between px-4 py-2 border-t border-dashboard-border bg-dashboard-card">
-            <span className="text-sm font-bold text-foreground">Total</span>
+            <span className="text-sm font-bold text-foreground">{t("Total")}</span>
             <div className="flex gap-8 text-sm">
               <span className="font-bold text-foreground">{formatNumber(reposicaoTotals.finalizado)}</span>
               <span className="font-bold text-foreground">{formatNumber(reposicaoTotals.emTransito)}</span>
               <span className="font-bold text-dashboard-accent">{formatNumber(reposicaoTotals.total)}</span>
             </div>
           </div>
-          {/* Progress bar at bottom with percentage */}
           {(() => {
             const pct = reposicaoTotals.total > 0 ? (reposicaoTotals.finalizado / reposicaoTotals.total) * 100 : 0;
             const emTransitoPct = reposicaoTotals.total > 0 ? (reposicaoTotals.emTransito / reposicaoTotals.total) * 100 : 0;

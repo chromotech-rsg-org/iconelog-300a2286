@@ -1,4 +1,5 @@
 import { MiniLineChart } from "./MiniLineChart";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DayData {
   day: number;
@@ -25,23 +26,17 @@ interface RegionalLineChartsProps {
 }
 
 export const RegionalLineCharts = ({ 
-  data, 
-  selectedDay,
-  selectedMetric,
-  selectedMonths,
-  selectedDateRange,
-  selectedRegion,
-  onDayClick,
-  onRegionClick,
-  onLinePointClick 
+  data, selectedDay, selectedMetric, selectedMonths, selectedDateRange,
+  selectedRegion, onDayClick, onRegionClick, onLinePointClick 
 }: RegionalLineChartsProps) => {
+  const { t } = useLanguage();
   return (
     <div className="h-full rounded-lg border border-dashboard-border bg-dashboard-card/50 p-4 overflow-y-auto custom-scrollbar">
       <h3 className="mb-4 text-sm font-semibold text-dashboard-accent">
-        Evolução Diária por Regional
+        {t("Evolução Diária por Regional")}
         {selectedDay !== null && (
           <span className="ml-2 text-xs font-normal text-muted-foreground">
-            (Dia {selectedDay} destacado)
+            ({t("Dia")} {selectedDay} {t("destacado")})
           </span>
         )}
       </h3>

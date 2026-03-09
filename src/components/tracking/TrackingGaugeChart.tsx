@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props {
   percNoPrazo: number;
@@ -11,15 +12,16 @@ interface Props {
 }
 
 export const TrackingGaugeChart = ({ percNoPrazo, noPrazo, foraPrazo, onPrazoClick, selectedPrazo }: Props) => {
+  const { t } = useLanguage();
   const gaugeData = [
-    { name: "No Prazo", value: percNoPrazo },
-    { name: "Fora do Prazo", value: 100 - percNoPrazo },
+    { name: t("No Prazo"), value: percNoPrazo },
+    { name: t("Fora do Prazo"), value: 100 - percNoPrazo },
   ];
 
   return (
     <Card className="bg-card border-border h-full flex flex-col">
       <CardHeader className="pb-0 pt-3">
-        <CardTitle className="text-sm font-medium text-foreground">Performance</CardTitle>
+        <CardTitle className="text-sm font-medium text-foreground">{t("Performance")}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-center justify-between flex-1 pb-3">
         <div className="relative w-full flex-1 min-h-[100px]">
@@ -53,7 +55,7 @@ export const TrackingGaugeChart = ({ percNoPrazo, noPrazo, foraPrazo, onPrazoCli
             className={`flex-1 text-[10px] h-7 ${selectedPrazo === true ? "bg-green-500/20 border-green-500 text-green-400" : "border-border text-muted-foreground hover:bg-green-500/30 hover:text-green-300 hover:border-green-500"}`}
             onClick={() => onPrazoClick(true)}
           >
-            No Prazo
+            {t("No Prazo")}
           </Button>
           <Button
             variant="outline"
@@ -61,7 +63,7 @@ export const TrackingGaugeChart = ({ percNoPrazo, noPrazo, foraPrazo, onPrazoCli
             className={`flex-1 text-[10px] h-7 ${selectedPrazo === false ? "bg-red-500/20 border-red-500 text-red-400" : "border-border text-muted-foreground hover:bg-red-500/30 hover:text-red-300 hover:border-red-500"}`}
             onClick={() => onPrazoClick(false)}
           >
-            Fora do Prazo
+            {t("Fora do Prazo")}
           </Button>
         </div>
       </CardContent>

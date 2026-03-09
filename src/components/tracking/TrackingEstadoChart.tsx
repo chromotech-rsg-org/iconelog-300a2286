@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props {
   data: { name: string; value: number; noPrazo: number; foraPrazo: number; semOcorrencia: number; comOcorrencia: number }[];
@@ -8,10 +9,11 @@ interface Props {
 }
 
 export const TrackingEstadoChart = ({ data, onEstadoClick, selectedEstado }: Props) => {
+  const { t } = useLanguage();
   return (
     <Card className={`bg-card border-border cursor-pointer transition-all ${selectedEstado ? "ring-1 ring-primary" : ""}`}>
       <CardHeader className="pb-1">
-        <CardTitle className="text-sm font-medium text-foreground">Pedidos por Estado</CardTitle>
+        <CardTitle className="text-sm font-medium text-foreground">{t("Pedidos por Estado")}</CardTitle>
       </CardHeader>
       <CardContent className="h-[180px]">
         <ResponsiveContainer width="100%" height="100%">

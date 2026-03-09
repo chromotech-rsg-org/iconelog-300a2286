@@ -1,80 +1,58 @@
 
+Objetivo: corrigir de forma definitiva a perda recorrente do perfil de Desenvolvedor e estabilizar a troca de login/email e senha no painel de usuários.
 
-## Plano: Traduzir TODOS os elementos restantes dos BIs + Corrigir salvamento de traduções
+Diagnóstico confirmado
+1) O usuário desenvolvedor (dev@iconelog.com) está sem vínculo em `user_roles` no banco (perfil realmente removido).
+2) A causa raiz está no fluxo de edição de usuário:
+- `src/pages/Admin.tsx` sempre envia `role_id` ao salvar, mesmo sem mudança de perfil.
+- `src/hooks/useUsersManagement.ts` faz `delete` + `insert` em `user_roles`.
+- Quando o próprio desenvolvedor edita a própria conta, o `delete` remove a role que dava permissão e o `insert` seguinte pode falhar por RLS, deixando o usuário sem perfil.
+3) O modal fecha mesmo com erro (falha silenciosa para o operador).
+4) A função de backend `update-user-auth` está frágil na autenticação manual (`getClaims`), com histórico de “Auth session missing” em logs, o que contribui para erros 401/“non-2xx”.
 
-### Problema 1: Salvamento não funciona no TranslationsManager
-O `handleSave` não verifica o retorno das operações `insert`/`update`/`delete` do banco. Se houver erro de RLS ou qualquer outro, ele silenciosamente falha e mostra "Tradução salva com sucesso" mesmo sem ter salvo.
+Implementação proposta (sequência)
+1. Correção imediata de dados (desbloqueio)
+- Recriar o vínculo do desenvolvedor com a role `Desenvolvedor` em `user_roles` (upsert seguro).
+- Validar que `dev@iconelog.com` voltou a ter role.
 
-**Correção:** Verificar `{ error }` em cada chamada supabase e exibir `toast.error` com a mensagem real.
+2. Corrigir o fluxo de salvar usuário no frontend
+- Arquivo: `src/pages/Admin.tsx`
+- Ajustes:
+  - Só enviar `role_id` para atualização quando houver mudança real de perfil.
+  - Não fechar o modal se `updateUser` falhar.
+  - Interromper o fluxo de troca de credenciais quando a etapa de atualização do usuário falhar.
+  - Melhorar feedback de erro para exibir causa real quando backend retornar não-2xx.
 
-### Problema 2: Componentes com textos hardcoded em português
+3. Blindar atualização de role para não perder permissão no meio da operação
+- Arquivo: `src/hooks/useUsersManagement.ts`
+- Substituir padrão “delete e depois insert” por fluxo seguro:
+  - Buscar vínculo(s) atual(is) do usuário.
+  - Se não mudou, não tocar em `user_roles`.
+  - Se mudou, atualizar vínculo existente (ou inserir quando não existir), sem janela de usuário “sem perfil”.
+  - Normalizar múltiplos vínculos legados sem apagar antes de garantir vínculo válido.
+  - Tratar e propagar todos os erros (inclusive erro de delete/update/insert).
+- Resultado: evita perda de perfil mesmo em cenário de edição do próprio usuário.
 
-Segue a lista completa de componentes que ainda precisam de `useLanguage()` + `t()`:
+4. Estabilizar autenticação/autorização da função de troca de credenciais
+- Arquivo: `supabase/functions/update-user-auth/index.ts`
+- Ajustes:
+  - Trocar validação manual para abordagem consistente com as outras funções do projeto (`auth.getUser(token)`).
+  - Manter validação server-side de permissão via `has_admin_permission`.
+  - Padronizar respostas 401/403 com mensagem clara.
+  - Adicionar logs de diagnóstico objetivos (sem vazar dados sensíveis) para facilitar suporte futuro.
 
-**Tracking (sub-componentes):**
-- `TrackingPedidosTable.tsx` — "Pedidos Consolidados", "Pesquisar...", headers de tabela ("Nº Mov.", "Pedido", "Tipo de Serviço", "Modalidade", "Campanha", "Qtde. SKU", "Vl. Tot.", "Prev. Entrega", "Entrega Real", "Status", "Cidade", "UF", "Solicitante"), "registros"
-- `TrackingItensTable.tsx` — "Itens dos Pedidos", "Pesquisar...", headers ("Pedido", "Cód. Item", "Descrição", "SubGrupo", "M³ Total", "Vl. Total"), "Nenhum dado disponível", "registros", "Vl. Total:"
-- `TrackingStatusBars.tsx` — "Status Pedidos", "FINALIZADO", "TRÂNSITO", "Pedidos" (tooltip)
-- `TrackingTipoServicoChart.tsx` — "Pedidos | Tipo de Serviço", "Pedidos" (tooltip)
-- `TrackingModalidadeChart.tsx` — "Pedidos | Modalidade", "Pedidos" (tooltip)
-- `TrackingCidadeChart.tsx` — "Entregas por Cidade", "FINALIZADO", "TRÂNSITO"
-- `TrackingRegionalPieChart.tsx` — "Pedido | Região", "pedidos"
-- `TrackingEstadoChart.tsx` — "Pedidos por Estado"
-- `TrackingBrazilMap.tsx` — "Pedidos | Estado", "Contagem de Cod Conhecimento", "Sem Ocorrência", "Com Ocorrência", "% No Prazo", "% Fora do Prazo"
-- `TrackingGaugeChart.tsx` — "Performance", "No Prazo", "Fora do Prazo"
+5. Validação funcional completa (fim-a-fim)
+- Cenários obrigatórios:
+  - Desenvolvedor editar próprio nome/email/senha sem perder role.
+  - Desenvolvedor editar outro usuário (nome, status, perfil, email, senha).
+  - Usuário sem permissão de `usuarios/editar` receber bloqueio correto.
+  - Confirmar que após salvar, menu e acessos permanecem corretos sem “sumir perfil”.
+  - Repetir fluxo duas ou três vezes para validar que o problema não reaparece.
 
-**Entregas:**
-- `EntregasTables.tsx` — "ENTREGA", "REPOSIÇÃO", "REGIONAL", "UF", "FINALIZADO", "EM TRÂNSITO", "TOTAL", "Total"
+Critérios de aceite
+- dev@iconelog.com permanece com role Desenvolvedor após alterações de credenciais.
+- Troca de email e senha retorna sucesso consistente para usuário autorizado.
+- Nenhum salvamento de usuário deixa `user_roles` vazio por efeito colateral.
+- Em falhas reais, o operador recebe mensagem clara e o modal não fecha indevidamente.
 
-**Estoque Consolidado (sub-componentes):**
-- `StockDualKPICards.tsx` — "ESTOQUE MATRIZ (BARUERI)", "Valor", "M³", "Qtde SKUs", "Kits Completo"
-
-**Dashboard (Minutas):**
-- `RegionalBarChart.tsx` — "Comparativo por Regional", "Expedidas", "Baixadas", "Clique para filtrar"
-- `RegionalLineCharts.tsx` — "Evolução Diária por Regional", "Dia X destacado"
-- `Index.tsx` — "Configuração necessária", "Carregando dados", etc.
-
-**Tracking.tsx page** — "Carregando dados", "Recuperando dados...", "Nenhum dado disponível", "Processando filtros...", "Configuração necessária"
-
-**Entregas.tsx page** — "Carregando dados", "Recuperando dados...", "Nenhum dado disponível", "Processando filtros..."
-
-### Novas chaves de tradução necessárias (em `src/i18n/translations.ts`)
-
-Adicionar ~40 novas chaves cobrindo:
-- Títulos de gráficos do Tracking
-- Headers de tabelas
-- Labels de tooltips
-- Textos de estados vazios/loading
-- Labels do mapa do Brasil
-
-### Implementação
-
-1. **Corrigir `TranslationsManager.tsx`**: verificar `{ error }` em insert/update/delete e mostrar erro real
-2. **Expandir `src/i18n/translations.ts`** com todas as chaves faltantes
-3. **Atualizar ~15 componentes** para usar `useLanguage()` + `t()`
-4. **Padrão**: `import { useLanguage } from "@/contexts/LanguageContext"` + `const { t } = useLanguage()` + substituir strings
-
-### Arquivos a modificar
-
-| Arquivo | Mudança |
-|---------|---------|
-| `src/i18n/translations.ts` | +40 chaves pt-BR/en |
-| `src/components/admin/TranslationsManager.tsx` | Fix save: check errors |
-| `src/components/tracking/TrackingPedidosTable.tsx` | +useLanguage, t() em títulos/headers |
-| `src/components/tracking/TrackingItensTable.tsx` | +useLanguage, t() em títulos/headers |
-| `src/components/tracking/TrackingStatusBars.tsx` | +useLanguage, t() |
-| `src/components/tracking/TrackingTipoServicoChart.tsx` | +useLanguage, t() |
-| `src/components/tracking/TrackingModalidadeChart.tsx` | +useLanguage, t() |
-| `src/components/tracking/TrackingCidadeChart.tsx` | +useLanguage, t() |
-| `src/components/tracking/TrackingRegionalPieChart.tsx` | +useLanguage, t() |
-| `src/components/tracking/TrackingEstadoChart.tsx` | +useLanguage, t() |
-| `src/components/tracking/TrackingBrazilMap.tsx` | +useLanguage, t() |
-| `src/components/tracking/TrackingGaugeChart.tsx` | +useLanguage, t() |
-| `src/components/entregas/EntregasTables.tsx` | +useLanguage, t() |
-| `src/components/stock/StockDualKPICards.tsx` | +useLanguage, t() |
-| `src/components/dashboard/RegionalBarChart.tsx` | +useLanguage, t() |
-| `src/components/dashboard/RegionalLineCharts.tsx` | +useLanguage, t() |
-| `src/pages/Index.tsx` | +useLanguage, t() em textos de loading/empty |
-| `src/pages/Tracking.tsx` | t() em textos de loading/empty restantes |
-| `src/pages/Entregas.tsx` | t() em textos de loading/empty restantes |
-
+Se você aprovar, eu implemento exatamente nessa ordem para resolver de vez e deixar o fluxo estável.
