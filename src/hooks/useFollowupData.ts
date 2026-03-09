@@ -138,52 +138,94 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   }, [pageId]);
 
   // Load cached data on mount - uses shared cache (one extraction per API)
-  // Also loads historical year-suffixed caches (e.g., _2025) and merges them
+  // Loads main cache first, then historical caches sequentially to avoid timeout
   useEffect(() => {
     const loadCache = async () => {
       if (!codCli || cacheLoaded || cacheLoading) return;
       setCacheLoading(true);
       try {
-        // Load all followup caches (main + year-suffixed like _2025)
-        const { data: followupCaches, error: followupErr } = await supabase
+        // Load main followup cache first (current year data)
+        const { data: mainFollowup, error: mainFollowupErr } = await supabase
           .from("bi_data_cache")
           .select("data, cache_key")
           .eq("page_id", "_shared")
-          .like("cache_key", `followup_${codCli}%`);
+          .eq("cache_key", `followup_${codCli}`)
+          .maybeSingle();
 
-        if (followupErr) {
-          console.warn("Cache load error (followup):", followupErr.message);
-        } else if (followupCaches && followupCaches.length > 0) {
-          // Merge all followup caches (main + historical)
-          let allFollowup: FollowupItem[] = [];
-          followupCaches.forEach(cache => {
-            if (cache.data && Array.isArray(cache.data)) {
-              allFollowup = allFollowup.concat(cache.data as FollowupItem[]);
+        let allFollowup: FollowupItem[] = [];
+        
+        if (mainFollowupErr) {
+          console.warn("Cache load error (followup main):", mainFollowupErr.message);
+        } else if (mainFollowup?.data && Array.isArray(mainFollowup.data)) {
+          allFollowup = mainFollowup.data as FollowupItem[];
+          console.log(`Loaded ${allFollowup.length} followup records from main cache`);
+          setFollowupData(allFollowup);
+        }
+
+        // Load historical caches separately (e.g., _2025)
+        const { data: historicalCaches, error: histErr } = await supabase
+          .from("bi_data_cache")
+          .select("cache_key")
+          .eq("page_id", "_shared")
+          .like("cache_key", `followup_${codCli}_%`);
+
+        if (!histErr && historicalCaches && historicalCaches.length > 0) {
+          // Load each historical cache one at a time
+          for (const cache of historicalCaches) {
+            const { data: histData } = await supabase
+              .from("bi_data_cache")
+              .select("data")
+              .eq("cache_key", cache.cache_key)
+              .maybeSingle();
+            
+            if (histData?.data && Array.isArray(histData.data)) {
+              allFollowup = allFollowup.concat(histData.data as FollowupItem[]);
+              console.log(`Loaded ${(histData.data as FollowupItem[]).length} followup records from ${cache.cache_key}`);
+              setFollowupData([...allFollowup]);
             }
-          });
-          console.log(`Loaded ${allFollowup.length} followup records from ${followupCaches.length} cache(s)`);
-          if (allFollowup.length > 0) setFollowupData(allFollowup);
+          }
         }
 
         if (pageId === "minutas" || pageId === "tracking") {
-          // Load all produtos caches (main + year-suffixed)
-          const { data: produtosCaches, error: produtosErr } = await supabase
+          // Load main produtos cache first
+          const { data: mainProdutos, error: mainProdutosErr } = await supabase
             .from("bi_data_cache")
             .select("data, cache_key")
             .eq("page_id", "_shared")
-            .like("cache_key", `produtosdistribuidos_${codCli}%`);
+            .eq("cache_key", `produtosdistribuidos_${codCli}`)
+            .maybeSingle();
 
-          if (produtosErr) {
-            console.warn("Cache load error (produtos):", produtosErr.message);
-          } else if (produtosCaches && produtosCaches.length > 0) {
-            let allProdutos: FollowupItem[] = [];
-            produtosCaches.forEach(cache => {
-              if (cache.data && Array.isArray(cache.data)) {
-                allProdutos = allProdutos.concat(cache.data as FollowupItem[]);
+          let allProdutos: FollowupItem[] = [];
+
+          if (mainProdutosErr) {
+            console.warn("Cache load error (produtos main):", mainProdutosErr.message);
+          } else if (mainProdutos?.data && Array.isArray(mainProdutos.data)) {
+            allProdutos = mainProdutos.data as FollowupItem[];
+            console.log(`Loaded ${allProdutos.length} produtos records from main cache`);
+            setProdutosData(allProdutos);
+          }
+
+          // Load historical produtos caches
+          const { data: historicalProdutos, error: histProdErr } = await supabase
+            .from("bi_data_cache")
+            .select("cache_key")
+            .eq("page_id", "_shared")
+            .like("cache_key", `produtosdistribuidos_${codCli}_%`);
+
+          if (!histProdErr && historicalProdutos && historicalProdutos.length > 0) {
+            for (const cache of historicalProdutos) {
+              const { data: histData } = await supabase
+                .from("bi_data_cache")
+                .select("data")
+                .eq("cache_key", cache.cache_key)
+                .maybeSingle();
+              
+              if (histData?.data && Array.isArray(histData.data)) {
+                allProdutos = allProdutos.concat(histData.data as FollowupItem[]);
+                console.log(`Loaded ${(histData.data as FollowupItem[]).length} produtos records from ${cache.cache_key}`);
+                setProdutosData([...allProdutos]);
               }
-            });
-            console.log(`Loaded ${allProdutos.length} produtos records from ${produtosCaches.length} cache(s)`);
-            if (allProdutos.length > 0) setProdutosData(allProdutos);
+            }
           }
         }
       } catch (err) {
