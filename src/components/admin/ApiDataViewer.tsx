@@ -51,6 +51,7 @@ const ApiDataViewer = () => {
 
   // Load data only when a specific key is selected
   const loadCacheData = async (cacheKey: string) => {
+    setLoadingData(true);
     const { data, error } = await supabase
       .from("bi_data_cache")
       .select("data")
@@ -62,6 +63,7 @@ const ApiDataViewer = () => {
         e.cache_key === cacheKey ? { ...e, data: data.data } : e
       ));
     }
+    setLoadingData(false);
   };
 
   const cacheKeys = useMemo(() => {
