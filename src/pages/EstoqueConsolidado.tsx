@@ -63,6 +63,7 @@ const renderPercentLabel = (props: any) => {
 };
 
 const EstoqueConsolidado = () => {
+  const { t } = useLanguage();
   const { getSettingByPageId } = useBiSettings();
   const setting = getSettingByPageId("estoque-consolidado");
   const codCli = setting?.cod_cli || "";
