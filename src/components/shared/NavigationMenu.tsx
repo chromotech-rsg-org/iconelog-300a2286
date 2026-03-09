@@ -26,7 +26,7 @@ const pathMap: Record<string, string> = {
 export const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin } = useAuth();
+  const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin, canViewAnyConfig } = useAuth();
   const { getPageTitle, getOrderedBiSettings } = useBiSettingsContext();
   const { t } = useLanguage();
 
@@ -46,7 +46,7 @@ export const NavigationMenu = () => {
   };
 
   const handleAdminClick = () => {
-    if (isAuthenticated && (canViewAdmin("usuarios") || canViewAdmin("perfis") || canViewAdmin("acessoPublico"))) {
+    if (isAuthenticated && canViewAnyConfig()) {
       navigate("/admin");
     } else if (!isAuthenticated) {
       navigate("/auth");
@@ -66,7 +66,7 @@ export const NavigationMenu = () => {
   };
 
   // Check if user can access admin panel
-  const canAccessAdmin = isAuthenticated && canViewAdmin("painelControle");
+  const canAccessAdmin = isAuthenticated && canViewAnyConfig();
 
   return (
     <DropdownMenu>

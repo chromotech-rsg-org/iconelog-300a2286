@@ -84,7 +84,38 @@ const Admin = () => {
   const { users, loading: usersLoading, createUser, updateUser, deleteUser, fetchUsers } = useUsersManagement();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialSection = (searchParams.get("tab") as AdminSection) || "usuarios";
+  
+  // Determine initial section: use URL param if accessible, otherwise find first accessible section
+  const getFirstAccessibleSection = (): AdminSection => {
+    const sectionOrder: { id: AdminSection; permissionKey: string }[] = [
+      { id: "usuarios", permissionKey: "usuarios" },
+      { id: "perfis", permissionKey: "perfis" },
+      { id: "publico", permissionKey: "acessoPublico" },
+      { id: "regionais", permissionKey: "cadastroCidades" },
+      { id: "empresas_clientes", permissionKey: "empresasClientes" },
+      { id: "produtos_estoque", permissionKey: "produtosEstoque" },
+      { id: "configurar_bi", permissionKey: "configurarBi" },
+      { id: "carga_historica", permissionKey: "configurarBi" },
+      { id: "integracao", permissionKey: "integracao" },
+      { id: "testes_api", permissionKey: "testesApi" },
+      { id: "logs_api", permissionKey: "logsApi" },
+      { id: "dados_api", permissionKey: "dadosApi" },
+      { id: "traducoes", permissionKey: "tradutor" },
+    ];
+    for (const section of sectionOrder) {
+      if (canViewAdmin(section.permissionKey as any)) return section.id;
+    }
+    return "usuarios";
+  };
+
+  const tabParam = searchParams.get("tab") as AdminSection | null;
+  const initialSection = tabParam && canViewAdmin(
+    // Map section id to permission key
+    ({ usuarios: "usuarios", perfis: "perfis", publico: "acessoPublico", regionais: "cadastroCidades",
+       empresas_clientes: "empresasClientes", produtos_estoque: "produtosEstoque", configurar_bi: "configurarBi",
+       carga_historica: "configurarBi", integracao: "integracao", testes_api: "testesApi",
+       logs_api: "logsApi", dados_api: "dadosApi", traducoes: "tradutor" } as Record<string, string>)[tabParam] as any
+  ) ? tabParam : getFirstAccessibleSection();
   const [activeSection, setActiveSection] = useState<AdminSection>(initialSection);
 
   const handleSectionChange = (section: AdminSection) => {
