@@ -307,15 +307,15 @@ export const StockLocationTables = ({
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-            <div><span className="text-muted-foreground">Estoque:</span> <span className="text-foreground font-medium">{formatNumber(hoveredItem.stockQuantity)}</span></div>
+            <div><span className="text-muted-foreground">{t("Estoque")}:</span> <span className="text-foreground font-medium">{formatNumber(hoveredItem.stockQuantity)}</span></div>
             <div><span className="text-muted-foreground">Kits:</span> <span className="text-foreground font-medium">{formatNumber(hoveredItem.kitsQuantity)}</span></div>
-            <div><span className="text-muted-foreground">Valor:</span> <span className="text-foreground font-medium">{formatCurrency(hoveredItem.totalValue)}</span></div>
+            <div><span className="text-muted-foreground">{t("Valor")}:</span> <span className="text-foreground font-medium">{formatCurrency(hoveredItem.totalValue)}</span></div>
             <div><span className="text-muted-foreground">M³:</span> <span className="text-foreground font-medium">{hoveredItem.m3Total.toFixed(2)}</span></div>
             {hoveredItem.lastEntryDate && (
-              <div className="col-span-2"><span className="text-muted-foreground">Ult. Entrada:</span> <span className="text-foreground font-medium">{hoveredItem.lastEntryQty} un - {formatDateBR(hoveredItem.lastEntryDate)}</span></div>
+              <div className="col-span-2"><span className="text-muted-foreground">{t("Ult. Entrada:")}:</span> <span className="text-foreground font-medium">{hoveredItem.lastEntryQty} un - {formatDateBR(hoveredItem.lastEntryDate)}</span></div>
             )}
             {hoveredItem.daysSinceLastMovement != null && (
-              <div className="col-span-2"><span className="text-muted-foreground">Dias sem mov.:</span> <span className="text-foreground font-medium">{hoveredItem.daysSinceLastMovement}</span></div>
+              <div className="col-span-2"><span className="text-muted-foreground">{t("Dias sem mov.:")}:</span> <span className="text-foreground font-medium">{hoveredItem.daysSinceLastMovement}</span></div>
             )}
           </div>
         </div>
