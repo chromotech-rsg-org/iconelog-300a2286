@@ -611,7 +611,7 @@ import { CalendarFilter } from "./CalendarFilter";
           </DialogDescription>
         </DialogHeader>
         <div className="bg-dashboard-dark rounded-lg p-4 border border-dashboard-border">
-          <p className="text-sm text-muted-foreground">Tempo restante para próxima atualização:</p>
+          <p className="text-sm text-muted-foreground">{t("Tempo restante para próxima atualização:")}</p>
           <p className="text-2xl font-bold text-dashboard-accent mt-1">
             {formatCooldown(cooldownRemainingMinutes)}
           </p>
