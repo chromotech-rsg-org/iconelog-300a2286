@@ -249,19 +249,19 @@ export const AnaliticoCityView = ({
                     className="text-muted-foreground text-[10px] px-3 whitespace-nowrap cursor-pointer hover:text-foreground select-none"
                     onClick={() => handleSort("pedido")}
                   >
-                    Pedido <SortIcon col="pedido" />
+                    {t("Pedido")} <SortIcon col="pedido" />
                   </TableHead>
                   <TableHead
                     className="text-muted-foreground text-[10px] px-3 whitespace-nowrap cursor-pointer hover:text-foreground select-none"
                     onClick={() => handleSort("campanha")}
                   >
-                    Campanha <SortIcon col="campanha" />
+                    {t("Campanha")} <SortIcon col="campanha" />
                   </TableHead>
                   <TableHead
                     className="text-muted-foreground text-[10px] px-3 whitespace-nowrap cursor-pointer hover:text-foreground select-none"
                     onClick={() => handleSort("cidade")}
                   >
-                    Cidade Destino <SortIcon col="cidade" />
+                    {t("Cidade Destino")} <SortIcon col="cidade" />
                   </TableHead>
                   <TableHead
                     className="text-muted-foreground text-[10px] px-3 whitespace-nowrap cursor-pointer hover:text-foreground select-none"
