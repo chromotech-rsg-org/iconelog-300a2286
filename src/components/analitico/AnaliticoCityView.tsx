@@ -304,8 +304,8 @@ export const AnaliticoCityView = ({
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                       {unmatchedRecords.length === 0
-                        ? "Todas as cidades da API estão mapeadas! ✅"
-                        : "Nenhum registro encontrado"}
+                        ? t("Todas as cidades da API estão mapeadas! ✅")
+                        : t("Nenhum registro encontrado")}
                     </TableCell>
                   </TableRow>
                 )}
