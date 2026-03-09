@@ -584,6 +584,7 @@ export type Database = {
           id: string
           key: string
           language: string
+          page_id: string | null
           updated_at: string
           value: string
         }
@@ -592,6 +593,7 @@ export type Database = {
           id?: string
           key: string
           language: string
+          page_id?: string | null
           updated_at?: string
           value: string
         }
@@ -600,6 +602,7 @@ export type Database = {
           id?: string
           key?: string
           language?: string
+          page_id?: string | null
           updated_at?: string
           value?: string
         }
