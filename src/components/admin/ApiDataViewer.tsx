@@ -139,7 +139,16 @@ const ApiDataViewer = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            <Select value={selectedKey} onValueChange={setSelectedKey}>
+            <Select value={selectedKey} onValueChange={(value) => {
+              setSelectedKey(value);
+              if (value !== "all") {
+                // Load data on demand when selected
+                const entry = cacheEntries.find(e => e.cache_key === value);
+                if (entry && !entry.data) {
+                  loadCacheData(value);
+                }
+              }
+            }}>
               <SelectTrigger className="bg-dashboard-dark border-dashboard-border text-foreground sm:w-80">
                 <SelectValue placeholder="Selecione uma API / cache_key" />
               </SelectTrigger>
