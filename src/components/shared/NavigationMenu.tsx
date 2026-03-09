@@ -39,7 +39,7 @@ export const NavigationMenu = () => {
   const handleNavClick = (item: { id: string; path: string }) => {
     // Verifica se o usuário pode acessar a página
     if (isAuthenticated && !canView(item.id) && !isPublicAccess(item.id)) {
-      toast.error("Você não tem permissão para acessar esta página.");
+      toast.error(t("Você não tem permissão para acessar esta página."));
       return;
     }
     navigate(item.path);
