@@ -21,6 +21,7 @@ interface CalendarFilterProps {
 export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: CalendarFilterProps) => {
   const [open, setOpen] = useState(false);
   const clickCountRef = useRef(0);
+  const { t } = useLanguage();
 
   const hasFrom = !!selectedDateRange?.from;
   const isRange = hasFrom && selectedDateRange?.to &&
