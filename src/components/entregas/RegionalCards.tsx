@@ -57,7 +57,7 @@ export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: Regio
                   </div>
                   <div className="flex items-baseline gap-1.5 mb-2">
                     <span className="text-3xl font-bold text-dashboard-accent">{formatNumber(total)}</span>
-                    <span className="text-sm text-muted-foreground">pedidos</span>
+                    <span className="text-sm text-muted-foreground">{t("pedidos")}</span>
                   </div>
                   
                   <div className="h-1.5 bg-dashboard-border rounded-full overflow-hidden mb-2">
