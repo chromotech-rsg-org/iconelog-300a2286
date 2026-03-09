@@ -427,7 +427,7 @@ const Faturamento = () => {
                 {/* Por Modalidade */}
                 <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedModalidade ? 'ring-2 ring-dashboard-orange' : ''}`}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Faturamento | Modalidade</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">{t("Faturamento")} | {t("Modalidade")}</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[220px]">
                     <ResponsiveContainer width="100%" height="100%">
