@@ -540,7 +540,7 @@ const EstoqueConsolidado = () => {
               </div>
               <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
                 <span className="text-[10px] text-muted-foreground">
-                  {searchedMatriz.length > 0 ? `${matrizPage * matrizPerPage + 1}–${Math.min((matrizPage + 1) * matrizPerPage, searchedMatriz.length)} de ${searchedMatriz.length}` : "0 registros"}
+                  {searchedMatriz.length > 0 ? `${matrizPage * matrizPerPage + 1}–${Math.min((matrizPage + 1) * matrizPerPage, searchedMatriz.length)} ${t("de")} ${searchedMatriz.length}` : `0 ${t("registros")}`}
                 </span>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" className="h-6 w-6" disabled={matrizPage === 0} onClick={() => setMatrizPage(p => p - 1)}>
