@@ -237,8 +237,8 @@ const Entregas = () => {
         <div className="flex items-center justify-center h-[60vh]">
           <div className="text-center space-y-3">
             <InboxIcon className="h-12 w-12 mx-auto text-muted-foreground" />
-            <h2 className="text-lg font-semibold text-foreground">Nenhum dado disponível</h2>
-            <p className="text-sm text-muted-foreground">Clique no botão <strong>Atualizar</strong> no cabeçalho para buscar os dados.</p>
+            <h2 className="text-lg font-semibold text-foreground">{t("Nenhum dado disponível")}</h2>
+            <p className="text-sm text-muted-foreground">{t("Clique no botão Atualizar no cabeçalho para buscar os dados.")}</p>
           </div>
         </div>
       ) : (
