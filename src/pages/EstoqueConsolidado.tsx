@@ -254,12 +254,12 @@ const EstoqueConsolidado = () => {
 
   const getRefreshText = () => {
     switch (refreshStage) {
-      case "requesting_mapalogistico": return "Consultando MAPALOGÍSTICO...";
-      case "receiving_mapalogistico": return `Recebendo MAPALOGÍSTICO (${refreshRecordCount} registros)...`;
-      case "requesting_saldobase": return "Consultando SALDOBASE...";
-      case "receiving_saldobase": return `Recebendo SALDOBASE (${refreshRecordCount} registros)...`;
-      case "saving": return "Salvando no cache...";
-      case "done": return "Atualização concluída!";
+      case "requesting_mapalogistico": return t("Consultando MAPALOGÍSTICO...");
+      case "receiving_mapalogistico": return `${t("Recebendo MAPALOGÍSTICO")} (${refreshRecordCount} ${t("registros")})...`;
+      case "requesting_saldobase": return t("Consultando SALDOBASE...");
+      case "receiving_saldobase": return `${t("Recebendo SALDOBASE")} (${refreshRecordCount} ${t("registros")})...`;
+      case "saving": return t("Salvando no cache...");
+      case "done": return t("Atualização concluída!");
       default: return "";
     }
   };
