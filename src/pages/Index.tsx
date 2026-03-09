@@ -17,6 +17,7 @@ import { saveAs } from "file-saver";
 
 const Index = () => {
   const { t } = useLanguage();
+  const currentDate = new Date();
   const currentMonth = currentDate.getMonth() + 1;
   const currentYear = currentDate.getFullYear();
 
