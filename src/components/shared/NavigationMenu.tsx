@@ -51,7 +51,7 @@ export const NavigationMenu = () => {
     } else if (!isAuthenticated) {
       navigate("/auth");
     } else {
-      toast.error("Você não tem permissão para acessar o painel de administração.");
+      toast.error(t("Você não tem permissão para acessar o painel de administração."));
     }
   };
 
