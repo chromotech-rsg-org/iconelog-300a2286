@@ -8,6 +8,7 @@ import { ActiveFilters } from "@/components/dashboard/ActiveFilters";
 import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
 import { useFollowupData } from "@/hooks/useFollowupData";
 import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { months as allMonths, allMonthValues } from "@/data/mockData";
 import { AlertCircle, InboxIcon, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
