@@ -606,10 +606,10 @@ import { CalendarFilter } from "./CalendarFilter";
         <DialogHeader>
           <DialogTitle className="text-dashboard-accent flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Atualização indisponível
+            {t("Atualização indisponível")}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground pt-2 text-base">
-            Não é possível atualizar os dados agora. A última atualização foi realizada recentemente.
+            {t("Não é possível atualizar os dados agora. A última atualização foi realizada recentemente.")}
           </DialogDescription>
         </DialogHeader>
         <div className="bg-dashboard-dark rounded-lg p-4 border border-dashboard-border">
