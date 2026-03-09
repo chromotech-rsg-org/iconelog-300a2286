@@ -161,9 +161,9 @@ export const StockLocationTables = ({
               </Select>
               <div className="relative w-36">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar..."
-                  value={searchTerm}
+                 <Input
+                   placeholder={t("Buscar...")}
+                   value={searchTerm}
                   onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                   className="pl-7 h-7 text-xs bg-dashboard-dark border-dashboard-border"
                 />
