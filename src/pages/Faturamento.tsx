@@ -506,7 +506,7 @@ const Faturamento = () => {
                 {/* Armazenagem Mensal */}
                 <Card className="bg-dashboard-card border-dashboard-border">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Armazenagem Mensal</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">{t("Armazenagem Mensal")}</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[250px]">
                     <ResponsiveContainer width="100%" height="100%">
