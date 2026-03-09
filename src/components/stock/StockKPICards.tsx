@@ -18,6 +18,8 @@ export const StockKPICards = ({
   totalValue,
   lowStockItems
 }: StockKPICardsProps) => {
+  const { t } = useLanguage();
+  
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
