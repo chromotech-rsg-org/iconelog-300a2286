@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useTransition } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
@@ -24,6 +25,7 @@ import { TrackingPedidosTable } from "@/components/tracking/TrackingPedidosTable
 import { TrackingItensTable } from "@/components/tracking/TrackingItensTable";
 
 const Tracking = () => {
+  const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
   const { getCodCli, loading: settingsLoading } = useBiSettingsContext();
   const codCli = getCodCli("tracking");
@@ -361,10 +363,10 @@ const Tracking = () => {
       {/* Interactive filters bar */}
       {hasInteractiveFilters && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-card/50 animate-fade-in">
-          <span className="text-xs text-muted-foreground">Filtros:</span>
+          <span className="text-xs text-muted-foreground">{t("Filtros")}:</span>
           {selectedPrazo !== null && (
             <Badge variant="outline" className={`cursor-pointer text-[10px] ${selectedPrazo ? "border-green-500 bg-green-500/10 text-green-400" : "border-red-500 bg-red-500/10 text-red-400"}`} onClick={() => setSelectedPrazo(null)}>
-              {selectedPrazo ? "No Prazo" : "Fora do Prazo"} <X className="ml-1 h-3 w-3" />
+              {selectedPrazo ? t("No Prazo") : t("Fora do Prazo")} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedTipoServico && (
@@ -384,7 +386,7 @@ const Tracking = () => {
           )}
           {selectedEstado && (
             <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer text-[10px]" onClick={() => setSelectedEstado(null)}>
-              UF: {selectedEstado} <X className="ml-1 h-3 w-3" />
+              {t("UF")}: {selectedEstado} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedRegional && (
@@ -398,7 +400,7 @@ const Tracking = () => {
             </Badge>
           )}
           <Button variant="ghost" size="sm" onClick={clearAllInteractiveFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
-            Limpar todos
+            {t("Limpar todos")}
           </Button>
         </div>
       )}

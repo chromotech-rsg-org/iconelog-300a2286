@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatNumber } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface DeliveryData {
   id: string;
@@ -20,6 +21,8 @@ interface RegionalCardsProps {
 }
 
 export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: RegionalCardsProps) => {
+  const { t } = useLanguage();
+  
   // Sort by total (entrega + reposição) descending
   const sortedData = [...data].sort((a, b) => (b.entregaTotal + b.reposicaoTotal) - (a.entregaTotal + a.reposicaoTotal));
   
@@ -30,7 +33,7 @@ export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: Regio
     <Card className="bg-dashboard-card border-dashboard-border">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-bold text-dashboard-accent uppercase tracking-wide">
-          TOTAL DE PEDIDOS POR REGIÃO
+          {t("TOTAL DE PEDIDOS POR REGIÃO")}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
@@ -54,7 +57,7 @@ export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: Regio
                   </div>
                   <div className="flex items-baseline gap-1.5 mb-2">
                     <span className="text-3xl font-bold text-dashboard-accent">{formatNumber(total)}</span>
-                    <span className="text-sm text-muted-foreground">pedidos</span>
+                    <span className="text-sm text-muted-foreground">{t("pedidos")}</span>
                   </div>
                   
                   <div className="h-1.5 bg-dashboard-border rounded-full overflow-hidden mb-2">
@@ -65,7 +68,7 @@ export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: Regio
                   </div>
                   
                   <div className="text-xs text-muted-foreground">
-                    Finalizados: {formatNumber(finalizados)} • Em trânsito: {formatNumber(emTransito)}
+                    {t("Finalizados")}: {formatNumber(finalizados)} • {t("Em Trânsito")}: {formatNumber(emTransito)}
                   </div>
                 </div>
               );
@@ -75,7 +78,7 @@ export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: Regio
         
         {/* Total Geral - fixed at bottom */}
         <div className="flex justify-between items-center px-4 py-3 border-t border-dashboard-border">
-          <span className="text-sm text-muted-foreground">Total Geral</span>
+          <span className="text-sm text-muted-foreground">{t("Total Geral")}</span>
           <span className="text-xl font-bold text-dashboard-accent">{formatNumber(totalGeral)}</span>
         </div>
       </CardContent>

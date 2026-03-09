@@ -1,6 +1,7 @@
 import { Package, Boxes, AlertTriangle, DollarSign } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatNumber } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface StockKPICardsProps {
   totalSKUs: number;
@@ -17,6 +18,8 @@ export const StockKPICards = ({
   totalValue,
   lowStockItems
 }: StockKPICardsProps) => {
+  const { t } = useLanguage();
+  
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -35,7 +38,7 @@ export const StockKPICards = ({
               <Package className="h-5 w-5 text-dashboard-accent" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Total SKUs</p>
+              <p className="text-xs text-muted-foreground">{t("Total SKUs")}</p>
               <p className="text-xl font-bold text-foreground">{formatNumber(totalSKUs)}</p>
             </div>
           </div>
@@ -49,7 +52,7 @@ export const StockKPICards = ({
               <Boxes className="h-5 w-5 text-dashboard-blue" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Total Estoque</p>
+              <p className="text-xs text-muted-foreground">{t("Total Estoque")}</p>
               <p className="text-xl font-bold text-foreground">{formatNumber(totalStock)}</p>
             </div>
           </div>
@@ -63,7 +66,7 @@ export const StockKPICards = ({
               <Boxes className="h-5 w-5 text-dashboard-orange" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Total Kits</p>
+              <p className="text-xs text-muted-foreground">{t("Total Kits")}</p>
               <p className="text-xl font-bold text-foreground">{formatNumber(totalKits)}</p>
             </div>
           </div>
@@ -77,7 +80,7 @@ export const StockKPICards = ({
               <DollarSign className="h-5 w-5 text-green-500" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Valor Total</p>
+              <p className="text-xs text-muted-foreground">{t("Valor Total")}</p>
               <p className="text-lg font-bold text-foreground">{formatCurrency(totalValue)}</p>
             </div>
           </div>
@@ -91,7 +94,7 @@ export const StockKPICards = ({
               <AlertTriangle className="h-5 w-5 text-red-500" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Estoque Baixo</p>
+              <p className="text-xs text-muted-foreground">{t("Estoque Baixo")}</p>
               <p className="text-xl font-bold text-red-400">{formatNumber(lowStockItems)}</p>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { formatNumber } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface KPICardsProps {
   totalExpedidas: number;
@@ -14,6 +15,8 @@ export const KPICards = ({
   selectedMetric,
   onMetricClick 
 }: KPICardsProps) => {
+  const { t } = useLanguage();
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {/* Total Expedidas Card */}
@@ -30,13 +33,13 @@ export const KPICards = ({
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">
-              Total Expedidas
+              {t("Total Expedidas")}
             </p>
             <p className="mt-2 text-3xl font-bold text-dashboard-accent animate-fade-in">
               {formatNumber(totalExpedidas)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Clique para filtrar
+              {t("Clique para filtrar")}
             </p>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-dashboard-blue/20">
@@ -62,13 +65,13 @@ export const KPICards = ({
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">
-              Total Baixadas
+              {t("Total Baixadas")}
             </p>
             <p className="mt-2 text-3xl font-bold text-dashboard-accent animate-fade-in">
               {formatNumber(totalBaixadas)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Clique para filtrar
+              {t("Clique para filtrar")}
             </p>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-dashboard-orange/20">

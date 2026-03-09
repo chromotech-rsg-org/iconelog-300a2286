@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Package, Truck, RotateCcw, Clock } from "lucide-react";
 import { formatNumber } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface EntregasKPICardsProps {
   entregaFinalizado: number;
@@ -21,9 +22,11 @@ export const EntregasKPICards = ({
   onReposicaoClick,
   selectedTipo,
 }: EntregasKPICardsProps) => {
+  const { t } = useLanguage();
+  
   const cards = [
     {
-      title: "Entrega Finalizado",
+      title: t("Entrega Finalizado"),
       value: entregaFinalizado,
       icon: Package,
       color: "text-green-500",
@@ -32,7 +35,7 @@ export const EntregasKPICards = ({
       onClick: onEntregaClick,
     },
     {
-      title: "Entrega em Trânsito",
+      title: t("Entrega em Trânsito"),
       value: entregaEmTransito,
       icon: Truck,
       color: "text-dashboard-blue",
@@ -41,7 +44,7 @@ export const EntregasKPICards = ({
       onClick: onEntregaClick,
     },
     {
-      title: "Reposição Finalizado",
+      title: t("Reposição Finalizado"),
       value: reposicaoFinalizado,
       icon: RotateCcw,
       color: "text-dashboard-accent",
@@ -50,7 +53,7 @@ export const EntregasKPICards = ({
       onClick: onReposicaoClick,
     },
     {
-      title: "Reposição em Trânsito",
+      title: t("Reposição em Trânsito"),
       value: reposicaoEmTransito,
       icon: Clock,
       color: "text-dashboard-orange",

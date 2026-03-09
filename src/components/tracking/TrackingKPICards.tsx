@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { formatNumber } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface TrackingKPIs {
   total: number;
@@ -18,12 +19,14 @@ interface Props {
 }
 
 export const TrackingKPICards = ({ kpis, onPrazoClick, selectedPrazo }: Props) => {
+  const { t } = useLanguage();
+  
   return (
     <div className="flex flex-col sm:flex-row gap-2 h-full items-stretch">
       {/* Quantidade de Pedidos — big card */}
       <Card className="bg-card border-primary/60 border-2 flex-1 min-w-0">
         <CardContent className="p-3 flex flex-col items-center justify-center h-full">
-          <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Quantidade de Pedidos</span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{t("Quantidade de Pedidos")}</span>
           <p className="text-7xl font-black text-primary leading-tight mt-1">{formatNumber(kpis.total)}</p>
         </CardContent>
       </Card>
@@ -35,14 +38,14 @@ export const TrackingKPICards = ({ kpis, onPrazoClick, selectedPrazo }: Props) =
           onClick={() => onPrazoClick(true)}
         >
           <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-            <span className="text-xs text-muted-foreground leading-tight">Qtde no Prazo</span>
+            <span className="text-xs text-muted-foreground leading-tight">{t("Qtde no Prazo")}</span>
             <p className="text-2xl font-bold text-green-400 leading-tight">{formatNumber(kpis.noPrazo)}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card border-border">
           <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-            <span className="text-xs text-muted-foreground leading-tight">% no Prazo</span>
+            <span className="text-xs text-muted-foreground leading-tight">{t("% no Prazo")}</span>
             <p className="text-2xl font-bold text-green-400 leading-tight">{kpis.percNoPrazo.toFixed(2)}%</p>
           </CardContent>
         </Card>
@@ -52,14 +55,14 @@ export const TrackingKPICards = ({ kpis, onPrazoClick, selectedPrazo }: Props) =
           onClick={() => onPrazoClick(false)}
         >
           <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-            <span className="text-xs text-muted-foreground leading-tight">Qtde fora do Prazo</span>
+            <span className="text-xs text-muted-foreground leading-tight">{t("Qtde fora do Prazo")}</span>
             <p className="text-2xl font-bold text-red-400 leading-tight">{formatNumber(kpis.foraPrazo)}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card border-border">
           <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-            <span className="text-xs text-muted-foreground leading-tight">% fora do Prazo</span>
+            <span className="text-xs text-muted-foreground leading-tight">{t("% fora do Prazo")}</span>
             <p className="text-2xl font-bold text-red-400 leading-tight">{kpis.percForaPrazo.toFixed(2)}%</p>
           </CardContent>
         </Card>
