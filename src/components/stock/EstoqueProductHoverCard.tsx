@@ -69,28 +69,28 @@ export const EstoqueMatrizHoverCard = ({ product, children }: EstoqueMatrizHover
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="flex flex-col items-center gap-1 bg-muted/50 rounded p-2">
               <Package className="h-3.5 w-3.5 text-primary" />
-              <span className="text-muted-foreground">Estoque</span>
+              <span className="text-muted-foreground">{t("Estoque")}</span>
               <span className="font-bold text-foreground">{formatNumber(product.estoque)}</span>
             </div>
             <div className="flex flex-col items-center gap-1 bg-muted/50 rounded p-2">
               <ArrowDownToLine className="h-3.5 w-3.5 text-green-500" />
-              <span className="text-muted-foreground">Entrada</span>
+              <span className="text-muted-foreground">{t("Entrada")}</span>
               <span className="font-bold text-foreground">{formatNumber(product.qtdeEntrada)}</span>
             </div>
             <div className="flex flex-col items-center gap-1 bg-muted/50 rounded p-2">
               <ArrowUpFromLine className="h-3.5 w-3.5 text-red-400" />
-              <span className="text-muted-foreground">Saída</span>
+              <span className="text-muted-foreground">{t("Saída")}</span>
               <span className="font-bold text-foreground">{formatNumber(product.qtdeSaida)}</span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs pt-2 border-t border-border">
             <div>
-              <span className="text-muted-foreground">Vl. Total</span>
+              <span className="text-muted-foreground">{t("Vl. Total")}</span>
               <p className="font-semibold text-primary">{formatCurrency(product.vlTotal)}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">M³ Total</span>
+              <span className="text-muted-foreground">{t("M³ Total")}</span>
               <p className="font-semibold text-foreground">{product.m3Total.toFixed(2)}</p>
             </div>
           </div>
@@ -98,15 +98,15 @@ export const EstoqueMatrizHoverCard = ({ product, children }: EstoqueMatrizHover
           <div className="space-y-1.5 text-xs pt-2 border-t border-border">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-3.5 w-3.5" />
-              <span>Últ. Entrada: {product.dtUltimaEntrada || "—"} ({formatNumber(product.qtdeUltimaEntrada)} un)</span>
+              <span>{t("Últ. Entrada:")} {product.dtUltimaEntrada || "—"} ({formatNumber(product.qtdeUltimaEntrada)} un)</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-3.5 w-3.5" />
-              <span>Últ. Saída: {product.dtUltimaSaida || "—"} ({formatNumber(product.qtdeUltimaSaida)} un)</span>
+              <span>{t("Últ. Saída:")} {product.dtUltimaSaida || "—"} ({formatNumber(product.qtdeUltimaSaida)} un)</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
-              <span>{product.diasSemMovto} dias sem movimentação</span>
+              <span>{product.diasSemMovto} {t("dias sem movimentação")}</span>
             </div>
           </div>
         </div>
