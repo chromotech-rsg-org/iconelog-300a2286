@@ -294,7 +294,7 @@ import { CalendarFilter } from "./CalendarFilter";
               </SheetTrigger>
               <SheetContent side="bottom" className="bg-dashboard-card border-dashboard-border max-h-[85vh] overflow-y-auto popover-dark-scroll">
                 <SheetHeader>
-                  <SheetTitle className="text-foreground">Filtros</SheetTitle>
+                  <SheetTitle className="text-foreground">{t("Filtros")}</SheetTitle>
                 </SheetHeader>
                 <div className="space-y-5 pt-4">
                   {/* Months */}
