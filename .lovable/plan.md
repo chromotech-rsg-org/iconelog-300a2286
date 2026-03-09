@@ -1,56 +1,58 @@
 
+Objetivo: corrigir de forma definitiva a perda recorrente do perfil de Desenvolvedor e estabilizar a troca de login/email e senha no painel de usuários.
 
-## Diagnóstico: Dados de Dezembro 2025 no Tracking
+Diagnóstico confirmado
+1) O usuário desenvolvedor (dev@iconelog.com) está sem vínculo em `user_roles` no banco (perfil realmente removido).
+2) A causa raiz está no fluxo de edição de usuário:
+- `src/pages/Admin.tsx` sempre envia `role_id` ao salvar, mesmo sem mudança de perfil.
+- `src/hooks/useUsersManagement.ts` faz `delete` + `insert` em `user_roles`.
+- Quando o próprio desenvolvedor edita a própria conta, o `delete` remove a role que dava permissão e o `insert` seguinte pode falhar por RLS, deixando o usuário sem perfil.
+3) O modal fecha mesmo com erro (falha silenciosa para o operador).
+4) A função de backend `update-user-auth` está frágil na autenticação manual (`getClaims`), com histórico de “Auth session missing” em logs, o que contribui para erros 401/“non-2xx”.
 
-### Problemas Identificados
+Implementação proposta (sequência)
+1. Correção imediata de dados (desbloqueio)
+- Recriar o vínculo do desenvolvedor com a role `Desenvolvedor` em `user_roles` (upsert seguro).
+- Validar que `dev@iconelog.com` voltou a ter role.
 
-**1. Dados de Dezembro 2025 não foram baixados**
-A consulta no banco mostra apenas Novembro 2025 (`_fetch_month: 11`):
-```
-followup_099_2025       → 9999 itens  (Nov/2025)
-produtosdistribuidos_099_2025 → 9788 itens (Nov/2025)
-```
-Não existe Dezembro 2025 no banco. O Power BI mostra 22.261 pedidos em Dez/2025, mas o sistema não tem esses dados.
+2. Corrigir o fluxo de salvar usuário no frontend
+- Arquivo: `src/pages/Admin.tsx`
+- Ajustes:
+  - Só enviar `role_id` para atualização quando houver mudança real de perfil.
+  - Não fechar o modal se `updateUser` falhar.
+  - Interromper o fluxo de troca de credenciais quando a etapa de atualização do usuário falhar.
+  - Melhorar feedback de erro para exibir causa real quando backend retornar não-2xx.
 
-**2. Cache de 2025 não é carregado na memória**
-Quando os dados históricos excedem 4MB, o `HistoricalDataLoader` salva em cache separado com sufixo `_2025`:
-- `followup_099_2025` (separado)
-- `produtosdistribuidos_099_2025` (separado)
+3. Blindar atualização de role para não perder permissão no meio da operação
+- Arquivo: `src/hooks/useUsersManagement.ts`
+- Substituir padrão “delete e depois insert” por fluxo seguro:
+  - Buscar vínculo(s) atual(is) do usuário.
+  - Se não mudou, não tocar em `user_roles`.
+  - Se mudou, atualizar vínculo existente (ou inserir quando não existir), sem janela de usuário “sem perfil”.
+  - Normalizar múltiplos vínculos legados sem apagar antes de garantir vínculo válido.
+  - Tratar e propagar todos os erros (inclusive erro de delete/update/insert).
+- Resultado: evita perda de perfil mesmo em cenário de edição do próprio usuário.
 
-Porém, o `loadCache` só carrega `followup_099` e `produtosdistribuidos_099` (sem sufixo), ignorando os dados de 2025.
+4. Estabilizar autenticação/autorização da função de troca de credenciais
+- Arquivo: `supabase/functions/update-user-auth/index.ts`
+- Ajustes:
+  - Trocar validação manual para abordagem consistente com as outras funções do projeto (`auth.getUser(token)`).
+  - Manter validação server-side de permissão via `has_admin_permission`.
+  - Padronizar respostas 401/403 com mensagem clara.
+  - Adicionar logs de diagnóstico objetivos (sem vazar dados sensíveis) para facilitar suporte futuro.
 
-### Plano de Correção
+5. Validação funcional completa (fim-a-fim)
+- Cenários obrigatórios:
+  - Desenvolvedor editar próprio nome/email/senha sem perder role.
+  - Desenvolvedor editar outro usuário (nome, status, perfil, email, senha).
+  - Usuário sem permissão de `usuarios/editar` receber bloqueio correto.
+  - Confirmar que após salvar, menu e acessos permanecem corretos sem “sumir perfil”.
+  - Repetir fluxo duas ou três vezes para validar que o problema não reaparece.
 
-**1. Atualizar `useFollowupData.ts` - função `loadCache`**
-Modificar para também buscar e mesclar caches com sufixo de ano:
-- Buscar `followup_${codCli}` (atual)
-- Buscar `followup_${codCli}_2025` e mesclar
-- Mesmo para `produtosdistribuidos_*`
+Critérios de aceite
+- dev@iconelog.com permanece com role Desenvolvedor após alterações de credenciais.
+- Troca de email e senha retorna sucesso consistente para usuário autorizado.
+- Nenhum salvamento de usuário deixa `user_roles` vazio por efeito colateral.
+- Em falhas reais, o operador recebe mensagem clara e o modal não fecha indevidamente.
 
-**2. Orientação ao usuário**
-Após a correção do código, o usuário deve acessar **Admin > Carga Histórica** e baixar **Dezembro 2025** para que os dados apareçam.
-
-### Mudanças Técnicas
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/hooks/useFollowupData.ts` | Atualizar `loadCache` para buscar e mesclar caches `_2025` |
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  Cache atual (loadCache)                                    │
-│  ────────────────────────                                   │
-│  followup_099          → carrega ✓                          │
-│  followup_099_2025     → NÃO carrega ✗                      │
-│  produtosdistribuidos_099     → carrega ✓                   │
-│  produtosdistribuidos_099_2025 → NÃO carrega ✗              │
-├─────────────────────────────────────────────────────────────┤
-│  Cache corrigido                                            │
-│  ────────────────────────                                   │
-│  followup_099          → carrega ✓                          │
-│  followup_099_2025     → carrega + mescla ✓                 │
-│  produtosdistribuidos_099     → carrega ✓                   │
-│  produtosdistribuidos_099_2025 → carrega + mescla ✓         │
-└─────────────────────────────────────────────────────────────┘
-```
-
+Se você aprovar, eu implemento exatamente nessa ordem para resolver de vez e deixar o fluxo estável.
