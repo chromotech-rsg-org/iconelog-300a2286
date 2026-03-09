@@ -345,7 +345,7 @@ export const StockLocationTables = ({
                   <div className="bg-dashboard-dark rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Package className="h-4 w-4 text-dashboard-accent" />
-                      <span className="text-xs text-muted-foreground">Estoque</span>
+                      <span className="text-xs text-muted-foreground">{t("Estoque")}</span>
                     </div>
                     <p className="text-xl font-bold text-foreground">{formatNumber(modalItem.stockQuantity)}</p>
                   </div>
