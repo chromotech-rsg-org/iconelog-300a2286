@@ -216,7 +216,7 @@ const Index = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-2">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
-          <h2 className="text-lg font-semibold text-foreground">Configuração necessária</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("Configuração necessária")}</h2>
           <p className="text-sm text-muted-foreground">Configure o código do cliente (cod_cli) para "minutas" em Configurar BI.</p>
         </div>
       </div>
