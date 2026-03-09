@@ -624,7 +624,7 @@ import { CalendarFilter } from "./CalendarFilter";
             onClick={() => setShowCooldownModal(false)}
             className="border-dashboard-border text-foreground hover:bg-dashboard-border"
           >
-            Entendido
+            {t("Entendido")}
           </Button>
         </DialogFooter>
       </DialogContent>
