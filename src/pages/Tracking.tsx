@@ -25,6 +25,7 @@ import { TrackingPedidosTable } from "@/components/tracking/TrackingPedidosTable
 import { TrackingItensTable } from "@/components/tracking/TrackingItensTable";
 
 const Tracking = () => {
+  const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
   const { getCodCli, loading: settingsLoading } = useBiSettingsContext();
   const codCli = getCodCli("tracking");
