@@ -98,7 +98,7 @@ export const CalendarFilter = ({ selectedDateRange, onDateRangeChange }: Calenda
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 bg-dashboard-card border-dashboard-border z-50" align="start">
         <div className="p-3 pb-1 text-xs text-muted-foreground">
-          Clique uma vez para um dia · Clique em outro dia para período
+          {t("Clique uma vez para um dia · Clique em outro dia para período")}
         </div>
         <Calendar
           mode="range"
