@@ -568,7 +568,7 @@ const EstoqueConsolidado = () => {
               <div className="flex items-center gap-2 mt-1">
                 <div className="relative flex-1">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input placeholder="Pesquisar base, cidade, código..." value={baseSearch}
+                  <Input placeholder={t("Pesquisar base, cidade, código...")} value={baseSearch}
                     onChange={e => { setBaseSearch(e.target.value); setBasePage(0); }}
                     className="h-7 text-xs pl-7 bg-muted/20 border-border" />
                 </div>
