@@ -35,8 +35,8 @@ const App = () => {
   return (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-       <BiSettingsProvider>
          <LanguageProvider>
+        <BiSettingsProvider>
          <TooltipProvider>
            <Toaster />
            <Sonner />
@@ -60,8 +60,8 @@ const App = () => {
              </Routes>
            </BrowserRouter>
          </TooltipProvider>
-         </LanguageProvider>
        </BiSettingsProvider>
+         </LanguageProvider>
     </AuthProvider>
   </QueryClientProvider>
   );
