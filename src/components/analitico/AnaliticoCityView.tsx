@@ -193,7 +193,7 @@ export const AnaliticoCityView = ({
         <Card className="bg-card border-border">
           <CardContent className="pt-4 pb-3 px-4">
             <div>
-              <p className="text-xs text-muted-foreground">Ocorrências sem regional</p>
+              <p className="text-xs text-muted-foreground">{t("Ocorrências sem regional")}</p>
               <p className="text-2xl font-bold text-foreground">{totalOccurrences.toLocaleString("pt-BR")}</p>
             </div>
           </CardContent>
