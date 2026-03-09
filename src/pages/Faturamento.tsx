@@ -292,7 +292,7 @@ const Faturamento = () => {
                     {/* Big Faturamento card */}
                     <Card className="bg-card border-primary/60 border-2 flex-1 min-w-0">
                       <CardContent className="p-3 flex flex-col items-center justify-center h-full">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Faturamento</span>
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{t("Faturamento")}</span>
                         <p className="text-4xl sm:text-5xl lg:text-6xl font-black text-primary leading-tight mt-1 break-all">{formatCurrency(displayTotals.faturamento)}</p>
                       </CardContent>
                     </Card>
@@ -301,28 +301,28 @@ const Faturamento = () => {
                     <div className="grid grid-cols-2 grid-rows-2 gap-1.5 flex-1 min-w-0">
                       <Card className="bg-card border-border">
                         <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-                          <span className="text-xs text-muted-foreground leading-tight">R$ Armazenagem</span>
+                          <span className="text-xs text-muted-foreground leading-tight">{t("R$ Armazenagem")}</span>
                           <p className="text-lg sm:text-2xl font-bold text-dashboard-blue leading-tight">{formatCurrency(displayTotals.armazenagem)}</p>
                         </CardContent>
                       </Card>
 
                       <Card className="bg-card border-border">
                         <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-                          <span className="text-xs text-muted-foreground leading-tight">% Armazenagem</span>
+                          <span className="text-xs text-muted-foreground leading-tight">{t("% Armazenagem")}</span>
                           <p className="text-lg sm:text-2xl font-bold text-dashboard-blue leading-tight">{displayTotals.percentArmazenagem.toFixed(1)}%</p>
                         </CardContent>
                       </Card>
 
                       <Card className="bg-card border-border">
                         <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-                          <span className="text-xs text-muted-foreground leading-tight">R$ Transporte</span>
+                          <span className="text-xs text-muted-foreground leading-tight">{t("R$ Transporte")}</span>
                           <p className="text-lg sm:text-2xl font-bold text-dashboard-orange leading-tight">{formatCurrency(displayTotals.transporte)}</p>
                         </CardContent>
                       </Card>
 
                       <Card className="bg-card border-border">
                         <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-                          <span className="text-xs text-muted-foreground leading-tight">% Transporte</span>
+                          <span className="text-xs text-muted-foreground leading-tight">{t("% Transporte")}</span>
                           <p className="text-lg sm:text-2xl font-bold text-dashboard-orange leading-tight">{displayTotals.percentTransporte.toFixed(1)}%</p>
                         </CardContent>
                       </Card>
