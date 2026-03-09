@@ -273,7 +273,15 @@ import { CalendarFilter } from "./CalendarFilter";
               className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
               title={language === "pt-BR" ? "Switch to English" : "Mudar para Português"}
             >
-              <span className="text-sm sm:text-base leading-none">{language === "pt-BR" ? "🇧🇷" : "🇺🇸"}</span>
+              {language === "pt-BR" ? (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" className="h-4 w-5 sm:h-5 sm:w-6 rounded-sm">
+                  <g strokeWidth="1pt"><path fill="#229e45" fillRule="evenodd" d="M0 0h640v480H0z"/><path fill="#f8e509" fillRule="evenodd" d="m321.4 36.2 301.5 204.1-300.8 203.4L21.6 240z"/><circle cx="320" cy="240" r="115" fill="#2b49a3"/><clipPath id="br"><circle cx="320" cy="240" r="115"/></clipPath><path fill="#ffffef" clipPath="url(#br)" d="M166 330.8c36-42.7 117.6-81 190.5-62.2 58 15 114.5 60.3 133.7 108.9-36.1 42.7-117.7 81-190.6 62.2-58-15-114.5-60.2-133.6-108.9z"/></g>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" className="h-4 w-5 sm:h-5 sm:w-6 rounded-sm">
+                  <g fillRule="evenodd"><g strokeWidth="1pt"><path fill="#bd3d44" d="M0 0h640v37h-640zm0 74h640v37h-640zm0 74h640v37h-640zm0 74h640v37h-640zm0 74h640v37h-640zm0 74h640v37h-640zm0 74h640v37h-640z"/><path fill="#fff" d="M0 37h640v37h-640zm0 74h640v37h-640zm0 74h640v37h-640zm0 74h640v37h-640zm0 74h640v37h-640zm0 74h640v37h-640z"/></g><path fill="#192f5d" d="M0 0h364.8v259H0z"/></g>
+                </svg>
+              )}
             </Button>
           )}
           <NavigationMenu />
