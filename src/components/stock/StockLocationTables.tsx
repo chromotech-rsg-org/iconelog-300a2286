@@ -359,7 +359,7 @@ export const StockLocationTables = ({
                   <div className="bg-dashboard-dark rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <DollarSign className="h-4 w-4 text-dashboard-accent" />
-                      <span className="text-xs text-muted-foreground">Valor Total</span>
+                       <span className="text-xs text-muted-foreground">{t("Valor Total")}</span>
                     </div>
                     <p className="text-sm font-bold text-foreground">{formatCurrency(modalItem.totalValue)}</p>
                   </div>
