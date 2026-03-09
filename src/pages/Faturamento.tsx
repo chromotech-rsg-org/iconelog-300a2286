@@ -29,10 +29,12 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { Clock, X, AlertCircle, InboxIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const COLORS = ['hsl(45, 100%, 50%)', 'hsl(217, 91%, 60%)', 'hsl(25, 95%, 53%)', 'hsl(142, 76%, 36%)', 'hsl(280, 65%, 60%)', 'hsl(340, 82%, 52%)', 'hsl(180, 70%, 45%)'];
 
 const Faturamento = () => {
+  const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   // Default: all months from Jan to current month
