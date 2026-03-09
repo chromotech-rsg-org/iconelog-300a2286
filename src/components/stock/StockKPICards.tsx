@@ -1,6 +1,7 @@
 import { Package, Boxes, AlertTriangle, DollarSign } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatNumber } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface StockKPICardsProps {
   totalSKUs: number;
