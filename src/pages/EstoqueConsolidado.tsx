@@ -21,6 +21,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { DollarSign, Box, Package, X, RefreshCw, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { EstoqueMatrizHoverCard, EstoqueBaseHoverCard } from "@/components/stock/EstoqueProductHoverCard";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // Yellow tones for Matriz charts (swapped)
 const MATRIZ_COLORS = [
