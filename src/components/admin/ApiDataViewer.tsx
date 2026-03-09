@@ -24,6 +24,7 @@ interface CacheEntry {
 const ApiDataViewer = () => {
   const [cacheEntries, setCacheEntries] = useState<CacheEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingData, setLoadingData] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
