@@ -640,7 +640,7 @@ const EstoqueConsolidado = () => {
               </div>
               <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
                 <span className="text-[10px] text-muted-foreground">
-                  {searchedBase.length > 0 ? `${basePage * basePerPage + 1}–${Math.min((basePage + 1) * basePerPage, searchedBase.length)} de ${searchedBase.length}` : "0 registros"}
+                  {searchedBase.length > 0 ? `${basePage * basePerPage + 1}–${Math.min((basePage + 1) * basePerPage, searchedBase.length)} ${t("de")} ${searchedBase.length}` : `0 ${t("registros")}`}
                 </span>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" className="h-6 w-6" disabled={basePage === 0} onClick={() => setBasePage(p => p - 1)}>
