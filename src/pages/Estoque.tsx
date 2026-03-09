@@ -234,7 +234,7 @@ const Estoque = () => {
 
       {hasActiveFilters && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-dashboard-border bg-dashboard-card/50 animate-fade-in">
-          <span className="text-xs text-muted-foreground">Filtros:</span>
+          <span className="text-xs text-muted-foreground">{t("Filtros")}:</span>
           {selectedSKU && (
             <Badge variant="outline" className="border-dashboard-blue bg-dashboard-blue/10 text-dashboard-blue cursor-pointer hover:bg-dashboard-blue/20" onClick={() => setSelectedSKU(null)}>
               Código: {selectedSKU} <X className="ml-1 h-3 w-3" />
@@ -256,7 +256,7 @@ const Estoque = () => {
             </Badge>
           )}
           <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
-            Limpar todos
+            {t("Limpar todos")}
           </Button>
         </div>
       )}
