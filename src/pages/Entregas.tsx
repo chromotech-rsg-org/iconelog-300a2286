@@ -17,6 +17,7 @@ import { saveAs } from "file-saver";
 import { X, Loader2, AlertCircle, InboxIcon } from "lucide-react";
 
 const Entregas = () => {
+  const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
   const allMonths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
