@@ -21,6 +21,8 @@ interface RegionalCardsProps {
 }
 
 export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: RegionalCardsProps) => {
+  const { t } = useLanguage();
+  
   // Sort by total (entrega + reposição) descending
   const sortedData = [...data].sort((a, b) => (b.entregaTotal + b.reposicaoTotal) - (a.entregaTotal + a.reposicaoTotal));
   
@@ -31,7 +33,7 @@ export const RegionalCards = ({ data, onRegionalClick, selectedRegional }: Regio
     <Card className="bg-dashboard-card border-dashboard-border">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-bold text-dashboard-accent uppercase tracking-wide">
-          TOTAL DE PEDIDOS POR REGIÃO
+          {t("TOTAL DE PEDIDOS POR REGIÃO")}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
