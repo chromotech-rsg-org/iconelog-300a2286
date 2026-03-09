@@ -596,17 +596,17 @@ const EstoqueConsolidado = () => {
                 <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow className="border-border bg-muted/20 sticky top-0 z-10">
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Base</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Cidade</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">UF</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Código</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Base")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Cidade")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("UF")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Código")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M3</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Produto</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Entrada</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Qtde. Saída</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Região</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Saldo</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Vl. Total</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Produto")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Qtde. Entrada")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Qtde. Saída")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Região")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Saldo")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Vl. Total")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
