@@ -6,6 +6,7 @@ import {
 import { formatNumber, formatCurrency } from "@/data/mockData";
 import { Package, Calendar, Box, Clock, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import type { EstoqueMatrizItem, EstoqueBaseItem } from "@/hooks/useEstoqueConsolidadoData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface EstoqueMatrizHoverProps {
   product: EstoqueMatrizItem;
@@ -25,6 +26,7 @@ const TEMPO_PARADO_COLORS: Record<string, string> = {
 };
 
 export const EstoqueMatrizHoverCard = ({ product, children }: EstoqueMatrizHoverProps) => {
+  const { t } = useLanguage();
   const imageUrl = product.fotoUrl || `https://icone-api.bfranca.com.br/fotos/icone_${product.codigo}.jpg`;
   const tempoColor = TEMPO_PARADO_COLORS[product.tempoParado] || "text-muted-foreground bg-muted";
 
