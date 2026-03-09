@@ -46,12 +46,25 @@ export const useDynamicFilters = (
     fetchRegions();
   }, []);
 
-  // Fetch available years via lightweight RPC function
+  // Fetch available years from cache_key names (lightweight - no JSONB parsing)
   useEffect(() => {
     const fetchCacheYears = async () => {
-      const { data } = await supabase.rpc("get_cache_years" as any);
-      if (data && Array.isArray(data) && data.length > 0) {
-        setCacheYears((data as number[]).sort((a, b) => a - b));
+      const { data } = await supabase
+        .from("bi_data_cache")
+        .select("cache_key");
+      if (data && Array.isArray(data)) {
+        const yearsSet = new Set<number>();
+        data.forEach(row => {
+          // Extract year from suffixed keys like followup_099_2025
+          const match = row.cache_key?.match(/_(\d{4})$/);
+          if (match) {
+            const y = parseInt(match[1], 10);
+            if (y > 2000) yearsSet.add(y);
+          }
+        });
+        // Always include current year
+        yearsSet.add(new Date().getFullYear());
+        setCacheYears(Array.from(yearsSet).sort((a, b) => a - b));
       }
     };
     fetchCacheYears();
