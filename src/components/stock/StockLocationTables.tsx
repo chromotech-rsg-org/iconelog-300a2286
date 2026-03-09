@@ -374,14 +374,14 @@ export const StockLocationTables = ({
 
                 {/* Movimentações - full width side by side */}
                 <div className="bg-dashboard-dark rounded-xl p-4 space-y-3">
-                  <h3 className="text-sm font-semibold text-foreground">Movimentações</h3>
+                  <h3 className="text-sm font-semibold text-foreground">{t("Movimentações")}</h3>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-                    <div><span className="text-muted-foreground">Ult. Entrada:</span> <span className="text-foreground">{modalItem.lastEntryQty ?? "-"} un - {modalItem.lastEntryDate ? formatDateBR(modalItem.lastEntryDate) : "-"}</span></div>
-                    <div><span className="text-muted-foreground">Ult. Saída:</span> <span className="text-foreground">{modalItem.lastExitQty ?? "-"} un - {modalItem.lastExitDate ? formatDateBR(modalItem.lastExitDate) : "-"}</span></div>
-                    <div><span className="text-muted-foreground">Total Entradas:</span> <span className="text-foreground">{modalItem.totalEntryQty != null ? formatNumber(modalItem.totalEntryQty) : "-"}</span></div>
-                    <div><span className="text-muted-foreground">Total Saídas:</span> <span className="text-foreground">{modalItem.totalExitQty != null ? formatNumber(modalItem.totalExitQty) : "-"}</span></div>
+                    <div><span className="text-muted-foreground">{t("Ult. Entrada:")}</span> <span className="text-foreground">{modalItem.lastEntryQty ?? "-"} un - {modalItem.lastEntryDate ? formatDateBR(modalItem.lastEntryDate) : "-"}</span></div>
+                    <div><span className="text-muted-foreground">{t("Ult. Saída:")}</span> <span className="text-foreground">{modalItem.lastExitQty ?? "-"} un - {modalItem.lastExitDate ? formatDateBR(modalItem.lastExitDate) : "-"}</span></div>
+                    <div><span className="text-muted-foreground">{t("Total Entradas:")}</span> <span className="text-foreground">{modalItem.totalEntryQty != null ? formatNumber(modalItem.totalEntryQty) : "-"}</span></div>
+                    <div><span className="text-muted-foreground">{t("Total Saídas:")}</span> <span className="text-foreground">{modalItem.totalExitQty != null ? formatNumber(modalItem.totalExitQty) : "-"}</span></div>
                     {modalItem.daysSinceLastMovement != null && (
-                      <div className="col-span-2"><span className="text-muted-foreground">Dias sem mov.:</span> <span className="text-foreground">{modalItem.daysSinceLastMovement}</span></div>
+                      <div className="col-span-2"><span className="text-muted-foreground">{t("Dias sem mov.:")}</span> <span className="text-foreground">{modalItem.daysSinceLastMovement}</span></div>
                     )}
                   </div>
                 </div>
