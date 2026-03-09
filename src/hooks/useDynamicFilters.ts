@@ -46,26 +46,12 @@ export const useDynamicFilters = (
     fetchRegions();
   }, []);
 
-  // Fetch available years from bi_data_cache to discover historical data
+  // Fetch available years via lightweight RPC function
   useEffect(() => {
     const fetchCacheYears = async () => {
-      const { data } = await supabase
-        .from("bi_data_cache")
-        .select("data");
-
-      if (data) {
-        const yearsSet = new Set<number>();
-        data.forEach(row => {
-          const items = Array.isArray(row.data) ? row.data : [];
-          (items as any[]).forEach((item: any) => {
-            if (item._fetch_year && Number(item._fetch_year) > 2000) {
-              yearsSet.add(Number(item._fetch_year));
-            }
-          });
-        });
-        if (yearsSet.size > 0) {
-          setCacheYears(Array.from(yearsSet).sort((a, b) => a - b));
-        }
+      const { data } = await supabase.rpc("get_cache_years" as any);
+      if (data && Array.isArray(data) && data.length > 0) {
+        setCacheYears((data as number[]).sort((a, b) => a - b));
       }
     };
     fetchCacheYears();
