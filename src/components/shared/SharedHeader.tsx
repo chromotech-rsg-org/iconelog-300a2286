@@ -473,7 +473,7 @@ import { CalendarFilter } from "./CalendarFilter";
                       : "text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
                   }`}
                 >
-                  {month.short}
+                  {t(month.short)}
                 </Button>
               ))}
             </div>
