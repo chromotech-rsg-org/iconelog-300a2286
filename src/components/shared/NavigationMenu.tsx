@@ -25,8 +25,9 @@ const pathMap: Record<string, string> = {
 export const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
-   const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin } = useAuth();
+  const { isAuthenticated, canView, isPublicAccess, profile, logout, canViewAdmin } = useAuth();
   const { getPageTitle, getOrderedBiSettings } = useBiSettingsContext();
+  const { t } = useLanguage();
 
   // Get ordered navigation items from settings
   const navigationItems = getOrderedBiSettings().map(setting => ({
