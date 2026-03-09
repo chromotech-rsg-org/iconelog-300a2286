@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { translations as defaultTranslations, type Language } from "@/i18n/translations";
 import { supabase } from "@/integrations/supabase/client";
 
