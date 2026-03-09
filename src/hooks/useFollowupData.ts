@@ -162,25 +162,25 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           setFollowupData(allFollowup);
         }
 
-        // Load historical caches separately (e.g., _2025)
-        const { data: historicalCaches, error: histErr } = await supabase
+        // Load historical/monthly fragment caches (e.g., followup_099_2025_01, followup_099_2025_12)
+        const { data: fragmentCaches, error: fragErr } = await supabase
           .from("bi_data_cache")
           .select("cache_key")
           .eq("page_id", "_shared")
           .like("cache_key", `followup_${codCli}_%`);
 
-        if (!histErr && historicalCaches && historicalCaches.length > 0) {
-          // Load each historical cache one at a time
-          for (const cache of historicalCaches) {
-            const { data: histData } = await supabase
+        if (!fragErr && fragmentCaches && fragmentCaches.length > 0) {
+          for (const cache of fragmentCaches) {
+            const { data: fragData } = await supabase
               .from("bi_data_cache")
               .select("data")
+              .eq("page_id", "_shared")
               .eq("cache_key", cache.cache_key)
               .maybeSingle();
             
-            if (histData?.data && Array.isArray(histData.data)) {
-              allFollowup = allFollowup.concat(histData.data as FollowupItem[]);
-              console.log(`Loaded ${(histData.data as FollowupItem[]).length} followup records from ${cache.cache_key}`);
+            if (fragData?.data && Array.isArray(fragData.data) && (fragData.data as FollowupItem[]).length > 0) {
+              allFollowup = allFollowup.concat(fragData.data as FollowupItem[]);
+              console.log(`Loaded ${(fragData.data as FollowupItem[]).length} followup records from ${cache.cache_key}`);
               setFollowupData([...allFollowup]);
             }
           }
