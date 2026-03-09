@@ -57,7 +57,7 @@ export const NavigationMenu = () => {
 
   const handleLogout = async () => {
     await logout();
-    toast.success("Logout realizado com sucesso!");
+    toast.success(t("Logout realizado com sucesso!"));
     navigate("/auth");
   };
 
