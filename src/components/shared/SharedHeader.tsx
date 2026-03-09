@@ -355,7 +355,7 @@ import { CalendarFilter } from "./CalendarFilter";
 
                   {/* Regional */}
                   <div>
-                    <p className="text-xs text-muted-foreground font-semibold mb-2">Regional</p>
+                    <p className="text-xs text-muted-foreground font-semibold mb-2">{t("Regional")}</p>
                     <div className="flex flex-col gap-1">
                       <div
                         className={`flex items-center space-x-2 p-2 rounded cursor-pointer hover:bg-dashboard-border ${
