@@ -248,7 +248,7 @@ import { CalendarFilter } from "./CalendarFilter";
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
-            <span>Última atualização: {formatLastUpdate(lastUpdate)}</span>
+            <span>{t("Última atualização")}: {formatLastUpdate(lastUpdate)}</span>
           </div>
           <span className="sm:hidden text-[10px] text-muted-foreground whitespace-nowrap">{formatLastUpdate(lastUpdate)}</span>
           {showRefresh && onRefreshData && (
