@@ -188,24 +188,24 @@ const Entregas = () => {
 
       {hasActiveFilters && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-card/50 animate-fade-in">
-          <span className="text-xs text-muted-foreground">Filtros:</span>
+          <span className="text-xs text-muted-foreground">{t("Filtros")}:</span>
           {selectedRegional && (
             <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedRegional(null)}>
-              Regional: {selectedRegional} <X className="ml-1 h-3 w-3" />
+              {t("Regional")}: {selectedRegional} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedTipo && (
             <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedTipo(null)}>
-              Tipo: {selectedTipo} <X className="ml-1 h-3 w-3" />
+              {t("Tipo")}: {selectedTipo} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedStatus && (
             <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedStatus(null)}>
-              Status: {selectedStatus} <X className="ml-1 h-3 w-3" />
+              {t("Status")}: {selectedStatus} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
-            Limpar todos
+            {t("Limpar todos")}
           </Button>
         </div>
       )}
