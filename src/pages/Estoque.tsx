@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useTransition } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { allMonthValues } from "@/data/mockData";
 import { SharedHeader } from "@/components/shared/SharedHeader";
 import { DocumentHead } from "@/components/shared/DocumentHead";
