@@ -65,13 +65,13 @@ export const KPICards = ({
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm font-medium text-muted-foreground">
-              Total Baixadas
+              {t("Total Baixadas")}
             </p>
             <p className="mt-2 text-3xl font-bold text-dashboard-accent animate-fade-in">
               {formatNumber(totalBaixadas)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Clique para filtrar
+              {t("Clique para filtrar")}
             </p>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-dashboard-orange/20">

@@ -38,14 +38,14 @@ export const TrackingKPICards = ({ kpis, onPrazoClick, selectedPrazo }: Props) =
           onClick={() => onPrazoClick(true)}
         >
           <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-            <span className="text-xs text-muted-foreground leading-tight">Qtde no Prazo</span>
+            <span className="text-xs text-muted-foreground leading-tight">{t("Qtde no Prazo")}</span>
             <p className="text-2xl font-bold text-green-400 leading-tight">{formatNumber(kpis.noPrazo)}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card border-border">
           <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-            <span className="text-xs text-muted-foreground leading-tight">% no Prazo</span>
+            <span className="text-xs text-muted-foreground leading-tight">{t("% no Prazo")}</span>
             <p className="text-2xl font-bold text-green-400 leading-tight">{kpis.percNoPrazo.toFixed(2)}%</p>
           </CardContent>
         </Card>
@@ -55,14 +55,14 @@ export const TrackingKPICards = ({ kpis, onPrazoClick, selectedPrazo }: Props) =
           onClick={() => onPrazoClick(false)}
         >
           <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-            <span className="text-xs text-muted-foreground leading-tight">Qtde fora do Prazo</span>
+            <span className="text-xs text-muted-foreground leading-tight">{t("Qtde fora do Prazo")}</span>
             <p className="text-2xl font-bold text-red-400 leading-tight">{formatNumber(kpis.foraPrazo)}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card border-border">
           <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-            <span className="text-xs text-muted-foreground leading-tight">% fora do Prazo</span>
+            <span className="text-xs text-muted-foreground leading-tight">{t("% fora do Prazo")}</span>
             <p className="text-2xl font-bold text-red-400 leading-tight">{kpis.percForaPrazo.toFixed(2)}%</p>
           </CardContent>
         </Card>
