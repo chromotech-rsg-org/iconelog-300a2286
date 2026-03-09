@@ -231,7 +231,6 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <DocumentHead pageId="minutas" />
       <SharedHeader
-        pageTitle="Minutas Expedidas x Baixadas"
         pageId="minutas"
         lastUpdate={lastUpdate}
         showFilters={true}
