@@ -519,7 +519,7 @@ import { CalendarFilter } from "./CalendarFilter";
                     }`}
                     onClick={() => toggleRegion("all")}
                   >
-                    <span className="text-sm text-foreground">Todas as Regionais</span>
+                    <span className="text-sm text-foreground">{t("Todas as Regionais")}</span>
                   </div>
                   {uniqueRegions.map((region) => (
                     <div key={region} className="flex items-center space-x-2 p-1">
