@@ -225,9 +225,9 @@ const Entregas = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="rounded-lg border border-border bg-card p-8 shadow-lg flex flex-col items-center gap-4 max-w-sm">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <h3 className="text-lg font-semibold text-foreground">Carregando dados</h3>
+            <h3 className="text-lg font-semibold text-foreground">{t("Carregando dados")}</h3>
             <p className="text-sm text-muted-foreground text-center">
-              Recuperando dados da última atualização...
+              {t("Recuperando dados da última atualização...")}
             </p>
           </div>
         </div>
