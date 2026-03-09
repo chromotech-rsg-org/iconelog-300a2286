@@ -389,11 +389,11 @@ export const StockLocationTables = ({
                 {/* Price info */}
                 <div className="flex justify-between items-center bg-dashboard-dark rounded-xl p-4">
                   <div>
-                    <span className="text-xs text-muted-foreground">Preço Unitário</span>
+                    <span className="text-xs text-muted-foreground">{t("Preço Unitário")}</span>
                     <p className="text-lg font-bold text-dashboard-accent">{formatCurrency(modalItem.unitPrice)}</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs text-muted-foreground">Valor Padrão</span>
+                    <span className="text-xs text-muted-foreground">{t("Valor Padrão")}</span>
                     <p className="text-lg font-bold text-foreground">{formatCurrency(parseFloat(modalItem.vl_padrao || "0"))}</p>
                   </div>
                 </div>
