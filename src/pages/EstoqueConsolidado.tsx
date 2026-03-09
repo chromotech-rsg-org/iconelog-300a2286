@@ -372,7 +372,7 @@ const EstoqueConsolidado = () => {
           {/* 1. Representação do Estoque | Grupo - Blue Pie */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
             <CardHeader className="pb-1">
-              <CardTitle className="text-sm font-medium text-foreground">Representação do Estoque | Grupo</CardTitle>
+              <CardTitle className="text-sm font-medium text-foreground">{t("Representação do Estoque | Grupo")}</CardTitle>
             </CardHeader>
             <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
