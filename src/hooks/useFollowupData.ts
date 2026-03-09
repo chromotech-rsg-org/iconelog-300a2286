@@ -162,25 +162,25 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           setFollowupData(allFollowup);
         }
 
-        // Load historical caches separately (e.g., _2025)
-        const { data: historicalCaches, error: histErr } = await supabase
+        // Load historical/monthly fragment caches (e.g., followup_099_2025_01, followup_099_2025_12)
+        const { data: fragmentCaches, error: fragErr } = await supabase
           .from("bi_data_cache")
           .select("cache_key")
           .eq("page_id", "_shared")
           .like("cache_key", `followup_${codCli}_%`);
 
-        if (!histErr && historicalCaches && historicalCaches.length > 0) {
-          // Load each historical cache one at a time
-          for (const cache of historicalCaches) {
-            const { data: histData } = await supabase
+        if (!fragErr && fragmentCaches && fragmentCaches.length > 0) {
+          for (const cache of fragmentCaches) {
+            const { data: fragData } = await supabase
               .from("bi_data_cache")
               .select("data")
+              .eq("page_id", "_shared")
               .eq("cache_key", cache.cache_key)
               .maybeSingle();
             
-            if (histData?.data && Array.isArray(histData.data)) {
-              allFollowup = allFollowup.concat(histData.data as FollowupItem[]);
-              console.log(`Loaded ${(histData.data as FollowupItem[]).length} followup records from ${cache.cache_key}`);
+            if (fragData?.data && Array.isArray(fragData.data) && (fragData.data as FollowupItem[]).length > 0) {
+              allFollowup = allFollowup.concat(fragData.data as FollowupItem[]);
+              console.log(`Loaded ${(fragData.data as FollowupItem[]).length} followup records from ${cache.cache_key}`);
               setFollowupData([...allFollowup]);
             }
           }
@@ -205,24 +205,25 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
             setProdutosData(allProdutos);
           }
 
-          // Load historical produtos caches
-          const { data: historicalProdutos, error: histProdErr } = await supabase
+          // Load historical/monthly fragment produtos caches
+          const { data: fragmentProdutos, error: fragProdErr } = await supabase
             .from("bi_data_cache")
             .select("cache_key")
             .eq("page_id", "_shared")
             .like("cache_key", `produtosdistribuidos_${codCli}_%`);
 
-          if (!histProdErr && historicalProdutos && historicalProdutos.length > 0) {
-            for (const cache of historicalProdutos) {
-              const { data: histData } = await supabase
+          if (!fragProdErr && fragmentProdutos && fragmentProdutos.length > 0) {
+            for (const cache of fragmentProdutos) {
+              const { data: fragData } = await supabase
                 .from("bi_data_cache")
                 .select("data")
+                .eq("page_id", "_shared")
                 .eq("cache_key", cache.cache_key)
                 .maybeSingle();
               
-              if (histData?.data && Array.isArray(histData.data)) {
-                allProdutos = allProdutos.concat(histData.data as FollowupItem[]);
-                console.log(`Loaded ${(histData.data as FollowupItem[]).length} produtos records from ${cache.cache_key}`);
+              if (fragData?.data && Array.isArray(fragData.data) && (fragData.data as FollowupItem[]).length > 0) {
+                allProdutos = allProdutos.concat(fragData.data as FollowupItem[]);
+                console.log(`Loaded ${(fragData.data as FollowupItem[]).length} produtos records from ${cache.cache_key}`);
                 setProdutosData([...allProdutos]);
               }
             }
@@ -325,39 +326,14 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     setRefreshStage("saving");
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      // Preserve historical data (non-current-year) from existing cache
-      const { data: existingCache } = await supabase
-        .from("bi_data_cache")
-        .select("data")
-        .eq("page_id", "_shared")
-        .eq("cache_key", `followup_${codCli}`)
-        .maybeSingle();
-
-      const existingData: FollowupItem[] = existingCache?.data
-        ? (existingCache.data as FollowupItem[])
-        : [];
-
-      // Keep historical (non-current-year) records, add fresh current-year records
-      const historicalData = existingData.filter(i => i._fetch_year && Number(i._fetch_year) !== currentYear);
+      // Save current year data only to main cache key (historical data lives in monthly fragments)
       const currentYearOnly = allFollowup.filter(i => Number(i._fetch_year) === currentYear);
-      const merged = [...historicalData, ...currentYearOnly];
-
-      if (merged.length > 0) {
-        // Check payload size (~4MB limit)
-        const payloadSize = JSON.stringify(merged).length;
-        if (payloadSize > 4 * 1024 * 1024) {
-          // Too large - save only current year
-          console.warn(`Merged followup payload too large (${(payloadSize / 1024 / 1024).toFixed(1)}MB), saving current year only`);
-          if (currentYearOnly.length > 0) await saveToCache("followup", currentYearOnly);
-        } else {
-          await saveToCache("followup", merged);
-        }
+      if (currentYearOnly.length > 0) {
+        await saveToCache("followup", currentYearOnly);
       }
 
-      // Also update in-memory state to include historical data
-      if (historicalData.length > 0 && currentYearOnly.length > 0) {
-        setFollowupData(merged);
-      }
+      // Re-merge with historical fragments already in memory for display
+      // (no need to re-read from DB, they're already in followupData state)
 
       if ((pageId === "minutas" || pageId === "tracking") && allProdutos.length > 0) {
         await saveToCache("produtosdistribuidos", allProdutos);
