@@ -316,8 +316,8 @@ export const AnaliticoCityView = ({
           <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
             <span className="text-[10px] text-muted-foreground">
               {filtered.length > 0
-                ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, filtered.length)} de ${filtered.length}`
-                : "0 registros"}
+                ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, filtered.length)} ${t("de")} ${filtered.length}`
+                : `0 ${t("registros")}`}
             </span>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-6 w-6" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
