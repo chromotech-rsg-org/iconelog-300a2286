@@ -138,37 +138,52 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   }, [pageId]);
 
   // Load cached data on mount - uses shared cache (one extraction per API)
+  // Also loads historical year-suffixed caches (e.g., _2025) and merges them
   useEffect(() => {
     const loadCache = async () => {
       if (!codCli || cacheLoaded || cacheLoading) return;
       setCacheLoading(true);
       try {
-        // Load current year cache
-        const { data: followupCache, error: followupErr } = await supabase
+        // Load all followup caches (main + year-suffixed like _2025)
+        const { data: followupCaches, error: followupErr } = await supabase
           .from("bi_data_cache")
-          .select("data")
+          .select("data, cache_key")
           .eq("page_id", "_shared")
-          .eq("cache_key", `followup_${codCli}`)
-          .maybeSingle();
+          .like("cache_key", `followup_${codCli}%`);
 
         if (followupErr) {
           console.warn("Cache load error (followup):", followupErr.message);
-        } else {
-          let allFollowup: FollowupItem[] = followupCache?.data ? (followupCache.data as FollowupItem[]) : [];
+        } else if (followupCaches && followupCaches.length > 0) {
+          // Merge all followup caches (main + historical)
+          let allFollowup: FollowupItem[] = [];
+          followupCaches.forEach(cache => {
+            if (cache.data && Array.isArray(cache.data)) {
+              allFollowup = allFollowup.concat(cache.data as FollowupItem[]);
+            }
+          });
+          console.log(`Loaded ${allFollowup.length} followup records from ${followupCaches.length} cache(s)`);
           if (allFollowup.length > 0) setFollowupData(allFollowup);
         }
 
         if (pageId === "minutas" || pageId === "tracking") {
-          const { data: produtosCache, error: produtosErr } = await supabase
+          // Load all produtos caches (main + year-suffixed)
+          const { data: produtosCaches, error: produtosErr } = await supabase
             .from("bi_data_cache")
-            .select("data")
+            .select("data, cache_key")
             .eq("page_id", "_shared")
-            .eq("cache_key", `produtosdistribuidos_${codCli}`)
-            .maybeSingle();
+            .like("cache_key", `produtosdistribuidos_${codCli}%`);
+
           if (produtosErr) {
             console.warn("Cache load error (produtos):", produtosErr.message);
-          } else if (produtosCache?.data) {
-            setProdutosData(produtosCache.data as FollowupItem[]);
+          } else if (produtosCaches && produtosCaches.length > 0) {
+            let allProdutos: FollowupItem[] = [];
+            produtosCaches.forEach(cache => {
+              if (cache.data && Array.isArray(cache.data)) {
+                allProdutos = allProdutos.concat(cache.data as FollowupItem[]);
+              }
+            });
+            console.log(`Loaded ${allProdutos.length} produtos records from ${produtosCaches.length} cache(s)`);
+            if (allProdutos.length > 0) setProdutosData(allProdutos);
           }
         }
       } catch (err) {
