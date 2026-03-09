@@ -25,6 +25,8 @@ export const ProgressBars = ({
   onReposicaoClick,
   selectedTipo,
 }: ProgressBarsProps) => {
+  const { t } = useLanguage();
+  
   const entregaPercent = entregaTotal > 0 ? (entregaFinalizado / entregaTotal) * 100 : 0;
   const reposicaoPercent = reposicaoTotal > 0 ? (reposicaoFinalizado / reposicaoTotal) * 100 : 0;
   const entregaEmTransitoPercent = entregaTotal > 0 ? (entregaEmTransito / entregaTotal) * 100 : 0;
