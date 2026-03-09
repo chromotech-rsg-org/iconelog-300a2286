@@ -11,6 +11,7 @@ import {
  import { useAuth } from "@/contexts/AuthContext";
  import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const pathMap: Record<string, string> = {
   minutas: "/minutas",
