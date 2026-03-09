@@ -257,7 +257,7 @@ import { CalendarFilter } from "./CalendarFilter";
               size="icon"
               onClick={handleRefresh}
               className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-dashboard-accent hover:bg-dashboard-border"
-              title="Atualizar dados"
+              title={t("Atualizar dados")}
             >
               <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
