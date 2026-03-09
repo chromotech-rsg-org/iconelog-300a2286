@@ -574,7 +574,7 @@ import { CalendarFilter } from "./CalendarFilter";
             {showExport && onExportExcel && (
               <Button variant="outline" size="sm" onClick={onExportExcel} className="border-dashboard-border text-foreground hover:bg-dashboard-accent hover:text-dashboard-dark">
                 <Download className="mr-2 h-4 w-4" />
-                Exportar Excel
+                {t("Exportar Excel")}
               </Button>
             )}
 
