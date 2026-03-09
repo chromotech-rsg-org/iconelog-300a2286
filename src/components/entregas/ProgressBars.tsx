@@ -42,19 +42,19 @@ export const ProgressBars = ({
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-dashboard-accent uppercase tracking-wide">
-              ENTREGA - PROGRESSO
+              {t("ENTREGA - PROGRESSO")}
             </h3>
           </div>
           
           <div className="flex items-center gap-6 mb-3">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-dashboard-accent" />
-              <span className="text-sm text-muted-foreground">Finalizados:</span>
+              <span className="text-sm text-muted-foreground">{t("Finalizados")}:</span>
               <span className="text-base font-bold text-foreground">{formatNumber(entregaFinalizado)}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Em Trânsito:</span>
+              <span className="text-sm text-muted-foreground">{t("Em Trânsito")}:</span>
               <span className="text-base font-bold text-foreground">{formatNumber(entregaEmTransito)}</span>
             </div>
           </div>
