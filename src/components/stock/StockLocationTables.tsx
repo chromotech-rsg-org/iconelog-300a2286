@@ -144,7 +144,7 @@ export const StockLocationTables = ({
         <CardHeader className="pb-2">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-base font-semibold text-foreground">
-              Estoque Matriz (Barueri) <span className="text-sm font-normal text-muted-foreground">({filteredAndSortedItems.length} itens)</span>
+              {t("Estoque Matriz")} (Barueri) <span className="text-sm font-normal text-muted-foreground">({filteredAndSortedItems.length} {t("itens")})</span>
             </CardTitle>
             <div className="flex items-center gap-2">
               <Select value={itemsPerPage.toString()} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
