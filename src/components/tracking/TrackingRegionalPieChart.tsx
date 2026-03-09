@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const COLORS = ["hsl(45, 100%, 50%)", "hsl(217, 91%, 60%)", "hsl(142, 76%, 36%)", "hsl(25, 95%, 53%)", "hsl(280, 65%, 60%)", "hsl(0, 72%, 51%)", "hsl(180, 60%, 45%)"];
 
@@ -9,32 +10,33 @@ interface Props {
   selectedRegional: string | null;
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload?.length) {
-    const { name, value, percent } = payload[0].payload;
-    return (
-      <div className="rounded-lg border border-border bg-card/95 backdrop-blur-sm p-2 shadow-xl text-xs">
-        <p className="font-semibold text-foreground">{name}</p>
-        <p className="text-muted-foreground">{value.toLocaleString()} pedidos ({(percent * 100).toFixed(1)}%)</p>
-      </div>
-    );
-  }
-  return null;
-};
-
 const renderLabel = ({ name, percent }: any) => {
   if (percent < 0.05) return null;
   return `${(percent * 100).toFixed(0)}%`;
 };
 
 export const TrackingRegionalPieChart = ({ data, onRegionalClick, selectedRegional }: Props) => {
+  const { t } = useLanguage();
   const total = data.reduce((s, d) => s + d.value, 0);
   const withPercent = data.map(d => ({ ...d, percent: total > 0 ? d.value / total : 0 }));
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload?.length) {
+      const { name, value, percent } = payload[0].payload;
+      return (
+        <div className="rounded-lg border border-border bg-card/95 backdrop-blur-sm p-2 shadow-xl text-xs">
+          <p className="font-semibold text-foreground">{name}</p>
+          <p className="text-muted-foreground">{value.toLocaleString()} {t("pedidos")} ({(percent * 100).toFixed(1)}%)</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <Card className="bg-card border-border h-full flex flex-col">
       <CardHeader className="pb-0 pt-2">
-        <CardTitle className="text-sm font-medium text-foreground">Pedido | Região</CardTitle>
+        <CardTitle className="text-sm font-medium text-foreground">{t("Pedido | Região")}</CardTitle>
       </CardHeader>
       <CardContent className="p-2 flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface CidadeData {
   name: string;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export const TrackingCidadeChart = ({ data, onCidadeClick, selectedCidade }: Props) => {
+  const { t } = useLanguage();
   const chartData = data;
   const barHeight = 38;
   const chartHeight = Math.max(chartData.length * barHeight, 100);
@@ -23,15 +25,15 @@ export const TrackingCidadeChart = ({ data, onCidadeClick, selectedCidade }: Pro
     <Card className={`bg-card border-border transition-all h-full flex flex-col ${selectedCidade ? "ring-1 ring-primary" : ""}`}>
       <CardHeader className="pb-1">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-foreground">Entregas por Cidade</CardTitle>
+          <CardTitle className="text-sm font-medium text-foreground">{t("Entregas por Cidade")}</CardTitle>
           <div className="flex items-center gap-3 text-[10px]">
             <span className="flex items-center gap-1">
               <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: "hsl(45, 100%, 50%)" }} />
-              <span className="text-muted-foreground">FINALIZADO</span>
+              <span className="text-muted-foreground">{t("FINALIZADO")}</span>
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: "hsl(0, 0%, 55%)" }} />
-              <span className="text-muted-foreground">TRÂNSITO</span>
+              <span className="text-muted-foreground">{t("TRÂNSITO")}</span>
             </span>
           </div>
         </div>
@@ -72,7 +74,7 @@ export const TrackingCidadeChart = ({ data, onCidadeClick, selectedCidade }: Pro
                 />
                 <Bar
                   dataKey="finalizado"
-                  name="Finalizado"
+                  name={t("Finalizado")}
                   fill="hsl(45, 100%, 50%)"
                   radius={[0, 3, 3, 0]}
                   cursor="pointer"
@@ -87,7 +89,7 @@ export const TrackingCidadeChart = ({ data, onCidadeClick, selectedCidade }: Pro
                 </Bar>
                 <Bar
                   dataKey="transito"
-                  name="Trânsito"
+                  name={t("Em Trânsito")}
                   fill="hsl(0, 0%, 55%)"
                   radius={[0, 3, 3, 0]}
                   cursor="pointer"

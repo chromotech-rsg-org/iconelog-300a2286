@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { formatCurrency } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props {
   items: any[];
 }
 
 export const TrackingItensTable = ({ items }: Props) => {
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [perPage, setPerPage] = useState(50);
@@ -57,7 +59,7 @@ export const TrackingItensTable = ({ items }: Props) => {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-medium text-foreground">
-            Itens dos Pedidos <span className="text-xs text-muted-foreground font-normal">({filtered.length})</span>
+            {t("Itens dos Pedidos")} <span className="text-xs text-muted-foreground font-normal">({filtered.length})</span>
           </CardTitle>
           {columnFilter && (
             <Badge variant="outline" className="text-[10px] cursor-pointer border-primary text-primary" onClick={() => { setColumnFilter(null); setPage(0); }}>
@@ -69,7 +71,7 @@ export const TrackingItensTable = ({ items }: Props) => {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Pesquisar..."
+              placeholder={t("Pesquisar...")}
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(0); }}
               className="h-7 text-xs pl-7 bg-muted/20 border-border"
@@ -90,7 +92,7 @@ export const TrackingItensTable = ({ items }: Props) => {
         </div>
         {vlTotal > 0 && (
           <div className="mt-1 text-right">
-            <span className="text-[10px] text-muted-foreground">Vl. Total: </span>
+            <span className="text-[10px] text-muted-foreground">{t("Vl. Total:")} </span>
             <span className="text-xs font-bold text-primary">{formatCurrency(vlTotal)}</span>
           </div>
         )}
@@ -107,19 +109,19 @@ export const TrackingItensTable = ({ items }: Props) => {
           <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow className="border-border bg-muted/20 sticky top-0 z-10">
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Pedido</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Cód. Item</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Descrição</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">SubGrupo</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M³ Total</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Vl. Total</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Pedido")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Cód. Item")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Descrição")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("SubGrupo")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("M³ Total")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Vl. Total")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paged.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground text-xs py-8">
-                    {items.length === 0 ? "Nenhum dado disponível" : "0 registros"}
+                    {items.length === 0 ? t("Nenhum dado disponível") : `0 ${t("registros")}`}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -137,10 +139,9 @@ export const TrackingItensTable = ({ items }: Props) => {
             </TableBody>
           </Table>
         </div>
-        {/* Pagination — sticky at bottom */}
         <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
           <span className="text-[10px] text-muted-foreground">
-            {filtered.length > 0 ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, filtered.length)} de ${filtered.length}` : "0 registros"}
+            {filtered.length > 0 ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, filtered.length)} ${t("de")} ${filtered.length}` : `0 ${t("registros")}`}
           </span>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-6 w-6" disabled={page === 0} onClick={() => setPage(p => p - 1)}>

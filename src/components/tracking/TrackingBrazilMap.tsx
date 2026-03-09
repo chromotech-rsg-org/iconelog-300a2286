@@ -3,6 +3,7 @@ import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import BrazilHeatmap, { Tooltip } from "react-brazil-heatmap";
 import "react-brazil-heatmap/dist/style.css";
 import type { MetaItem } from "react-brazil-heatmap";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface EstadoStats {
   name: string;
@@ -32,6 +33,7 @@ const UF_NAMES: Record<string, string> = {
 const DRAG_THRESHOLD = 5;
 
 export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }: Props) => {
+  const { t } = useLanguage();
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -49,7 +51,6 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
     });
   }, []);
 
-  // Prevent native wheel scroll on the map container
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -104,13 +105,9 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
     return m;
   }, [estadoData]);
 
-  // Use event delegation on the container for click handling
   const handleContainerClick = useCallback((e: React.MouseEvent) => {
-    // If user dragged, don't treat as click
     if (hasDragged.current) return;
-
     const target = e.target as Element;
-    // Walk up the DOM to find the state path element
     let el: Element | null = target;
     while (el && el !== e.currentTarget) {
       const classList = el.getAttribute?.("class") || "";
@@ -133,23 +130,23 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
         </div>
         <div className="space-y-0.5 text-[10px]">
           <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Contagem de Cod Conhecimento</span>
+            <span className="text-muted-foreground">{t("Contagem de Cod Conhecimento")}</span>
             <span className="text-foreground font-semibold">{Number(meta.pedidos).toLocaleString()}</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Sem Ocorrência</span>
+            <span className="text-muted-foreground">{t("Sem Ocorrência")}</span>
             <span className="text-foreground font-semibold">{Number(meta.semOcorrencia).toLocaleString()}</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Com Ocorrência</span>
+            <span className="text-muted-foreground">{t("Com Ocorrência")}</span>
             <span className="text-foreground font-semibold">{Number(meta.comOcorrencia).toLocaleString()}</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">% No Prazo</span>
+            <span className="text-muted-foreground">{t("% No Prazo")}</span>
             <span className="text-green-400 font-semibold">{meta.percNoPrazo}</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">% Fora do Prazo</span>
+            <span className="text-muted-foreground">{t("% Fora do Prazo")}</span>
             <span className="text-red-400 font-semibold">{meta.percForaPrazo}</span>
           </div>
         </div>
@@ -160,7 +157,7 @@ export const TrackingBrazilMap = ({ estadoData, onEstadoClick, selectedEstado }:
   return (
     <Card className="bg-card border-border h-full flex flex-col">
       <CardHeader className="pb-0 pt-2 px-2">
-        <CardTitle className="text-sm font-medium text-foreground">Pedidos | Estado</CardTitle>
+        <CardTitle className="text-sm font-medium text-foreground">{t("Pedidos | Estado")}</CardTitle>
       </CardHeader>
       <CardContent className="p-1 relative flex-1 min-h-0">
         <div

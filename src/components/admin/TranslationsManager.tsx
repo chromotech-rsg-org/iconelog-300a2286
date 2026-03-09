@@ -84,41 +84,47 @@ const TranslationsManager = () => {
       // Handle PT-BR
       if (form.value_pt.trim()) {
         if (existingPt) {
-          await supabase.from("translations").update({ 
+          const { error } = await supabase.from("translations").update({ 
             key: form.key.trim(), 
             value: form.value_pt.trim(),
             page_id: form.page_id
           }).eq("id", existingPt.id);
+          if (error) { toast.error(`Erro PT-BR: ${error.message}`); return; }
         } else {
-          await supabase.from("translations").insert({ 
+          const { error } = await supabase.from("translations").insert({ 
             language: "pt-BR", 
             key: form.key.trim(), 
             value: form.value_pt.trim(),
             page_id: form.page_id
           });
+          if (error) { toast.error(`Erro PT-BR: ${error.message}`); return; }
         }
       } else if (existingPt) {
-        await supabase.from("translations").delete().eq("id", existingPt.id);
+        const { error } = await supabase.from("translations").delete().eq("id", existingPt.id);
+        if (error) { toast.error(`Erro ao excluir PT-BR: ${error.message}`); return; }
       }
 
       // Handle EN
       if (form.value_en.trim()) {
         if (existingEn) {
-          await supabase.from("translations").update({ 
+          const { error } = await supabase.from("translations").update({ 
             key: form.key.trim(), 
             value: form.value_en.trim(),
             page_id: form.page_id
           }).eq("id", existingEn.id);
+          if (error) { toast.error(`Erro EN: ${error.message}`); return; }
         } else {
-          await supabase.from("translations").insert({ 
+          const { error } = await supabase.from("translations").insert({ 
             language: "en", 
             key: form.key.trim(), 
             value: form.value_en.trim(),
             page_id: form.page_id
           });
+          if (error) { toast.error(`Erro EN: ${error.message}`); return; }
         }
       } else if (existingEn) {
-        await supabase.from("translations").delete().eq("id", existingEn.id);
+        const { error } = await supabase.from("translations").delete().eq("id", existingEn.id);
+        if (error) { toast.error(`Erro ao excluir EN: ${error.message}`); return; }
       }
 
       toast.success("Tradução salva com sucesso");

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { formatCurrency } from "@/data/mockData";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Props {
   orders: any[];
@@ -20,6 +21,7 @@ const formatDateFull = (dt: any) => {
 };
 
 export const TrackingPedidosTable = ({ orders, onCidadeClick, onStatusClick }: Props) => {
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [perPage, setPerPage] = useState(50);
@@ -57,7 +59,7 @@ export const TrackingPedidosTable = ({ orders, onCidadeClick, onStatusClick }: P
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-sm font-medium text-foreground">
-            Pedidos Consolidados <span className="text-xs text-muted-foreground font-normal">({filtered.length})</span>
+            {t("Pedidos Consolidados")} <span className="text-xs text-muted-foreground font-normal">({filtered.length})</span>
           </CardTitle>
           {columnFilter && (
             <Badge variant="outline" className="text-[10px] cursor-pointer border-primary text-primary" onClick={() => { setColumnFilter(null); setPage(0); }}>
@@ -69,7 +71,7 @@ export const TrackingPedidosTable = ({ orders, onCidadeClick, onStatusClick }: P
           <div className="relative flex-1">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Pesquisar..."
+              placeholder={t("Pesquisar...")}
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(0); }}
               className="h-7 text-xs pl-7 bg-muted/20 border-border"
@@ -101,19 +103,19 @@ export const TrackingPedidosTable = ({ orders, onCidadeClick, onStatusClick }: P
           <Table className="min-w-[1200px]">
             <TableHeader>
               <TableRow className="border-border bg-muted/20 sticky top-0 z-10">
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Nº Mov.</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Pedido</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Tipo de Serviço</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Modalidade</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Campanha</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Qtde. SKU</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Vl. Tot.</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Prev. Entrega</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Entrega Real</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Status</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Cidade</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">UF</TableHead>
-                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">Solicitante</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Nº Mov.")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Pedido")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Tipo de Serviço")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Modalidade")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Campanha")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Qtde. SKU")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Vl. Tot.")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Prev. Entrega")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Entrega Real")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Status")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Cidade")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("UF")}</TableHead>
+                <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Solicitante")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -153,10 +155,9 @@ export const TrackingPedidosTable = ({ orders, onCidadeClick, onStatusClick }: P
             </TableBody>
           </Table>
         </div>
-        {/* Pagination — sticky at bottom */}
         <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
           <span className="text-[10px] text-muted-foreground">
-            {filtered.length > 0 ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, filtered.length)} de ${filtered.length}` : "0 registros"}
+            {filtered.length > 0 ? `${page * perPage + 1}–${Math.min((page + 1) * perPage, filtered.length)} ${t("de")} ${filtered.length}` : `0 ${t("registros")}`}
           </span>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" className="h-6 w-6" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
