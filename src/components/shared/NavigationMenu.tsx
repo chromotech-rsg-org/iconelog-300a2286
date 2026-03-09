@@ -46,7 +46,7 @@ export const NavigationMenu = () => {
   };
 
   const handleAdminClick = () => {
-    if (isAuthenticated && (canViewAdmin("usuarios") || canViewAdmin("perfis") || canViewAdmin("acessoPublico"))) {
+    if (isAuthenticated && canViewAnyConfig()) {
       navigate("/admin");
     } else if (!isAuthenticated) {
       navigate("/auth");
