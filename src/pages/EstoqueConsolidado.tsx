@@ -418,7 +418,7 @@ const EstoqueConsolidado = () => {
           {/* 3. Tempo Parado | SKU - Yellow/Red Pie */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedTempoParado ? 'ring-2 ring-destructive' : ''}`}>
             <CardHeader className="pb-1">
-              <CardTitle className="text-sm font-medium text-foreground">Tempo Parado | SKU</CardTitle>
+              <CardTitle className="text-sm font-medium text-foreground">{t("Tempo Parado")} | SKU</CardTitle>
             </CardHeader>
             <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
