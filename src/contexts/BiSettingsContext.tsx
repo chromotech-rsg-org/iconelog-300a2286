@@ -1,5 +1,6 @@
-import React, { createContext, useContext, ReactNode, useMemo } from "react";
+import React, { createContext, useContext, ReactNode, useMemo, useCallback } from "react";
 import { useBiSettings, BiSetting, type BiSetting as BiSettingType } from "@/hooks/useBiSettings";
+import { useLanguage } from "@/contexts/LanguageContext";
  import defaultLogo from "@/assets/logo.jpg";
  
 interface BiSettingsContextType {
