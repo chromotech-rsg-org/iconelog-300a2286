@@ -267,7 +267,7 @@ export const AnaliticoCityView = ({
                     className="text-muted-foreground text-[10px] px-3 whitespace-nowrap cursor-pointer hover:text-foreground select-none"
                     onClick={() => handleSort("uf")}
                   >
-                    UF <SortIcon col="uf" />
+                    {t("UF")} <SortIcon col="uf" />
                   </TableHead>
                 </TableRow>
               </TableHeader>
