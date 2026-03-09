@@ -176,27 +176,27 @@ export const StockLocationTables = ({
             <Table>
               <TableHeader className="sticky top-0 bg-dashboard-card z-10">
                 <TableRow className="border-dashboard-border">
-                 <TableHead className="text-muted-foreground text-sm w-24">Foto</TableHead>
+                 <TableHead className="text-muted-foreground text-sm w-24">{t("Foto")}</TableHead>
                   <TableHead className="text-muted-foreground text-sm cursor-pointer hover:text-foreground" onClick={() => handleSort("sku")}>
-                    <span className="flex items-center">Código <SortIcon field="sku" /></span>
+                    <span className="flex items-center">{t("Código")} <SortIcon field="sku" /></span>
                   </TableHead>
                   <TableHead className="text-muted-foreground text-sm cursor-pointer hover:text-foreground" onClick={() => handleSort("name")}>
-                    <span className="flex items-center">Nome <SortIcon field="name" /></span>
+                    <span className="flex items-center">{t("Nome")} <SortIcon field="name" /></span>
                   </TableHead>
                   <TableHead className="text-muted-foreground text-sm cursor-pointer hover:text-foreground" onClick={() => handleSort("category")}>
-                    <span className="flex items-center">Fornecedor <SortIcon field="category" /></span>
+                    <span className="flex items-center">{t("Fornecedor")} <SortIcon field="category" /></span>
                   </TableHead>
                   <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("stockQuantity")}>
-                    <span className="flex items-center justify-end">Qtde <SortIcon field="stockQuantity" /></span>
+                    <span className="flex items-center justify-end">{t("Qtde")} <SortIcon field="stockQuantity" /></span>
                   </TableHead>
                   <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("kitsQuantity")}>
                     <span className="flex items-center justify-end">Kits <SortIcon field="kitsQuantity" /></span>
                   </TableHead>
                   <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("lastEntryDate")}>
-                    <span className="flex items-center justify-end">Ult. Ent. Data <SortIcon field="lastEntryDate" /></span>
+                    <span className="flex items-center justify-end">{t("Ult. Ent. Data")} <SortIcon field="lastEntryDate" /></span>
                   </TableHead>
                   <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("lastEntryQty")}>
-                    <span className="flex items-center justify-end">Ult. Ent. Qtd <SortIcon field="lastEntryQty" /></span>
+                    <span className="flex items-center justify-end">{t("Ult. Ent. Qtd")} <SortIcon field="lastEntryQty" /></span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
