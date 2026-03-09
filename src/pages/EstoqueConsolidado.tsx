@@ -21,6 +21,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { DollarSign, Box, Package, X, RefreshCw, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { EstoqueMatrizHoverCard, EstoqueBaseHoverCard } from "@/components/stock/EstoqueProductHoverCard";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // Yellow tones for Matriz charts (swapped)
 const MATRIZ_COLORS = [
@@ -62,6 +63,7 @@ const renderPercentLabel = (props: any) => {
 };
 
 const EstoqueConsolidado = () => {
+  const { t } = useLanguage();
   const { getSettingByPageId } = useBiSettings();
   const setting = getSettingByPageId("estoque-consolidado");
   const codCli = setting?.cod_cli || "";
@@ -252,12 +254,12 @@ const EstoqueConsolidado = () => {
 
   const getRefreshText = () => {
     switch (refreshStage) {
-      case "requesting_mapalogistico": return "Consultando MAPALOGÍSTICO...";
-      case "receiving_mapalogistico": return `Recebendo MAPALOGÍSTICO (${refreshRecordCount} registros)...`;
-      case "requesting_saldobase": return "Consultando SALDOBASE...";
-      case "receiving_saldobase": return `Recebendo SALDOBASE (${refreshRecordCount} registros)...`;
-      case "saving": return "Salvando no cache...";
-      case "done": return "Atualização concluída!";
+      case "requesting_mapalogistico": return t("Consultando MAPALOGÍSTICO...");
+      case "receiving_mapalogistico": return `${t("Recebendo MAPALOGÍSTICO")} (${refreshRecordCount} ${t("registros")})...`;
+      case "requesting_saldobase": return t("Consultando SALDOBASE...");
+      case "receiving_saldobase": return `${t("Recebendo SALDOBASE")} (${refreshRecordCount} ${t("registros")})...`;
+      case "saving": return t("Salvando no cache...");
+      case "done": return t("Atualização concluída!");
       default: return "";
     }
   };
@@ -284,29 +286,29 @@ const EstoqueConsolidado = () => {
 
       {hasActiveFilters && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-border bg-card/50 animate-fade-in">
-          <span className="text-xs text-muted-foreground">Filtros:</span>
+          <span className="text-xs text-muted-foreground">{t("Filtros")}:</span>
           {selectedGrupo && (
             <Badge variant="outline" className="border-primary bg-primary/10 text-primary cursor-pointer" onClick={() => setSelectedGrupo(null)}>
-              Grupo: {selectedGrupo} <X className="ml-1 h-3 w-3" />
+              {t("Grupo:")} {selectedGrupo} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedSKU && (
             <Badge variant="outline" className="border-blue-500 bg-blue-500/10 text-blue-400 cursor-pointer" onClick={() => setSelectedSKU(null)}>
-              SKU: {selectedSKU} <X className="ml-1 h-3 w-3" />
+              {t("SKU:")} {selectedSKU} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedBase && (
             <Badge variant="outline" className="border-orange-500 bg-orange-500/10 text-orange-400 cursor-pointer" onClick={() => setSelectedBase(null)}>
-              Base: {selectedBase} <X className="ml-1 h-3 w-3" />
+              {t("Base:")} {selectedBase} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedTempoParado && (
             <Badge variant="outline" className="border-destructive bg-destructive/10 text-destructive cursor-pointer" onClick={() => setSelectedTempoParado(null)}>
-              Tempo: {selectedTempoParado} <X className="ml-1 h-3 w-3" />
+              {t("Tempo:")} {selectedTempoParado} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
-            Limpar todos
+            {t("Limpar todos")}
           </Button>
         </div>
       )}
@@ -316,23 +318,23 @@ const EstoqueConsolidado = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="bg-card border-yellow-500/60 border-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-yellow-400">ESTOQUE MATRIZ</CardTitle>
+              <CardTitle className="text-lg font-bold text-yellow-400">{t("ESTOQUE MATRIZ")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="text-center">
                   <DollarSign className="h-7 w-7 mx-auto mb-1 text-green-500" />
-                  <p className="text-sm font-medium text-muted-foreground">Valor</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("Valor")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground break-all">{formatCurrency(filteredMatrizTotals.valor)}</p>
                 </div>
                 <div className="text-center">
                   <Box className="h-7 w-7 mx-auto mb-1 text-blue-500" />
-                  <p className="text-sm font-medium text-muted-foreground">M³</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("M³")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground">{filteredMatrizTotals.m3.toFixed(1)}</p>
                 </div>
                 <div className="text-center">
                   <Package className="h-7 w-7 mx-auto mb-1 text-primary" />
-                  <p className="text-sm font-medium text-muted-foreground">Qtde SKUs</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("Qtde SKUs")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground">{formatNumber(filteredMatrizTotals.qtdeSKUs)}</p>
                 </div>
               </div>
@@ -341,23 +343,23 @@ const EstoqueConsolidado = () => {
 
           <Card className="bg-card border-blue-500/60 border-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-blue-400">ESTOQUE BASE</CardTitle>
+              <CardTitle className="text-lg font-bold text-blue-400">{t("ESTOQUE BASE")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="text-center">
                   <DollarSign className="h-7 w-7 mx-auto mb-1 text-green-500" />
-                  <p className="text-sm font-medium text-muted-foreground">Valor</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("Valor")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground break-all">{formatCurrency(filteredBaseTotals.valor)}</p>
                 </div>
                 <div className="text-center">
                   <Box className="h-7 w-7 mx-auto mb-1 text-blue-500" />
-                  <p className="text-sm font-medium text-muted-foreground">M³</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("M³")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground">{filteredBaseTotals.m3.toFixed(1)}</p>
                 </div>
                 <div className="text-center">
                   <Package className="h-7 w-7 mx-auto mb-1 text-primary" />
-                  <p className="text-sm font-medium text-muted-foreground">Qtde SKUs</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("Qtde SKUs")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground">{formatNumber(filteredBaseTotals.qtdeSKUs)}</p>
                 </div>
               </div>
@@ -370,7 +372,7 @@ const EstoqueConsolidado = () => {
           {/* 1. Representação do Estoque | Grupo - Blue Pie */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
             <CardHeader className="pb-1">
-              <CardTitle className="text-sm font-medium text-foreground">Representação do Estoque | Grupo</CardTitle>
+              <CardTitle className="text-sm font-medium text-foreground">{t("Representação do Estoque | Grupo")}</CardTitle>
             </CardHeader>
             <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -393,7 +395,7 @@ const EstoqueConsolidado = () => {
           {/* 2. Valor Estoque | Grupo - Blue Bar */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
             <CardHeader className="pb-1">
-              <CardTitle className="text-sm font-medium text-foreground">Valor Estoque | Grupo</CardTitle>
+              <CardTitle className="text-sm font-medium text-foreground">{t("Valor do Estoque | Grupo")}</CardTitle>
             </CardHeader>
             <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -416,7 +418,7 @@ const EstoqueConsolidado = () => {
           {/* 3. Tempo Parado | SKU - Yellow/Red Pie */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedTempoParado ? 'ring-2 ring-destructive' : ''}`}>
             <CardHeader className="pb-1">
-              <CardTitle className="text-sm font-medium text-foreground">Tempo Parado | SKU</CardTitle>
+              <CardTitle className="text-sm font-medium text-foreground">{t("Tempo Parado")} | SKU</CardTitle>
             </CardHeader>
             <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -444,7 +446,7 @@ const EstoqueConsolidado = () => {
           {/* 4. Tempo Parado Médio | Grupo - Yellow Bar */}
           <Card className={`bg-card border-border cursor-pointer transition-all ${selectedGrupo ? 'ring-2 ring-primary' : ''}`}>
             <CardHeader className="pb-1">
-              <CardTitle className="text-sm font-medium text-foreground">Tempo Parado Médio | Grupo</CardTitle>
+              <CardTitle className="text-sm font-medium text-foreground">{t("Tempo Parado Médio | Grupo")}</CardTitle>
             </CardHeader>
             <CardContent className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">

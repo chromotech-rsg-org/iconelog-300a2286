@@ -29,10 +29,12 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { Clock, X, AlertCircle, InboxIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const COLORS = ['hsl(45, 100%, 50%)', 'hsl(217, 91%, 60%)', 'hsl(25, 95%, 53%)', 'hsl(142, 76%, 36%)', 'hsl(280, 65%, 60%)', 'hsl(340, 82%, 52%)', 'hsl(180, 70%, 45%)'];
 
 const Faturamento = () => {
+  const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   // Default: all months from Jan to current month
@@ -217,34 +219,34 @@ const Faturamento = () => {
       {/* Active Filters Bar */}
       {hasActiveFilters && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-dashboard-border bg-dashboard-card/50 animate-fade-in">
-          <span className="text-xs text-muted-foreground">Filtros:</span>
+          <span className="text-xs text-muted-foreground">{t("Filtros")}:</span>
           {selectedMonth && (
             <Badge variant="outline" className="border-dashboard-accent bg-dashboard-accent/10 text-dashboard-accent cursor-pointer" onClick={() => setSelectedMonth(null)}>
-              Mês: {selectedMonth} <X className="ml-1 h-3 w-3" />
+              {t("Mês:")} {selectedMonth} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedRegional && (
             <Badge variant="outline" className="border-dashboard-blue bg-dashboard-blue/10 text-dashboard-blue cursor-pointer" onClick={() => setSelectedRegional(null)}>
-              Regional: {selectedRegional} <X className="ml-1 h-3 w-3" />
+              {t("Regional:")} {selectedRegional} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedModalidade && (
             <Badge variant="outline" className="border-dashboard-orange bg-dashboard-orange/10 text-dashboard-orange cursor-pointer" onClick={() => setSelectedModalidade(null)}>
-              Modalidade: {selectedModalidade} <X className="ml-1 h-3 w-3" />
+              {t("Modalidade:")} {selectedModalidade} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedTipoServico && (
             <Badge variant="outline" className="border-green-500 bg-green-500/10 text-green-500 cursor-pointer" onClick={() => setSelectedTipoServico(null)}>
-              Tipo: {selectedTipoServico} <X className="ml-1 h-3 w-3" />
+              {t("Tipo:")} {selectedTipoServico} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedCampanha && (
             <Badge variant="outline" className="border-purple-500 bg-purple-500/10 text-purple-500 cursor-pointer" onClick={() => setSelectedCampanha(null)}>
-              Campanha: {selectedCampanha} <X className="ml-1 h-3 w-3" />
+              {t("Campanha:")} {selectedCampanha} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
-            Limpar todos
+            {t("Limpar todos")}
           </Button>
         </div>
       )}
@@ -254,7 +256,7 @@ const Faturamento = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]">
             <div className="flex items-center gap-3 bg-card border border-border rounded-lg px-5 py-3 shadow-md">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              <span className="text-sm font-medium text-foreground">Processando filtros...</span>
+              <span className="text-sm font-medium text-foreground">{t("Processando filtros...")}</span>
             </div>
           </div>
         )}
@@ -262,7 +264,7 @@ const Faturamento = () => {
         {isLoading && !hasData && (
           <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
             <Loader2 className="h-8 w-8 animate-spin text-dashboard-accent mb-4" />
-            <p className="text-muted-foreground">Carregando dados do faturamento...</p>
+            <p className="text-muted-foreground">{t("Carregando dados do faturamento...")}</p>
           </div>
         )}
 
@@ -270,10 +272,10 @@ const Faturamento = () => {
         {!isLoading && cacheLoaded && !hasData && (
           <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
             <InboxIcon className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">Nenhum dado disponível</h3>
-            <p className="text-muted-foreground mb-4">Clique em atualizar para buscar os dados da API.</p>
+            <h3 className="text-lg font-medium text-foreground mb-2">{t("Nenhum dado disponível")}</h3>
+            <p className="text-muted-foreground mb-4">{t("Clique em atualizar para buscar os dados da API.")}</p>
             <Button onClick={handleRefreshData} className="bg-dashboard-accent text-dashboard-dark hover:bg-dashboard-accent/90">
-              Atualizar Dados
+              {t("Atualizar Dados")}
             </Button>
           </div>
         )}
@@ -290,7 +292,7 @@ const Faturamento = () => {
                     {/* Big Faturamento card */}
                     <Card className="bg-card border-primary/60 border-2 flex-1 min-w-0">
                       <CardContent className="p-3 flex flex-col items-center justify-center h-full">
-                        <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Faturamento</span>
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{t("Faturamento")}</span>
                         <p className="text-4xl sm:text-5xl lg:text-6xl font-black text-primary leading-tight mt-1 break-all">{formatCurrency(displayTotals.faturamento)}</p>
                       </CardContent>
                     </Card>
@@ -299,28 +301,28 @@ const Faturamento = () => {
                     <div className="grid grid-cols-2 grid-rows-2 gap-1.5 flex-1 min-w-0">
                       <Card className="bg-card border-border">
                         <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-                          <span className="text-xs text-muted-foreground leading-tight">R$ Armazenagem</span>
+                          <span className="text-xs text-muted-foreground leading-tight">{t("R$ Armazenagem")}</span>
                           <p className="text-lg sm:text-2xl font-bold text-dashboard-blue leading-tight">{formatCurrency(displayTotals.armazenagem)}</p>
                         </CardContent>
                       </Card>
 
                       <Card className="bg-card border-border">
                         <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-                          <span className="text-xs text-muted-foreground leading-tight">% Armazenagem</span>
+                          <span className="text-xs text-muted-foreground leading-tight">{t("% Armazenagem")}</span>
                           <p className="text-lg sm:text-2xl font-bold text-dashboard-blue leading-tight">{displayTotals.percentArmazenagem.toFixed(1)}%</p>
                         </CardContent>
                       </Card>
 
                       <Card className="bg-card border-border">
                         <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-                          <span className="text-xs text-muted-foreground leading-tight">R$ Transporte</span>
+                          <span className="text-xs text-muted-foreground leading-tight">{t("R$ Transporte")}</span>
                           <p className="text-lg sm:text-2xl font-bold text-dashboard-orange leading-tight">{formatCurrency(displayTotals.transporte)}</p>
                         </CardContent>
                       </Card>
 
                       <Card className="bg-card border-border">
                         <CardContent className="p-2 text-center flex flex-col justify-center h-full">
-                          <span className="text-xs text-muted-foreground leading-tight">% Transporte</span>
+                          <span className="text-xs text-muted-foreground leading-tight">{t("% Transporte")}</span>
                           <p className="text-lg sm:text-2xl font-bold text-dashboard-orange leading-tight">{displayTotals.percentTransporte.toFixed(1)}%</p>
                         </CardContent>
                       </Card>
@@ -330,7 +332,7 @@ const Faturamento = () => {
                   {/* Faturamento Mensal line chart */}
                   <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all flex-1 ${selectedMonth ? 'ring-2 ring-dashboard-accent' : ''}`}>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium text-foreground">Faturamento Mensal</CardTitle>
+                      <CardTitle className="text-sm font-medium text-foreground">{t("Faturamento Mensal")}</CardTitle>
                     </CardHeader>
                     <CardContent className="h-[250px]">
                       <ResponsiveContainer width="100%" height="100%">
@@ -367,7 +369,7 @@ const Faturamento = () => {
                 {/* Right: Transporte Mensal — 1/4 width, full height */}
                 <Card className="bg-dashboard-card border-dashboard-border lg:col-span-1 flex flex-col">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Transporte Mensal</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">{t("Transporte Mensal")}</CardTitle>
                   </CardHeader>
                   <CardContent className="flex-1 min-h-[350px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -389,7 +391,7 @@ const Faturamento = () => {
                 {/* Por Regional */}
                 <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedRegional ? 'ring-2 ring-dashboard-blue' : ''}`}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Faturamento | Região</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">{t("Faturamento")} | {t("Regional")}</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[220px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -425,7 +427,7 @@ const Faturamento = () => {
                 {/* Por Modalidade */}
                 <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedModalidade ? 'ring-2 ring-dashboard-orange' : ''}`}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Faturamento | Modalidade</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">{t("Faturamento")} | {t("Modalidade")}</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[220px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -450,7 +452,7 @@ const Faturamento = () => {
                 {/* Por Tipo de Serviço */}
                 <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedTipoServico ? 'ring-2 ring-green-500' : ''}`}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Faturamento | Tipo de Serviço</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">{t("Faturamento")} | {t("Tipo Serviço")}</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[220px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -477,7 +479,7 @@ const Faturamento = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card className={`bg-dashboard-card border-dashboard-border cursor-pointer transition-all ${selectedCampanha ? 'ring-2 ring-purple-500' : ''}`}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Faturamento | Campanha</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">{t("Faturamento")} | {t("Campanha")}</CardTitle>
                   </CardHeader>
                   <CardContent className="max-h-[300px] overflow-y-auto popover-dark-scroll">
                     <div style={{ height: Math.max(220, campanhaData.length * 30) }}>
@@ -504,7 +506,7 @@ const Faturamento = () => {
                 {/* Armazenagem Mensal */}
                 <Card className="bg-dashboard-card border-dashboard-border">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-foreground">Armazenagem Mensal</CardTitle>
+                    <CardTitle className="text-sm font-medium text-foreground">{t("Armazenagem Mensal")}</CardTitle>
                   </CardHeader>
                   <CardContent className="h-[250px]">
                     <ResponsiveContainer width="100%" height="100%">
