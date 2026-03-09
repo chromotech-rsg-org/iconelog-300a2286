@@ -318,23 +318,23 @@ const EstoqueConsolidado = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="bg-card border-yellow-500/60 border-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-yellow-400">ESTOQUE MATRIZ</CardTitle>
+              <CardTitle className="text-lg font-bold text-yellow-400">{t("ESTOQUE MATRIZ")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="text-center">
                   <DollarSign className="h-7 w-7 mx-auto mb-1 text-green-500" />
-                  <p className="text-sm font-medium text-muted-foreground">Valor</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("Valor")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground break-all">{formatCurrency(filteredMatrizTotals.valor)}</p>
                 </div>
                 <div className="text-center">
                   <Box className="h-7 w-7 mx-auto mb-1 text-blue-500" />
-                  <p className="text-sm font-medium text-muted-foreground">M³</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("M³")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground">{filteredMatrizTotals.m3.toFixed(1)}</p>
                 </div>
                 <div className="text-center">
                   <Package className="h-7 w-7 mx-auto mb-1 text-primary" />
-                  <p className="text-sm font-medium text-muted-foreground">Qtde SKUs</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("Qtde SKUs")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground">{formatNumber(filteredMatrizTotals.qtdeSKUs)}</p>
                 </div>
               </div>
@@ -343,23 +343,23 @@ const EstoqueConsolidado = () => {
 
           <Card className="bg-card border-blue-500/60 border-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold text-blue-400">ESTOQUE BASE</CardTitle>
+              <CardTitle className="text-lg font-bold text-blue-400">{t("ESTOQUE BASE")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="text-center">
                   <DollarSign className="h-7 w-7 mx-auto mb-1 text-green-500" />
-                  <p className="text-sm font-medium text-muted-foreground">Valor</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("Valor")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground break-all">{formatCurrency(filteredBaseTotals.valor)}</p>
                 </div>
                 <div className="text-center">
                   <Box className="h-7 w-7 mx-auto mb-1 text-blue-500" />
-                  <p className="text-sm font-medium text-muted-foreground">M³</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("M³")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground">{filteredBaseTotals.m3.toFixed(1)}</p>
                 </div>
                 <div className="text-center">
                   <Package className="h-7 w-7 mx-auto mb-1 text-primary" />
-                  <p className="text-sm font-medium text-muted-foreground">Qtde SKUs</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("Qtde SKUs")}</p>
                   <p className="text-xl sm:text-3xl font-black text-foreground">{formatNumber(filteredBaseTotals.qtdeSKUs)}</p>
                 </div>
               </div>
