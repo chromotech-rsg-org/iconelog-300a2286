@@ -455,7 +455,7 @@ import { CalendarFilter } from "./CalendarFilter";
                     ? "bg-dashboard-accent text-dashboard-dark border-dashboard-accent hover:bg-dashboard-accent/80"
                     : "text-muted-foreground border-dashboard-border hover:text-dashboard-accent hover:bg-dashboard-border"
                 }`}
-                title={selectedMonths.length === 12 ? "Desmarcar todos" : "Selecionar todos"}
+                title={selectedMonths.length === 12 ? t("Desmarcar todos") : t("Selecionar todos")}
               >
                 {selectedMonths.length === 12 ? "✓" : "∀"}
               </Button>
