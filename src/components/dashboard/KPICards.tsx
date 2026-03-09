@@ -15,6 +15,8 @@ export const KPICards = ({
   selectedMetric,
   onMetricClick 
 }: KPICardsProps) => {
+  const { t } = useLanguage();
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {/* Total Expedidas Card */}
