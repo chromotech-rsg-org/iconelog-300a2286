@@ -582,7 +582,7 @@ import { CalendarFilter } from "./CalendarFilter";
             {hasActiveFilters && onClearAllFilters && (
               <Button variant="outline" size="sm" onClick={onClearAllFilters} className="ml-auto border-dashboard-accent/50 text-dashboard-accent hover:bg-dashboard-accent hover:text-dashboard-dark">
                 <RotateCcw className="mr-2 h-4 w-4" />
-                Limpar Filtros
+                {t("Limpar Filtros")}
               </Button>
             )}
           </div>
