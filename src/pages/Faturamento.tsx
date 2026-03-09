@@ -219,34 +219,34 @@ const Faturamento = () => {
       {/* Active Filters Bar */}
       {hasActiveFilters && (
         <div className="flex items-center gap-2 px-6 py-2 border-b border-dashboard-border bg-dashboard-card/50 animate-fade-in">
-          <span className="text-xs text-muted-foreground">Filtros:</span>
+          <span className="text-xs text-muted-foreground">{t("Filtros")}:</span>
           {selectedMonth && (
             <Badge variant="outline" className="border-dashboard-accent bg-dashboard-accent/10 text-dashboard-accent cursor-pointer" onClick={() => setSelectedMonth(null)}>
-              Mês: {selectedMonth} <X className="ml-1 h-3 w-3" />
+              {t("Mês:")} {selectedMonth} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedRegional && (
             <Badge variant="outline" className="border-dashboard-blue bg-dashboard-blue/10 text-dashboard-blue cursor-pointer" onClick={() => setSelectedRegional(null)}>
-              Regional: {selectedRegional} <X className="ml-1 h-3 w-3" />
+              {t("Regional:")} {selectedRegional} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedModalidade && (
             <Badge variant="outline" className="border-dashboard-orange bg-dashboard-orange/10 text-dashboard-orange cursor-pointer" onClick={() => setSelectedModalidade(null)}>
-              Modalidade: {selectedModalidade} <X className="ml-1 h-3 w-3" />
+              {t("Modalidade:")} {selectedModalidade} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedTipoServico && (
             <Badge variant="outline" className="border-green-500 bg-green-500/10 text-green-500 cursor-pointer" onClick={() => setSelectedTipoServico(null)}>
-              Tipo: {selectedTipoServico} <X className="ml-1 h-3 w-3" />
+              {t("Tipo:")} {selectedTipoServico} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           {selectedCampanha && (
             <Badge variant="outline" className="border-purple-500 bg-purple-500/10 text-purple-500 cursor-pointer" onClick={() => setSelectedCampanha(null)}>
-              Campanha: {selectedCampanha} <X className="ml-1 h-3 w-3" />
+              {t("Campanha:")} {selectedCampanha} <X className="ml-1 h-3 w-3" />
             </Badge>
           )}
           <Button variant="ghost" size="sm" onClick={clearAllFilters} className="ml-2 h-6 text-xs text-muted-foreground hover:text-foreground">
-            Limpar todos
+            {t("Limpar todos")}
           </Button>
         </div>
       )}
