@@ -518,7 +518,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       let tipo: "entrega" | "reposicao" | null = null;
       if (campanhaNorm.includes("REPOSICAO") || campanhaNorm.includes("REPOSITIVACAO")) {
         tipo = "reposicao";
-      } else if (campanhaNorm.includes("KIT RESTAURANTE") || campanhaNorm.includes("POSITIVACAO")) {
+      } else if (campanhaNorm.includes("KIT RESTAURANTE") || campanhaNorm.includes("POSITIVACAO") || campanhaNorm.includes("PIZZA KIT")) {
         tipo = "entrega";
       }
       if (!tipo) return;
