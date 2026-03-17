@@ -36,18 +36,10 @@ const App = () => {
            <BrowserRouter>
              <Routes>
                 <Route path="/" element={<SmartRedirect />} />
-                <Route path="/minutas" element={<ProtectedRoute pageId="minutas"><Index /></ProtectedRoute>} />
-                 <Route path="/estoque" element={<ProtectedRoute pageId="estoque"><Estoque /></ProtectedRoute>} />
-                 <Route path="/entregas" element={<ProtectedRoute pageId="entregas"><Entregas /></ProtectedRoute>} />
-                 <Route path="/tracking" element={<ProtectedRoute pageId="tracking"><Tracking /></ProtectedRoute>} />
-                 <Route path="/estoque-consolidado" element={<ProtectedRoute pageId="estoque-consolidado"><EstoqueConsolidado /></ProtectedRoute>} />
-                 <Route path="/faturamento" element={<ProtectedRoute pageId="faturamento"><Faturamento /></ProtectedRoute>} />
-                 <Route path="/analitico" element={<ProtectedRoute pageId="analitico"><Analitico /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute pageId="admin_panel" requireAuth={true}><Admin /></ProtectedRoute>} />
-                
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/no-access" element={<NoAccess />} />
-                {/* Dynamic slug-based routing - catches custom slugs like /b-side-entregas */}
+                {/* All BI pages handled dynamically via slug */}
                 <Route path="/:slug" element={<DynamicBiRoute />} />
                 <Route path="*" element={<NotFound />} />
              </Routes>
