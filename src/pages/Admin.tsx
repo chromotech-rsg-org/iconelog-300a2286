@@ -98,6 +98,7 @@ const Admin = () => {
       { id: "produtos_estoque", permissionKey: "produtosEstoque" },
       { id: "configurar_bi", permissionKey: "configurarBi" },
       { id: "carga_historica", permissionKey: "configurarBi" },
+      { id: "logs_atualizacao", permissionKey: "configurarBi" },
       { id: "integracao", permissionKey: "integracao" },
       { id: "testes_api", permissionKey: "testesApi" },
       { id: "logs_api", permissionKey: "logsApi" },
