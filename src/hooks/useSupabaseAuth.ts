@@ -44,7 +44,7 @@ export interface PainelControlePermission {
 
 export type AdminSectionType = 
   | "usuarios" | "perfis" | "acessoPublico" | "painelControle" | "cadastroCidades"
-  | "configurarBi" | "empresasClientes" | "integracao" | "produtosEstoque" | "testesApi" | "logsApi" | "dadosApi" | "tradutor";
+  | "configurarBi" | "empresasClientes" | "integracao" | "produtosEstoque" | "testesApi" | "logsApi" | "dadosApi" | "tradutor" | "logsAtualizacao";
 
 // Maps camelCase keys to snake_case DB values
 const adminSectionToDbType: Record<string, string> = {
