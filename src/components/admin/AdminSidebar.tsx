@@ -40,6 +40,7 @@ const configItems: MenuItem[] = [
   { id: "logs_api", label: "Logs", icon: FileText, permissionKey: "logsApi" },
   { id: "dados_api", label: "Dados das APIs", icon: Database, permissionKey: "dadosApi" },
   { id: "traducoes", label: "Traduções / Idiomas", icon: Globe, permissionKey: "tradutor" },
+  { id: "logs_atualizacao", label: "Logs de Atualização", icon: Clock, permissionKey: "configurarBi" },
 ];
 
 export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarProps) => {
