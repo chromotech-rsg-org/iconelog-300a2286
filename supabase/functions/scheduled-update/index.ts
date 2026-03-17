@@ -48,7 +48,6 @@ Deno.serve(async (req) => {
         const elapsed = (now.getTime() - lastExec) / 60000;
         return elapsed >= s.interval_minutes;
       }
-      // Time-based: match HH:MM
       const schedTime = (s.update_time || "").substring(0, 5);
       return schedTime === currentTime;
     });
@@ -63,14 +62,21 @@ Deno.serve(async (req) => {
     const matchingPageIds = [...new Set(matchingSchedules.map((s: any) => s.page_id))];
     console.log(`Found ${matchingSchedules.length} schedules for pages: ${matchingPageIds.join(", ")}`);
 
-    // ── Collect all unique API+cod_cli combinations across all matching pages ──
-    // Get BI settings for all matching pages
+    // ── IMPORTANT: Update last_executed_at IMMEDIATELY to prevent re-triggering on timeout ──
+    const scheduleIds = matchingSchedules.map((s: any) => s.id);
+    if (scheduleIds.length > 0) {
+      await supabase.from("bi_scheduled_updates")
+        .update({ last_executed_at: new Date().toISOString() } as any)
+        .in("id", scheduleIds);
+      console.log("Updated last_executed_at for schedules early");
+    }
+
+    // Get BI settings and API links
     const { data: biSettings } = await supabase
       .from("bi_settings")
       .select("page_id, cod_cli")
       .in("page_id", matchingPageIds);
 
-    // Get all API links for matching pages
     const { data: allApiLinks } = await supabase
       .from("bi_api_integrations")
       .select("bi_page_id, api_integration_id")
@@ -83,7 +89,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get unique integration IDs
     const uniqueIntegrationIds = [...new Set(allApiLinks.map((l) => l.api_integration_id))];
     const { data: integrations } = await supabase
       .from("api_integrations")
@@ -109,13 +114,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Deduplicated fetch: one call per unique (API, cod_cli) pair ──
+    // Date range setup
     const fmt = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const currentYear = brtTime.getFullYear();
     const currentMonth = brtTime.getMonth() + 1;
 
-    // Current year chunks
     const monthChunks: { data_inicial: string; data_final: string }[] = [];
     for (let m = 1; m <= currentMonth; m++) {
       const firstDay = new Date(currentYear, m - 1, 1);
@@ -126,23 +130,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check existing cache freshness to avoid re-fetching recently updated APIs
+    // Check existing cache freshness
     const allCacheKeys = integrations.flatMap(i => codClis.map(c => `${i.name.toLowerCase()}_${c}`));
-    const allKeysToCheck = [...allCacheKeys];
-    
     const { data: existingCache } = await supabase
       .from("bi_data_cache")
       .select("cache_key, cached_at")
       .eq("page_id", "_shared")
-      .in("cache_key", allKeysToCheck);
+      .in("cache_key", allCacheKeys);
+
     const cacheAgeMap = new Map<string, number>();
     (existingCache || []).forEach((c: any) => {
       const ageMinutes = (now.getTime() - new Date(c.cached_at).getTime()) / 60000;
       cacheAgeMap.set(c.cache_key, ageMinutes);
     });
 
-    // Minimum freshness threshold: skip if updated less than 30 min ago
     const FRESHNESS_THRESHOLD_MINUTES = 30;
+    const API_TIMEOUT_MS = 25000; // 25s timeout per API call
 
     const results: any[] = [];
     const fetchedKeys = new Set<string>();
@@ -158,7 +161,6 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Skip if cache is still fresh
         const cacheAge = cacheAgeMap.get(cacheKey);
         if (cacheAge !== undefined && cacheAge < FRESHNESS_THRESHOLD_MINUTES) {
           console.log(`Skipping fresh cache: ${cacheKey} (${Math.round(cacheAge)}min old)`);
@@ -196,45 +198,72 @@ Deno.serve(async (req) => {
           if (apiNeedsDateRange) {
             for (const chunk of monthChunks) {
               const body: Record<string, any> = { ...defaultBody, cod_cli: codCli, ...chunk };
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+              try {
+                const apiResponse = await fetch(integration.base_url, {
+                  method: "POST",
+                  headers,
+                  body: JSON.stringify(body),
+                  signal: controller.signal,
+                });
+                clearTimeout(timeoutId);
+                const responseBody = await apiResponse.json().catch(() => null);
+                const dataArray = extractDataArray(responseBody);
+                const tagged = dataArray.map((r: any) => ({
+                  ...r,
+                  _fetch_month: parseInt(chunk.data_inicial.substring(5, 7), 10),
+                  _fetch_year: parseInt(chunk.data_inicial.substring(0, 4), 10),
+                }));
+                allDataArray = allDataArray.concat(tagged);
+                console.log(`  Chunk ${chunk.data_inicial}: ${dataArray.length} records`);
+              } catch (chunkErr: any) {
+                clearTimeout(timeoutId);
+                if (chunkErr.name === "AbortError") {
+                  console.warn(`  Chunk ${chunk.data_inicial} timed out after ${API_TIMEOUT_MS}ms`);
+                } else {
+                  console.warn(`  Chunk ${chunk.data_inicial} error: ${chunkErr.message}`);
+                }
+              }
+            }
+          } else {
+            const body: Record<string, any> = { ...defaultBody, cod_cli: codCli };
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+            try {
               const apiResponse = await fetch(integration.base_url, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(body),
+                signal: controller.signal,
               });
+              clearTimeout(timeoutId);
               const responseBody = await apiResponse.json().catch(() => null);
-              const dataArray = extractDataArray(responseBody);
-              // Tag each record with fetch metadata
-              const tagged = dataArray.map((r: any) => ({
-                ...r,
-                _fetch_month: parseInt(chunk.data_inicial.substring(5, 7), 10),
-                _fetch_year: parseInt(chunk.data_inicial.substring(0, 4), 10),
-              }));
-              allDataArray = allDataArray.concat(tagged);
-              console.log(`  Chunk ${chunk.data_inicial}: ${dataArray.length} records`);
+              allDataArray = extractDataArray(responseBody);
+            } catch (fetchErr: any) {
+              clearTimeout(timeoutId);
+              if (fetchErr.name === "AbortError") {
+                console.warn(`API ${integration.name} timed out after ${API_TIMEOUT_MS}ms`);
+              } else {
+                throw fetchErr;
+              }
             }
-          } else {
-            const body: Record<string, any> = { ...defaultBody, cod_cli: codCli };
-            const apiResponse = await fetch(integration.base_url, {
-              method: "POST",
-              headers,
-              body: JSON.stringify(body),
-            });
-            const responseBody = await apiResponse.json().catch(() => null);
-            allDataArray = extractDataArray(responseBody);
           }
 
           const execTime = Date.now() - startTime;
 
-          // Save to shared cache
-          await supabase.from("bi_data_cache").upsert(
-            {
-              page_id: "_shared",
-              cache_key: cacheKey,
-              data: allDataArray as any,
-              cached_at: new Date().toISOString(),
-            },
-            { onConflict: "page_id,cache_key" }
-          );
+          // Save to shared cache (even partial data is better than stale data)
+          if (allDataArray.length > 0) {
+            await supabase.from("bi_data_cache").upsert(
+              {
+                page_id: "_shared",
+                cache_key: cacheKey,
+                data: allDataArray as any,
+                cached_at: new Date().toISOString(),
+              },
+              { onConflict: "page_id,cache_key" }
+            );
+          }
 
           console.log(`API ${integration.name} (${codCli}): ${allDataArray.length} records, ${execTime}ms`);
           results.push({
@@ -256,22 +285,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2025 data fetch temporarily disabled
-
     // Update last_update_at for all matched pages
     for (const pageId of matchingPageIds) {
       await supabase.from("bi_last_update").upsert(
         { page_id: pageId, last_update_at: new Date().toISOString() },
         { onConflict: "page_id" }
       );
-    }
-
-    // Update last_executed_at for all matched schedules
-    const scheduleIds = matchingSchedules.map((s: any) => s.id);
-    if (scheduleIds.length > 0) {
-      await supabase.from("bi_scheduled_updates")
-        .update({ last_executed_at: new Date().toISOString() } as any)
-        .in("id", scheduleIds);
     }
 
     return new Response(JSON.stringify({ success: true, results, time: currentTime }), {
