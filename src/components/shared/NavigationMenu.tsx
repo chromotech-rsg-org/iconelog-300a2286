@@ -13,16 +13,6 @@ import {
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const pathMap: Record<string, string> = {
-  minutas: "/minutas",
-  entregas: "/entregas",
-  estoque: "/estoque",
-  tracking: "/tracking",
-  "estoque-consolidado": "/estoque-consolidado",
-  faturamento: "/faturamento",
-  analitico: "/analitico",
-};
-
 export const NavigationMenu = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,10 +20,10 @@ export const NavigationMenu = () => {
   const { getPageTitle, getOrderedBiSettings } = useBiSettingsContext();
   const { t } = useLanguage();
 
-  // Get ordered navigation items from settings
+  // Get ordered navigation items from settings, using slug when available
   const navigationItems = getOrderedBiSettings().map(setting => ({
     id: setting.page_id,
-    path: pathMap[setting.page_id] || `/${setting.page_id}`,
+    path: `/${setting.slug || setting.page_id}`,
   }));
 
   const handleNavClick = (item: { id: string; path: string }) => {
