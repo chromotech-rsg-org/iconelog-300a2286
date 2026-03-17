@@ -116,7 +116,7 @@ const Admin = () => {
     // Map section id to permission key
     ({ usuarios: "usuarios", perfis: "perfis", publico: "acessoPublico", regionais: "cadastroCidades",
        empresas_clientes: "empresasClientes", produtos_estoque: "produtosEstoque", configurar_bi: "configurarBi",
-       carga_historica: "configurarBi", integracao: "integracao", testes_api: "testesApi",
+       carga_historica: "configurarBi", logs_atualizacao: "configurarBi", integracao: "integracao", testes_api: "testesApi",
        logs_api: "logsApi", dados_api: "dadosApi", traducoes: "tradutor" } as Record<string, string>)[tabParam] as any
   ) ? tabParam : getFirstAccessibleSection();
   const [activeSection, setActiveSection] = useState<AdminSection>(initialSection);
