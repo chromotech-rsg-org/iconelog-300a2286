@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Shield, Globe, MapPin, Settings, LayoutGrid, Building2, Link, FlaskConical, FileText, ChevronDown, ChevronRight, Package, Database, Menu, X, History } from "lucide-react";
+import { Users, Shield, Globe, MapPin, Settings, LayoutGrid, Building2, Link, FlaskConical, FileText, ChevronDown, ChevronRight, Package, Database, Menu, X, History, Clock } from "lucide-react";
 import { useAuth, AdminSectionType } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 export type AdminSection = 
   | "usuarios" | "perfis" | "publico" | "regionais"
-  | "configurar_bi" | "empresas_clientes" | "integracao" | "testes_api" | "logs_api" | "produtos_estoque" | "dados_api" | "carga_historica" | "traducoes";
+  | "configurar_bi" | "empresas_clientes" | "integracao" | "testes_api" | "logs_api" | "produtos_estoque" | "dados_api" | "carga_historica" | "traducoes" | "logs_atualizacao";
 
 interface AdminSidebarProps {
   activeSection: AdminSection;
@@ -40,6 +40,7 @@ const configItems: MenuItem[] = [
   { id: "logs_api", label: "Logs", icon: FileText, permissionKey: "logsApi" },
   { id: "dados_api", label: "Dados das APIs", icon: Database, permissionKey: "dadosApi" },
   { id: "traducoes", label: "Traduções / Idiomas", icon: Globe, permissionKey: "tradutor" },
+  { id: "logs_atualizacao", label: "Logs de Atualização", icon: Clock, permissionKey: "configurarBi" },
 ];
 
 export const AdminSidebar = ({ activeSection, onSectionChange }: AdminSidebarProps) => {

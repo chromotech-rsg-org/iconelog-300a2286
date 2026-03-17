@@ -33,6 +33,7 @@ const StockProductsManager = lazy(() => import("@/components/admin/StockProducts
 const ApiDataViewer = lazy(() => import("@/components/admin/ApiDataViewer"));
 const HistoricalDataLoader = lazy(() => import("@/components/admin/HistoricalDataLoader"));
 const TranslationsManager = lazy(() => import("@/components/admin/TranslationsManager"));
+const ScheduledUpdateLogs = lazy(() => import("@/components/admin/ScheduledUpdateLogs"));
 
 interface PagePermissionForm {
   page_id: string;
@@ -96,6 +97,7 @@ const Admin = () => {
       { id: "produtos_estoque", permissionKey: "produtosEstoque" },
       { id: "configurar_bi", permissionKey: "configurarBi" },
       { id: "carga_historica", permissionKey: "configurarBi" },
+      { id: "logs_atualizacao", permissionKey: "configurarBi" },
       { id: "integracao", permissionKey: "integracao" },
       { id: "testes_api", permissionKey: "testesApi" },
       { id: "logs_api", permissionKey: "logsApi" },
@@ -113,7 +115,7 @@ const Admin = () => {
     // Map section id to permission key
     ({ usuarios: "usuarios", perfis: "perfis", publico: "acessoPublico", regionais: "cadastroCidades",
        empresas_clientes: "empresasClientes", produtos_estoque: "produtosEstoque", configurar_bi: "configurarBi",
-       carga_historica: "configurarBi", integracao: "integracao", testes_api: "testesApi",
+       carga_historica: "configurarBi", logs_atualizacao: "configurarBi", integracao: "integracao", testes_api: "testesApi",
        logs_api: "logsApi", dados_api: "dadosApi", traducoes: "tradutor" } as Record<string, string>)[tabParam] as any
   ) ? tabParam : getFirstAccessibleSection();
   const [activeSection, setActiveSection] = useState<AdminSection>(initialSection);
@@ -470,6 +472,8 @@ const Admin = () => {
         return canViewAdmin("configurarBi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><HistoricalDataLoader /></Suspense> : null;
       case "traducoes":
         return canViewAdmin("tradutor") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><TranslationsManager /></Suspense> : null;
+      case "logs_atualizacao":
+        return canViewAdmin("configurarBi") ? <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-dashboard-accent mx-auto mt-8" />}><ScheduledUpdateLogs /></Suspense> : null;
       default:
         return null;
     }
