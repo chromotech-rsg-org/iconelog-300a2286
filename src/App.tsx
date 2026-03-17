@@ -9,17 +9,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SmartRedirect } from "@/components/auth/SmartRedirect";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import DynamicBiRoute from "@/components/auth/DynamicBiRoute";
-import Index from "./pages/Index";
-import Estoque from "./pages/Estoque";
-import Entregas from "./pages/Entregas";
-import Tracking from "./pages/Tracking";
-import EstoqueConsolidado from "./pages/EstoqueConsolidado";
-import Faturamento from "./pages/Faturamento";
-import Analitico from "./pages/Analitico";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NoAccess from "./pages/NoAccess";
- import NotFound from "./pages/NotFound";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
   defaultOptions: {
