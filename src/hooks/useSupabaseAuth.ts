@@ -61,6 +61,7 @@ const adminSectionToDbType: Record<string, string> = {
   logsApi: "logs_api",
   dadosApi: "dados_api",
   tradutor: "tradutor",
+  logsAtualizacao: "logs_atualizacao",
 };
 
 const dbTypeToSection: Record<string, string> = Object.fromEntries(
