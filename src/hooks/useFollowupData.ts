@@ -515,6 +515,10 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
 
       if (tipoServico.includes("reentrega")) return;
 
+      // Exclude specific "BASICO" campaigns from B-Side Entregas
+      const EXCLUDED_CAMPAIGNS = ["99FOOD_BASICO_POSITIVACAO KIT", "99FOOD_BASICO_KIT RESTAURANTE", "99FOOD_BASICO_REPOSICAO KIT"];
+      if (EXCLUDED_CAMPAIGNS.some(exc => campanhaNorm.includes(exc))) return;
+
       let tipo: "entrega" | "reposicao" | null = null;
       if (campanhaNorm.includes("REPOSICAO") || campanhaNorm.includes("REPOSITIVACAO")) {
         tipo = "reposicao";
