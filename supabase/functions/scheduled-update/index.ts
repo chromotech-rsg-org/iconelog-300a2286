@@ -293,16 +293,15 @@ Deno.serve(async (req) => {
     const totalTime = Date.now() - globalStart;
     console.log(`Completed in ${totalTime}ms, ${results.length} APIs processed`);
 
-    // Log execution result
-    await supabase.from("scheduled_update_logs").insert({
-      executed_at: new Date().toISOString(),
-      schedule_ids: scheduleIds,
-      page_ids: matchingPageIds,
-      status: results.some((r: any) => r.status === "error") ? "partial" : "success",
-      total_ms: totalTime,
-      apis_processed: results.length,
-      results: results as any,
-    } as any);
+    // Update the preliminary log with final results
+    if (logId) {
+      await supabase.from("scheduled_update_logs").update({
+        status: results.some((r: any) => r.status === "error") ? "partial" : "success",
+        total_ms: totalTime,
+        apis_processed: results.length,
+        results: results as any,
+      } as any).eq("id", logId);
+    }
 
     return new Response(JSON.stringify({ success: true, results, time: currentTime, total_ms: totalTime }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
