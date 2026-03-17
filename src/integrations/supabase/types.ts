@@ -521,6 +521,45 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_update_logs: {
+        Row: {
+          apis_processed: number | null
+          created_at: string
+          error_message: string | null
+          executed_at: string
+          id: string
+          page_ids: string[] | null
+          results: Json | null
+          schedule_ids: string[] | null
+          status: string
+          total_ms: number | null
+        }
+        Insert: {
+          apis_processed?: number | null
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          page_ids?: string[] | null
+          results?: Json | null
+          schedule_ids?: string[] | null
+          status?: string
+          total_ms?: number | null
+        }
+        Update: {
+          apis_processed?: number | null
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          page_ids?: string[] | null
+          results?: Json | null
+          schedule_ids?: string[] | null
+          status?: string
+          total_ms?: number | null
+        }
+        Relationships: []
+      }
       stock_kit_config: {
         Row: {
           created_at: string
