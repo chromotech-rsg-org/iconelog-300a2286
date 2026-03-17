@@ -170,7 +170,7 @@ export const AnaliticoCityView = ({
   return (
     <div className="space-y-4">
       {/* KPI summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card className="bg-card border-border">
           <CardContent className="pt-4 pb-3 px-4">
             <div className="flex items-center gap-2">
@@ -187,14 +187,6 @@ export const AnaliticoCityView = ({
             <div>
               <p className="text-xs text-muted-foreground">{t("UFs envolvidas")}</p>
               <p className="text-2xl font-bold text-foreground">{byUF.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardContent className="pt-4 pb-3 px-4">
-            <div>
-              <p className="text-xs text-muted-foreground">{t("Ocorrências sem regional")}</p>
-              <p className="text-2xl font-bold text-foreground">{totalOccurrences.toLocaleString("pt-BR")}</p>
             </div>
           </CardContent>
         </Card>
