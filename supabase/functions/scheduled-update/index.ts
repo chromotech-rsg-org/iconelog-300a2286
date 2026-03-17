@@ -63,10 +63,22 @@ Deno.serve(async (req) => {
     }
 
     const matchingPageIds = [...new Set(matchingSchedules.map((s: any) => s.page_id))];
+    const scheduleIds = matchingSchedules.map((s: any) => s.id);
     console.log(`Found ${matchingSchedules.length} schedules for pages: ${matchingPageIds.join(", ")}`);
 
+    // ── Insert preliminary log with status "running" ──
+    const { data: logRow } = await supabase.from("scheduled_update_logs").insert({
+      executed_at: new Date().toISOString(),
+      schedule_ids: scheduleIds,
+      page_ids: matchingPageIds,
+      status: "running",
+      total_ms: 0,
+      apis_processed: 0,
+      results: [] as any,
+    } as any).select("id").single();
+    const logId = logRow?.id;
+
     // ── Update last_executed_at IMMEDIATELY to prevent re-triggering on timeout ──
-    const scheduleIds = matchingSchedules.map((s: any) => s.id);
     if (scheduleIds.length > 0) {
       await supabase.from("bi_scheduled_updates")
         .update({ last_executed_at: new Date().toISOString() } as any)
@@ -281,16 +293,15 @@ Deno.serve(async (req) => {
     const totalTime = Date.now() - globalStart;
     console.log(`Completed in ${totalTime}ms, ${results.length} APIs processed`);
 
-    // Log execution result
-    await supabase.from("scheduled_update_logs").insert({
-      executed_at: new Date().toISOString(),
-      schedule_ids: scheduleIds,
-      page_ids: matchingPageIds,
-      status: results.some((r: any) => r.status === "error") ? "partial" : "success",
-      total_ms: totalTime,
-      apis_processed: results.length,
-      results: results as any,
-    } as any);
+    // Update the preliminary log with final results
+    if (logId) {
+      await supabase.from("scheduled_update_logs").update({
+        status: results.some((r: any) => r.status === "error") ? "partial" : "success",
+        total_ms: totalTime,
+        apis_processed: results.length,
+        results: results as any,
+      } as any).eq("id", logId);
+    }
 
     return new Response(JSON.stringify({ success: true, results, time: currentTime, total_ms: totalTime }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -67,6 +67,7 @@ const ALL_ADMIN_TYPES = [
   { key: "logs_api", label: "Logs", hasCrud: false },
   { key: "dados_api", label: "Dados das APIs", hasCrud: false },
   { key: "tradutor", label: "Tradutor / Idiomas", hasCrud: true },
+  { key: "logs_atualizacao", label: "Logs de Atualização", hasCrud: false },
 ];
 
 const Admin = () => {

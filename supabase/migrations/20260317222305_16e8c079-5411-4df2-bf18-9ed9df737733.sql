@@ -1,0 +1,2 @@
+ALTER TABLE admin_permissions DROP CONSTRAINT admin_permissions_permission_type_check;
+ALTER TABLE admin_permissions ADD CONSTRAINT admin_permissions_permission_type_check CHECK (permission_type = ANY (ARRAY['usuarios','perfis','acesso_publico','painel_controle','cadastro_cidades','configurar_bi','empresas_clientes','integracao','produtos_estoque','testes_api','logs_api','dados_api','tradutor','logs_atualizacao']));
