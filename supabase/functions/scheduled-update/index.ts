@@ -281,11 +281,35 @@ Deno.serve(async (req) => {
     const totalTime = Date.now() - globalStart;
     console.log(`Completed in ${totalTime}ms, ${results.length} APIs processed`);
 
+    // Log execution result
+    await supabase.from("scheduled_update_logs").insert({
+      executed_at: new Date().toISOString(),
+      schedule_ids: scheduleIds,
+      page_ids: matchingPageIds,
+      status: results.some((r: any) => r.status === "error") ? "partial" : "success",
+      total_ms: totalTime,
+      apis_processed: results.length,
+      results: results as any,
+    } as any);
+
     return new Response(JSON.stringify({ success: true, results, time: currentTime, total_ms: totalTime }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
     console.error("Scheduled update error:", error.message);
+
+    // Log error
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const sb = createClient(supabaseUrl, serviceRoleKey);
+      await sb.from("scheduled_update_logs").insert({
+        status: "error",
+        total_ms: Date.now() - globalStart,
+        error_message: error.message,
+      } as any);
+    } catch (_) { /* ignore logging errors */ }
+
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
