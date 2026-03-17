@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Shield, Globe, MapPin, Settings, LayoutGrid, Building2, Link, FlaskConical, FileText, ChevronDown, ChevronRight, Package, Database, Menu, X, History } from "lucide-react";
+import { Users, Shield, Globe, MapPin, Settings, LayoutGrid, Building2, Link, FlaskConical, FileText, ChevronDown, ChevronRight, Package, Database, Menu, X, History, Clock } from "lucide-react";
 import { useAuth, AdminSectionType } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
