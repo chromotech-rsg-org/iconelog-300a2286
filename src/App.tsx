@@ -9,17 +9,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SmartRedirect } from "@/components/auth/SmartRedirect";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import DynamicBiRoute from "@/components/auth/DynamicBiRoute";
-import Index from "./pages/Index";
-import Estoque from "./pages/Estoque";
-import Entregas from "./pages/Entregas";
-import Tracking from "./pages/Tracking";
-import EstoqueConsolidado from "./pages/EstoqueConsolidado";
-import Faturamento from "./pages/Faturamento";
-import Analitico from "./pages/Analitico";
 import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NoAccess from "./pages/NoAccess";
- import NotFound from "./pages/NotFound";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,18 +36,10 @@ const App = () => {
            <BrowserRouter>
              <Routes>
                 <Route path="/" element={<SmartRedirect />} />
-                <Route path="/minutas" element={<ProtectedRoute pageId="minutas"><Index /></ProtectedRoute>} />
-                 <Route path="/estoque" element={<ProtectedRoute pageId="estoque"><Estoque /></ProtectedRoute>} />
-                 <Route path="/entregas" element={<ProtectedRoute pageId="entregas"><Entregas /></ProtectedRoute>} />
-                 <Route path="/tracking" element={<ProtectedRoute pageId="tracking"><Tracking /></ProtectedRoute>} />
-                 <Route path="/estoque-consolidado" element={<ProtectedRoute pageId="estoque-consolidado"><EstoqueConsolidado /></ProtectedRoute>} />
-                 <Route path="/faturamento" element={<ProtectedRoute pageId="faturamento"><Faturamento /></ProtectedRoute>} />
-                 <Route path="/analitico" element={<ProtectedRoute pageId="analitico"><Analitico /></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute pageId="admin_panel" requireAuth={true}><Admin /></ProtectedRoute>} />
-                
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/no-access" element={<NoAccess />} />
-                {/* Dynamic slug-based routing - catches custom slugs like /b-side-entregas */}
+                {/* All BI pages handled dynamically via slug */}
                 <Route path="/:slug" element={<DynamicBiRoute />} />
                 <Route path="*" element={<NotFound />} />
              </Routes>
