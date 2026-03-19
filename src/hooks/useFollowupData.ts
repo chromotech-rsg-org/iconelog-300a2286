@@ -350,6 +350,17 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     setRefreshStage("done");
     setRefreshRecordCount(0);
 
+    // Log manual refresh
+    const refreshApis = ["FOLLOWUP"];
+    const refreshResults: Array<{ api: string; records: number; time_ms: number }> = [
+      { api: "FOLLOWUP", records: allFollowup.length, time_ms: Date.now() - refreshStart },
+    ];
+    if (pageId === "minutas" || pageId === "tracking") {
+      refreshApis.push("PRODUTOSDISTRIBUIDOS");
+      refreshResults.push({ api: "PRODUTOSDISTRIBUIDOS", records: allProdutos.length, time_ms: Date.now() - refreshStart });
+    }
+    logManualRefresh({ pageId, apis: refreshApis, totalMs: Date.now() - refreshStart, results: refreshResults });
+
     // 2025 background fetch disabled temporarily
 
     if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
@@ -357,7 +368,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       setRefreshStage(null);
       setRefreshing(false);
     }, 3000);
-  }, [codCli, callMainApi, saveLastUpdate, saveToCache, pageId]);
+  }, [codCli, callMainApi, saveLastUpdate, saveToCache, pageId, logManualRefresh]);
 
   const getMinutasData = useCallback((months: number[], years: number[], dateRange?: { from?: Date; to?: Date }) => {
     const filtered = dateRange?.from
