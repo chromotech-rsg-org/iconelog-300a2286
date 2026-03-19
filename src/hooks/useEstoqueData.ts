@@ -131,10 +131,13 @@ export const useEstoqueData = (codCli: string) => {
     }
   }, []);
 
+  const { logManualRefresh } = useManualRefreshLog();
+
   // Manual refresh - calls MAPALOGISTICO API and saves to cache
   const refreshData = useCallback(async () => {
     if (!codCli || refreshing) return;
     setRefreshing(true);
+    const refreshStart = Date.now();
 
     // Fetch MAPALOGISTICO
     setRefreshStage("requesting_mapalogistico");
@@ -160,12 +163,21 @@ export const useEstoqueData = (codCli: string) => {
     setRefreshStage("done");
     setRefreshRecordCount(0);
 
+    // Log manual refresh
+    const totalMs = Date.now() - refreshStart;
+    logManualRefresh({
+      pageId: "estoque",
+      apis: ["MAPALOGISTICO"],
+      totalMs,
+      results: [{ api: "MAPALOGISTICO", records: mapaResult?.length || 0, time_ms: totalMs }],
+    });
+
     if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
     doneTimerRef.current = setTimeout(() => {
       setRefreshStage(null);
       setRefreshing(false);
     }, 3000);
-  }, [codCli, refreshing, callMainApi, saveToCache, saveLastUpdate]);
+  }, [codCli, refreshing, callMainApi, saveToCache, saveLastUpdate, logManualRefresh]);
 
   // Process stock items from MAPALOGISTICO: filter by whitelist, calculate kits, hide zero stock
   const stockItems = useMemo((): StockItem[] => {
