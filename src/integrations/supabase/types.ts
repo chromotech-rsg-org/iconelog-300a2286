@@ -255,6 +255,63 @@ export type Database = {
         }
         Relationships: []
       }
+      bi_scheduled_update_queue: {
+        Row: {
+          api_integration_id: string
+          attempts: number
+          available_at: string
+          cod_cli: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          execution_ms: number | null
+          id: string
+          page_id: string
+          queue_key: string
+          records_processed: number
+          schedule_id: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          api_integration_id: string
+          attempts?: number
+          available_at?: string
+          cod_cli?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          execution_ms?: number | null
+          id?: string
+          page_id: string
+          queue_key: string
+          records_processed?: number
+          schedule_id: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          api_integration_id?: string
+          attempts?: number
+          available_at?: string
+          cod_cli?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          execution_ms?: number | null
+          id?: string
+          page_id?: string
+          queue_key?: string
+          records_processed?: number
+          schedule_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bi_scheduled_updates: {
         Row: {
           created_at: string
