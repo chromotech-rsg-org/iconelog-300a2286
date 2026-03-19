@@ -241,6 +241,32 @@ export default function ScheduledUpdateLogs() {
                           </div>
                         )}
 
+                        {/* Summary: succeeded vs failed APIs */}
+                        {apiResults.length > 0 && (() => {
+                          const succeeded = apiResults.filter((r: any) => r.status !== "error" && r.status !== "skipped");
+                          const failed = apiResults.filter((r: any) => r.status === "error");
+                          const skipped = apiResults.filter((r: any) => r.status === "skipped");
+                          return (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {succeeded.length > 0 && (
+                                <div className="text-xs bg-emerald-500/10 border border-emerald-500/20 rounded-md px-2 py-1 text-emerald-400">
+                                  ✓ {succeeded.length} executada{succeeded.length !== 1 ? "s" : ""}: {succeeded.map((r: any) => r.api).join(", ")}
+                                </div>
+                              )}
+                              {failed.length > 0 && (
+                                <div className="text-xs bg-destructive/10 border border-destructive/20 rounded-md px-2 py-1 text-destructive">
+                                  ✗ {failed.length} com erro: {failed.map((r: any) => r.api).join(", ")}
+                                </div>
+                              )}
+                              {skipped.length > 0 && (
+                                <div className="text-xs bg-muted/30 border border-dashboard-border rounded-md px-2 py-1 text-muted-foreground">
+                                  ⊘ {skipped.length} pulada{skipped.length !== 1 ? "s" : ""} (cache fresco)
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
                         {apiResults.length > 0 && (
                           <div className="mt-2 overflow-x-auto">
                             <Table>
@@ -251,11 +277,12 @@ export default function ScheduledUpdateLogs() {
                                   <TableHead className="text-xs text-muted-foreground">Status</TableHead>
                                   <TableHead className="text-xs text-muted-foreground text-right">Registros</TableHead>
                                   <TableHead className="text-xs text-muted-foreground text-right">Tempo</TableHead>
+                                  <TableHead className="text-xs text-muted-foreground">Erro</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {apiResults.map((r: any, i: number) => (
-                                  <TableRow key={i} className="border-dashboard-border">
+                                  <TableRow key={i} className={`border-dashboard-border ${r.status === "error" ? "bg-destructive/5" : ""}`}>
                                     <TableCell className="text-xs font-medium">{r.api || "—"}</TableCell>
                                     <TableCell className="text-xs text-muted-foreground">{r.cod_cli || "—"}</TableCell>
                                     <TableCell>
@@ -269,6 +296,9 @@ export default function ScheduledUpdateLogs() {
                                     </TableCell>
                                     <TableCell className="text-xs text-right">{r.records?.toLocaleString() ?? "—"}</TableCell>
                                     <TableCell className="text-xs text-right">{formatDuration(r.time_ms)}</TableCell>
+                                    <TableCell className="text-xs text-destructive max-w-[200px] truncate" title={r.error || ""}>
+                                      {r.error || "—"}
+                                    </TableCell>
                                   </TableRow>
                                 ))}
                               </TableBody>
