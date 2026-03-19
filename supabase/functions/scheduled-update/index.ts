@@ -6,8 +6,50 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const API_TIMEOUT_MS = 20000; // 20s per chunk/call
-const MAX_EXECUTION_MS = 50000; // 50s total budget (edge functions have ~60s limit)
+const API_TIMEOUT_MS = 20000;
+const MAX_EXECUTION_MS = 50000;
+const RETRY_DELAY_MINUTES = 5;
+const FRESHNESS_THRESHOLD_MINUTES = 30;
+const DATE_RANGE_APIS = ["FOLLOWUP", "PRODUTOSDISTRIBUIDOS"];
+
+type DueSchedule = {
+  id: string;
+  page_id: string;
+  update_time: string;
+  schedule_type: string;
+  interval_minutes: number | null;
+  last_executed_at: string | null;
+};
+
+type QueueJob = {
+  id: string;
+  schedule_id: string;
+  page_id: string;
+  cod_cli: string | null;
+  api_integration_id: string;
+  attempts: number;
+  queue_key: string;
+  available_at: string;
+};
+
+type IntegrationRow = {
+  id: string;
+  name: string;
+  base_url: string | null;
+  auth_token: string | null;
+  auth_type: string;
+  headers_json: Record<string, string> | null;
+  default_body: Record<string, unknown> | null;
+};
+
+type QueueBatch = {
+  batchKey: string;
+  integrationId: string;
+  integrationName: string;
+  codCli: string;
+  jobs: QueueJob[];
+  firstAvailableAt: string;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -22,300 +64,88 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const now = new Date();
-    const brtOffset = -3 * 60;
-    const brtTime = new Date(now.getTime() + (brtOffset + now.getTimezoneOffset()) * 60000);
-    const currentHour = brtTime.getHours().toString().padStart(2, "0");
-    const currentMinute = brtTime.getMinutes().toString().padStart(2, "0");
-    const currentTime = `${currentHour}:${currentMinute}`;
+    const brtTime = getBrtTime(now);
+    const currentTime = `${String(brtTime.getHours()).padStart(2, "0")}:${String(brtTime.getMinutes()).padStart(2, "0")}`;
 
     console.log("Scheduled update check at BRT:", currentTime);
 
-    // Find active schedules
-    const { data: schedules, error: schedError } = await supabase
-      .from("bi_scheduled_updates")
-      .select("id, page_id, update_time, schedule_type, interval_minutes, last_executed_at")
-      .eq("is_active", true);
+    const enqueueResult = await enqueueDueScheduleJobs(supabase, now, brtTime, currentTime);
+    const pendingJobs = await getPendingQueueJobs(supabase, now);
 
-    if (schedError) {
-      console.error("Error fetching schedules:", schedError.message);
-      return new Response(JSON.stringify({ error: schedError.message }), {
-        status: 500,
+    if (enqueueResult.dueSchedules.length === 0 && pendingJobs.length === 0) {
+      console.log("No schedules or pending queue items to execute at", currentTime);
+      return new Response(JSON.stringify({ message: "No schedules or pending queue items", time: currentTime }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const matchingSchedules = (schedules || []).filter((s: any) => {
-      if (s.schedule_type === "interval" && s.interval_minutes) {
-        if (!s.last_executed_at) return true;
-        const lastExec = new Date(s.last_executed_at).getTime();
-        const elapsed = (now.getTime() - lastExec) / 60000;
-        return elapsed >= s.interval_minutes;
-      }
-      const schedTime = (s.update_time || "").substring(0, 5);
-      return schedTime === currentTime;
+    const logScheduleIds = new Set<string>(enqueueResult.dueSchedules.map((schedule) => schedule.id));
+    const logPageIds = new Set<string>(enqueueResult.dueSchedules.map((schedule) => schedule.page_id));
+    pendingJobs.forEach((job) => {
+      logScheduleIds.add(job.schedule_id);
+      logPageIds.add(job.page_id);
     });
 
-    if (matchingSchedules.length === 0) {
-      console.log("No schedules to execute at", currentTime);
-      return new Response(JSON.stringify({ message: "No schedules to execute", time: currentTime }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { data: logRow } = await supabase
+      .from("scheduled_update_logs")
+      .insert({
+        executed_at: now.toISOString(),
+        schedule_ids: [...logScheduleIds],
+        page_ids: [...logPageIds],
+        status: "running",
+        total_ms: 0,
+        apis_processed: 0,
+        results: [] as unknown[],
+      } as never)
+      .select("id")
+      .single();
 
-    const matchingPageIds = [...new Set(matchingSchedules.map((s: any) => s.page_id))];
-    const scheduleIds = matchingSchedules.map((s: any) => s.id);
-    console.log(`Found ${matchingSchedules.length} schedules for pages: ${matchingPageIds.join(", ")}`);
-
-    // ── Insert preliminary log with status "running" ──
-    const { data: logRow } = await supabase.from("scheduled_update_logs").insert({
-      executed_at: new Date().toISOString(),
-      schedule_ids: scheduleIds,
-      page_ids: matchingPageIds,
-      status: "running",
-      total_ms: 0,
-      apis_processed: 0,
-      results: [] as any,
-    } as any).select("id").single();
     const logId = logRow?.id;
 
-    // ── Update last_executed_at IMMEDIATELY to prevent re-triggering on timeout ──
-    if (scheduleIds.length > 0) {
-      await supabase.from("bi_scheduled_updates")
-        .update({ last_executed_at: new Date().toISOString() } as any)
-        .in("id", scheduleIds);
-    }
-
-    // Get BI settings and API links
-    const { data: biSettings } = await supabase
-      .from("bi_settings")
-      .select("page_id, cod_cli")
-      .in("page_id", matchingPageIds);
-
-    const { data: allApiLinks } = await supabase
-      .from("bi_api_integrations")
-      .select("bi_page_id, api_integration_id")
-      .in("bi_page_id", matchingPageIds);
-
-    if (!allApiLinks || allApiLinks.length === 0) {
-      console.log("No API integrations linked");
-      await updateAllPages(supabase, matchingPageIds);
-      return new Response(JSON.stringify({ message: "No API integrations found", time: currentTime }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const uniqueIntegrationIds = [...new Set(allApiLinks.map((l) => l.api_integration_id))];
-    const { data: integrations } = await supabase
-      .from("api_integrations")
-      .select("id, name, base_url, auth_token, auth_type, headers_json, default_body")
-      .in("id", uniqueIntegrationIds);
-
-    if (!integrations || integrations.length === 0) {
-      await updateAllPages(supabase, matchingPageIds);
-      return new Response(JSON.stringify({ message: "No integrations", time: currentTime }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const codCliSet = new Set<string>();
-    (biSettings || []).forEach((bs: any) => { if (bs.cod_cli) codCliSet.add(bs.cod_cli); });
-    const codClis = [...codCliSet];
-
-    if (codClis.length === 0) {
-      await updateAllPages(supabase, matchingPageIds);
-      return new Response(JSON.stringify({ message: "No cod_cli", time: currentTime }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Date range setup
-    const fmt = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const currentYear = brtTime.getFullYear();
-    const currentMonth = brtTime.getMonth() + 1;
-
-    const monthChunks: { data_inicial: string; data_final: string }[] = [];
-    for (let m = 1; m <= currentMonth; m++) {
-      const firstDay = new Date(currentYear, m - 1, 1);
-      const lastDay = new Date(currentYear, m, 0);
-      monthChunks.push({
-        data_inicial: `${fmt(firstDay)} 00:00`,
-        data_final: `${fmt(lastDay)} 23:59`,
-      });
-    }
-
-    // Check cache freshness
-    const allCacheKeys = integrations.flatMap(i => codClis.map(c => `${i.name.toLowerCase()}_${c}`));
-    const { data: existingCache } = await supabase
-      .from("bi_data_cache")
-      .select("cache_key, cached_at")
-      .eq("page_id", "_shared")
-      .in("cache_key", allCacheKeys);
-
-    const cacheAgeMap = new Map<string, number>();
-    (existingCache || []).forEach((c: any) => {
-      const ageMinutes = (now.getTime() - new Date(c.cached_at).getTime()) / 60000;
-      cacheAgeMap.set(c.cache_key, ageMinutes);
-    });
-
-    // Round-robin for slow APIs: alternate which one goes first based on current hour
-    const DATE_RANGE_APIS = ["FOLLOWUP", "PRODUTOSDISTRIBUIDOS"];
-    const currentHourNum = brtTime.getHours();
-    // Even hours: FOLLOWUP first, Odd hours: PRODUTOSDISTRIBUIDOS first
-    const slowApiOrder = currentHourNum % 2 === 0 
-      ? ["FOLLOWUP", "PRODUTOSDISTRIBUIDOS"]
-      : ["PRODUTOSDISTRIBUIDOS", "FOLLOWUP"];
-    
-    const sortedIntegrations = [...integrations].sort((a, b) => {
-      const aIsSlow = DATE_RANGE_APIS.includes(a.name.toUpperCase());
-      const bIsSlow = DATE_RANGE_APIS.includes(b.name.toUpperCase());
-      if (!aIsSlow && !bIsSlow) return 0; // both fast
-      if (!aIsSlow) return -1; // a is fast, goes first
-      if (!bIsSlow) return 1;  // b is fast, goes first
-      // Both are slow: use round-robin order
-      return slowApiOrder.indexOf(a.name.toUpperCase()) - slowApiOrder.indexOf(b.name.toUpperCase());
-    });
-
-    let anyUpdated = false;
-
-    for (const integration of sortedIntegrations) {
-      // Check time budget before starting a new API
-      const elapsed = Date.now() - globalStart;
-      if (elapsed > MAX_EXECUTION_MS) {
-        console.warn(`Time budget exhausted (${elapsed}ms), stopping. Remaining APIs will be fetched next cycle.`);
-        break;
-      }
-
-      if (!integration.base_url) continue;
-
-      for (const codCli of codClis) {
-        const cacheKey = `${integration.name.toLowerCase()}_${codCli}`;
-
-        if (fetchedKeys.has(cacheKey)) continue;
-
-        const cacheAge = cacheAgeMap.get(cacheKey);
-        if (cacheAge !== undefined && cacheAge < FRESHNESS_THRESHOLD_MINUTES) {
-          console.log(`Skipping fresh: ${cacheKey} (${Math.round(cacheAge)}min)`);
-          results.push({ api: integration.name, cod_cli: codCli, status: "skipped" });
-          continue;
-        }
-
-        fetchedKeys.add(cacheKey);
-
-        const hdrs: Record<string, string> = { "Content-Type": "application/json" };
-        if (integration.auth_token) {
-          if (integration.auth_type === "bearer") hdrs["Authorization"] = `Bearer ${integration.auth_token}`;
-          else if (integration.auth_type === "basic") hdrs["Authorization"] = `Basic ${integration.auth_token}`;
-          else hdrs["Authorization"] = integration.auth_token;
-        }
-        if (integration.headers_json && typeof integration.headers_json === "object") {
-          Object.assign(hdrs, integration.headers_json);
-        }
-
-        const apiName = integration.name.toUpperCase();
-        const apiNeedsDateRange = DATE_RANGE_APIS.includes(apiName);
-        const defaultBody = integration.default_body && typeof integration.default_body === "object"
-          ? integration.default_body as Record<string, any>
-          : {};
-
-        try {
-          console.log(`Fetching: ${integration.name} (${codCli})`);
-          const startTime = Date.now();
-          let allDataArray: any[] = [];
-
-          if (apiNeedsDateRange) {
-            for (const chunk of monthChunks) {
-              // Check time budget before each chunk
-              if (Date.now() - globalStart > MAX_EXECUTION_MS) {
-                console.warn(`Time budget hit during ${integration.name} chunks, saving partial data`);
-                break;
-              }
-              const body: Record<string, any> = { ...defaultBody, cod_cli: codCli, ...chunk };
-              try {
-                const controller = new AbortController();
-                const tid = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-                const resp = await fetch(integration.base_url, {
-                  method: "POST", headers: hdrs, body: JSON.stringify(body), signal: controller.signal,
-                });
-                clearTimeout(tid);
-                const respBody = await resp.json().catch(() => null);
-                const dataArray = extractDataArray(respBody);
-                const tagged = dataArray.map((r: any) => ({
-                  ...r,
-                  _fetch_month: parseInt(chunk.data_inicial.substring(5, 7), 10),
-                  _fetch_year: parseInt(chunk.data_inicial.substring(0, 4), 10),
-                }));
-                allDataArray = allDataArray.concat(tagged);
-                console.log(`  ${chunk.data_inicial.substring(0, 7)}: ${dataArray.length} records`);
-              } catch (chunkErr: any) {
-                console.warn(`  ${chunk.data_inicial.substring(0, 7)} failed: ${chunkErr.name === "AbortError" ? "timeout" : chunkErr.message}`);
-              }
-            }
-          } else {
-            const body: Record<string, any> = { ...defaultBody, cod_cli: codCli };
-            try {
-              const controller = new AbortController();
-              const tid = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-              const resp = await fetch(integration.base_url, {
-                method: "POST", headers: hdrs, body: JSON.stringify(body), signal: controller.signal,
-              });
-              clearTimeout(tid);
-              const respBody = await resp.json().catch(() => null);
-              allDataArray = extractDataArray(respBody);
-            } catch (fetchErr: any) {
-              console.warn(`${integration.name} failed: ${fetchErr.name === "AbortError" ? "timeout" : fetchErr.message}`);
-            }
-          }
-
-          const execTime = Date.now() - startTime;
-
-          if (allDataArray.length > 0) {
-            await supabase.from("bi_data_cache").upsert(
-              {
-                page_id: "_shared",
-                cache_key: cacheKey,
-                data: allDataArray as any,
-                cached_at: new Date().toISOString(),
-              },
-              { onConflict: "page_id,cache_key" }
-            );
-            anyUpdated = true;
-          }
-
-          console.log(`Done: ${integration.name} (${codCli}): ${allDataArray.length} records, ${execTime}ms`);
-          results.push({ api: integration.name, cod_cli: codCli, status: 200, records: allDataArray.length, time_ms: execTime });
-        } catch (apiError: any) {
-          console.error(`Error: ${integration.name} (${codCli}): ${apiError.message}`);
-          results.push({ api: integration.name, cod_cli: codCli, status: "error", error: apiError.message });
-        }
-      }
-    }
-
-    // Update bi_last_update for all pages if any API was updated
-    if (anyUpdated) {
-      await updateAllPages(supabase, matchingPageIds);
-    }
+    const processResult = await processPendingQueueBatches(supabase, now, globalStart, pendingJobs);
 
     const totalTime = Date.now() - globalStart;
-    console.log(`Completed in ${totalTime}ms, ${results.length} APIs processed`);
+    const finalStatus = processResult.hasErrors || processResult.remainingJobs > 0 ? "partial" : "success";
+    const finalResults = [
+      {
+        type: "enqueue",
+        due_schedules: enqueueResult.dueSchedules.length,
+        enqueued_jobs: enqueueResult.enqueuedJobs,
+        skipped_schedules_without_queue: enqueueResult.autoCompletedSchedules.length,
+      },
+      ...enqueueResult.notes,
+      ...processResult.results,
+    ];
 
-    // Update the preliminary log with final results
     if (logId) {
-      await supabase.from("scheduled_update_logs").update({
-        status: results.some((r: any) => r.status === "error") ? "partial" : "success",
-        total_ms: totalTime,
-        apis_processed: results.length,
-        results: results as any,
-      } as any).eq("id", logId);
+      await supabase
+        .from("scheduled_update_logs")
+        .update({
+          status: finalStatus,
+          total_ms: totalTime,
+          apis_processed: processResult.processedBatches,
+          results: finalResults as never,
+        } as never)
+        .eq("id", logId);
     }
 
-    return new Response(JSON.stringify({ success: true, results, time: currentTime, total_ms: totalTime }), {
+    console.log(`Completed in ${totalTime}ms, ${processResult.processedBatches} queue batches processed, ${processResult.remainingJobs} remaining`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      time: currentTime,
+      total_ms: totalTime,
+      due_schedules: enqueueResult.dueSchedules.length,
+      enqueued_jobs: enqueueResult.enqueuedJobs,
+      processed_batches: processResult.processedBatches,
+      remaining_jobs: processResult.remainingJobs,
+      results: finalResults,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
     console.error("Scheduled update error:", error.message);
 
-    // Log error
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -324,8 +154,10 @@ Deno.serve(async (req) => {
         status: "error",
         total_ms: Date.now() - globalStart,
         error_message: error.message,
-      } as any);
-    } catch (_) { /* ignore logging errors */ }
+      } as never);
+    } catch (_) {
+      // ignore logging errors
+    }
 
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
@@ -334,9 +166,537 @@ Deno.serve(async (req) => {
   }
 });
 
+function getBrtTime(now: Date) {
+  const brtOffset = -3 * 60;
+  return new Date(now.getTime() + (brtOffset + now.getTimezoneOffset()) * 60000);
+}
+
+async function enqueueDueScheduleJobs(supabase: any, now: Date, brtTime: Date, currentTime: string) {
+  const { data: schedules, error: schedError } = await supabase
+    .from("bi_scheduled_updates")
+    .select("id, page_id, update_time, schedule_type, interval_minutes, last_executed_at")
+    .eq("is_active", true);
+
+  if (schedError) {
+    throw new Error(`Error fetching schedules: ${schedError.message}`);
+  }
+
+  const dueSchedules: DueSchedule[] = (schedules || []).filter((schedule: DueSchedule) => isScheduleDue(schedule, now, currentTime));
+
+  if (dueSchedules.length === 0) {
+    return { dueSchedules: [], enqueuedJobs: 0, autoCompletedSchedules: [] as string[], notes: [] as unknown[] };
+  }
+
+  const duePageIds = [...new Set(dueSchedules.map((schedule) => schedule.page_id))];
+  const { data: biSettings } = await supabase
+    .from("bi_settings")
+    .select("page_id, cod_cli")
+    .in("page_id", duePageIds);
+
+  const { data: apiLinks } = await supabase
+    .from("bi_api_integrations")
+    .select("bi_page_id, api_integration_id")
+    .in("bi_page_id", duePageIds);
+
+  const codCliByPage = new Map<string, string | null>();
+  (biSettings || []).forEach((setting: { page_id: string; cod_cli: string | null }) => {
+    codCliByPage.set(setting.page_id, setting.cod_cli);
+  });
+
+  const apiIdsByPage = new Map<string, string[]>();
+  (apiLinks || []).forEach((link: { bi_page_id: string; api_integration_id: string }) => {
+    const current = apiIdsByPage.get(link.bi_page_id) || [];
+    current.push(link.api_integration_id);
+    apiIdsByPage.set(link.bi_page_id, current);
+  });
+
+  const queueRows: Array<Record<string, unknown>> = [];
+  const autoCompletedSchedules: string[] = [];
+  const notes: unknown[] = [];
+
+  for (const schedule of dueSchedules) {
+    const codCli = codCliByPage.get(schedule.page_id) ?? null;
+    const apiIds = apiIdsByPage.get(schedule.page_id) || [];
+
+    if (apiIds.length === 0 || !codCli) {
+      autoCompletedSchedules.push(schedule.id);
+      notes.push({
+        type: "auto_completed",
+        page_id: schedule.page_id,
+        schedule_id: schedule.id,
+        reason: apiIds.length === 0 ? "no_api_links" : "missing_cod_cli",
+      });
+      continue;
+    }
+
+    for (const apiIntegrationId of apiIds) {
+      queueRows.push({
+        schedule_id: schedule.id,
+        page_id: schedule.page_id,
+        cod_cli: codCli,
+        api_integration_id: apiIntegrationId,
+        status: "pending",
+        attempts: 0,
+        available_at: now.toISOString(),
+        queue_key: buildQueueKey(schedule, apiIntegrationId, codCli),
+      });
+    }
+  }
+
+  if (queueRows.length > 0) {
+    const { error: queueError } = await supabase
+      .from("bi_scheduled_update_queue")
+      .upsert(queueRows as never[], { onConflict: "queue_key", ignoreDuplicates: true });
+
+    if (queueError) {
+      throw new Error(`Error enqueueing scheduled jobs: ${queueError.message}`);
+    }
+  }
+
+  if (autoCompletedSchedules.length > 0) {
+    await supabase
+      .from("bi_scheduled_updates")
+      .update({ last_executed_at: now.toISOString() } as never)
+      .in("id", autoCompletedSchedules);
+  }
+
+  const autoCompletedPageIds = dueSchedules
+    .filter((schedule) => autoCompletedSchedules.includes(schedule.id))
+    .map((schedule) => schedule.page_id);
+
+  if (autoCompletedPageIds.length > 0) {
+    await updateAllPages(supabase, [...new Set(autoCompletedPageIds)]);
+  }
+
+  console.log(`Found ${dueSchedules.length} due schedules, enqueued ${queueRows.length} jobs`);
+
+  return {
+    dueSchedules,
+    enqueuedJobs: queueRows.length,
+    autoCompletedSchedules,
+    notes,
+  };
+}
+
+function isScheduleDue(schedule: DueSchedule, now: Date, currentTime: string) {
+  if (schedule.schedule_type === "interval" && schedule.interval_minutes) {
+    if (!schedule.last_executed_at) return true;
+    const lastExec = new Date(schedule.last_executed_at).getTime();
+    const elapsedMinutes = (now.getTime() - lastExec) / 60000;
+    return elapsedMinutes >= schedule.interval_minutes;
+  }
+
+  const schedTime = (schedule.update_time || "").substring(0, 5);
+  if (schedTime !== currentTime) return false;
+
+  if (!schedule.last_executed_at) return true;
+  const lastExec = new Date(schedule.last_executed_at);
+  const sameYear = lastExec.getUTCFullYear() === now.getUTCFullYear();
+  const sameMonth = lastExec.getUTCMonth() === now.getUTCMonth();
+  const sameDay = lastExec.getUTCDate() === now.getUTCDate();
+  return !(sameYear && sameMonth && sameDay);
+}
+
+function buildQueueKey(schedule: DueSchedule, apiIntegrationId: string, codCli: string) {
+  return `${schedule.id}|${apiIntegrationId}|${codCli}|${schedule.last_executed_at ?? "never"}`;
+}
+
+async function getPendingQueueJobs(supabase: any, now: Date): Promise<QueueJob[]> {
+  const { data, error } = await supabase
+    .from("bi_scheduled_update_queue")
+    .select("id, schedule_id, page_id, cod_cli, api_integration_id, attempts, queue_key, available_at")
+    .eq("status", "pending")
+    .lte("available_at", now.toISOString())
+    .order("available_at", { ascending: true })
+    .limit(200);
+
+  if (error) {
+    throw new Error(`Error fetching pending queue jobs: ${error.message}`);
+  }
+
+  return (data || []) as QueueJob[];
+}
+
+async function processPendingQueueBatches(supabase: any, now: Date, globalStart: number, pendingJobs: QueueJob[]) {
+  if (pendingJobs.length === 0) {
+    return {
+      processedBatches: 0,
+      remainingJobs: 0,
+      hasErrors: false,
+      results: [] as unknown[],
+    };
+  }
+
+  const integrationIds = [...new Set(pendingJobs.map((job) => job.api_integration_id))];
+  const { data: integrations, error: integrationError } = await supabase
+    .from("api_integrations")
+    .select("id, name, base_url, auth_token, auth_type, headers_json, default_body")
+    .in("id", integrationIds);
+
+  if (integrationError) {
+    throw new Error(`Error fetching integrations: ${integrationError.message}`);
+  }
+
+  const integrationMap = new Map<string, IntegrationRow>();
+  (integrations || []).forEach((integration: IntegrationRow) => {
+    integrationMap.set(integration.id, integration);
+  });
+
+  const batches = buildQueueBatches(pendingJobs, integrationMap);
+  const results: unknown[] = [];
+  let processedBatches = 0;
+  let hasErrors = false;
+
+  for (const batch of batches) {
+    const elapsed = Date.now() - globalStart;
+    if (elapsed > MAX_EXECUTION_MS) {
+      console.warn(`Time budget exhausted (${elapsed}ms), keeping ${batches.length - processedBatches} batches pending`);
+      break;
+    }
+
+    const integration = integrationMap.get(batch.integrationId);
+    if (!integration) {
+      await retryBatch(supabase, batch.jobs, now, "integration_not_found");
+      hasErrors = true;
+      results.push({
+        type: "batch",
+        api: batch.integrationName,
+        cod_cli: batch.codCli,
+        status: "error",
+        error: "integration_not_found",
+      });
+      processedBatches += 1;
+      continue;
+    }
+
+    try {
+      const startTime = Date.now();
+      const cacheKey = `${integration.name.toLowerCase()}_${batch.codCli}`;
+
+      await supabase
+        .from("bi_scheduled_update_queue")
+        .update({ status: "running", started_at: new Date().toISOString(), error_message: null } as never)
+        .in("id", batch.jobs.map((job) => job.id));
+
+      const cacheAge = await getCacheAgeMinutes(supabase, cacheKey, now);
+      if (cacheAge !== null && cacheAge < FRESHNESS_THRESHOLD_MINUTES) {
+        await completeBatch(supabase, batch.jobs, {
+          execution_ms: Date.now() - startTime,
+          records_processed: 0,
+          pageIds: [...new Set(batch.jobs.map((job) => job.page_id))],
+        });
+        await finalizeSchedulesForJobs(supabase, batch.jobs, now);
+        results.push({
+          type: "batch",
+          api: integration.name,
+          cod_cli: batch.codCli,
+          status: "skipped",
+          reason: "cache_fresh",
+          cache_age_minutes: Math.round(cacheAge),
+        });
+        processedBatches += 1;
+        continue;
+      }
+
+      const allDataArray = await fetchIntegrationData(integration, batch.codCli, globalStart);
+      const execTime = Date.now() - startTime;
+
+      if (allDataArray.length > 0) {
+        await supabase.from("bi_data_cache").upsert(
+          {
+            page_id: "_shared",
+            cache_key: cacheKey,
+            data: allDataArray as never,
+            cached_at: new Date().toISOString(),
+          },
+          { onConflict: "page_id,cache_key" }
+        );
+      }
+
+      const pageIds = [...new Set(batch.jobs.map((job) => job.page_id))];
+      await completeBatch(supabase, batch.jobs, {
+        execution_ms: execTime,
+        records_processed: allDataArray.length,
+        pageIds,
+      });
+      await finalizeSchedulesForJobs(supabase, batch.jobs, now);
+
+      console.log(`Done batch: ${integration.name} (${batch.codCli}) => ${allDataArray.length} records, ${execTime}ms`);
+      results.push({
+        type: "batch",
+        api: integration.name,
+        cod_cli: batch.codCli,
+        status: 200,
+        records: allDataArray.length,
+        time_ms: execTime,
+        pages: pageIds,
+      });
+    } catch (error: any) {
+      hasErrors = true;
+      console.error(`Batch error: ${batch.integrationName} (${batch.codCli}) => ${error.message}`);
+      await retryBatch(supabase, batch.jobs, now, error.message);
+      results.push({
+        type: "batch",
+        api: batch.integrationName,
+        cod_cli: batch.codCli,
+        status: "error",
+        error: error.message,
+      });
+    }
+
+    processedBatches += 1;
+  }
+
+  const remainingJobs = await countPendingQueueJobs(supabase, now);
+
+  return {
+    processedBatches,
+    remainingJobs,
+    hasErrors,
+    results,
+  };
+}
+
+function buildQueueBatches(pendingJobs: QueueJob[], integrationMap: Map<string, IntegrationRow>) {
+  const grouped = new Map<string, QueueBatch>();
+
+  for (const job of pendingJobs) {
+    if (!job.cod_cli) continue;
+    const integration = integrationMap.get(job.api_integration_id);
+    const integrationName = integration?.name || job.api_integration_id;
+    const batchKey = `${job.api_integration_id}::${job.cod_cli}`;
+    const current = grouped.get(batchKey);
+
+    if (current) {
+      current.jobs.push(job);
+      if (job.available_at < current.firstAvailableAt) {
+        current.firstAvailableAt = job.available_at;
+      }
+      continue;
+    }
+
+    grouped.set(batchKey, {
+      batchKey,
+      integrationId: job.api_integration_id,
+      integrationName,
+      codCli: job.cod_cli,
+      jobs: [job],
+      firstAvailableAt: job.available_at,
+    });
+  }
+
+  return [...grouped.values()].sort((a, b) => {
+    if (a.firstAvailableAt !== b.firstAvailableAt) {
+      return a.firstAvailableAt.localeCompare(b.firstAvailableAt);
+    }
+    const aSlow = DATE_RANGE_APIS.includes(a.integrationName.toUpperCase()) ? 1 : 0;
+    const bSlow = DATE_RANGE_APIS.includes(b.integrationName.toUpperCase()) ? 1 : 0;
+    return aSlow - bSlow;
+  });
+}
+
+async function getCacheAgeMinutes(supabase: any, cacheKey: string, now: Date) {
+  const { data, error } = await supabase
+    .from("bi_data_cache")
+    .select("cached_at")
+    .eq("page_id", "_shared")
+    .eq("cache_key", cacheKey)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Error checking cache freshness: ${error.message}`);
+  }
+
+  if (!data?.cached_at) return null;
+  return (now.getTime() - new Date(data.cached_at).getTime()) / 60000;
+}
+
+async function fetchIntegrationData(integration: IntegrationRow, codCli: string, globalStart: number) {
+  if (!integration.base_url) {
+    throw new Error("missing_base_url");
+  }
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (integration.auth_token) {
+    if (integration.auth_type === "bearer") headers["Authorization"] = `Bearer ${integration.auth_token}`;
+    else if (integration.auth_type === "basic") headers["Authorization"] = `Basic ${integration.auth_token}`;
+    else headers["Authorization"] = integration.auth_token;
+  }
+  if (integration.headers_json && typeof integration.headers_json === "object") {
+    Object.assign(headers, integration.headers_json);
+  }
+
+  const defaultBody = integration.default_body && typeof integration.default_body === "object"
+    ? integration.default_body
+    : {};
+
+  if (!DATE_RANGE_APIS.includes(integration.name.toUpperCase())) {
+    return await fetchSinglePayload(integration.base_url, headers, {
+      ...defaultBody,
+      cod_cli: codCli,
+    });
+  }
+
+  const allDataArray: any[] = [];
+  for (const chunk of getMonthChunks(getBrtTime(new Date()))) {
+    if (Date.now() - globalStart > MAX_EXECUTION_MS) {
+      console.warn(`Time budget hit during ${integration.name} chunks, saving partial data`);
+      break;
+    }
+
+    const chunkData = await fetchSinglePayload(integration.base_url, headers, {
+      ...defaultBody,
+      cod_cli: codCli,
+      ...chunk,
+    });
+
+    const tagged = chunkData.map((row: any) => ({
+      ...row,
+      _fetch_month: parseInt(chunk.data_inicial.substring(5, 7), 10),
+      _fetch_year: parseInt(chunk.data_inicial.substring(0, 4), 10),
+    }));
+    allDataArray.push(...tagged);
+  }
+
+  return allDataArray;
+}
+
+async function fetchSinglePayload(url: string, headers: Record<string, string>, body: Record<string, unknown>) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    const responseBody = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(`http_${response.status}`);
+    }
+
+    return extractDataArray(responseBody);
+  } catch (error: any) {
+    if (error?.name === "AbortError") {
+      throw new Error("timeout");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function getMonthChunks(referenceDate: Date) {
+  const currentYear = referenceDate.getFullYear();
+  const currentMonth = referenceDate.getMonth() + 1;
+  const chunks: { data_inicial: string; data_final: string }[] = [];
+
+  for (let month = 1; month <= currentMonth; month += 1) {
+    const firstDay = new Date(currentYear, month - 1, 1);
+    const lastDay = new Date(currentYear, month, 0);
+    chunks.push({
+      data_inicial: `${formatDate(firstDay)} 00:00`,
+      data_final: `${formatDate(lastDay)} 23:59`,
+    });
+  }
+
+  return chunks;
+}
+
+function formatDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+async function completeBatch(
+  supabase: any,
+  jobs: QueueJob[],
+  payload: { execution_ms: number; records_processed: number; pageIds: string[] },
+) {
+  await supabase
+    .from("bi_scheduled_update_queue")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      execution_ms: payload.execution_ms,
+      records_processed: payload.records_processed,
+      error_message: null,
+    } as never)
+    .in("id", jobs.map((job) => job.id));
+
+  await updateAllPages(supabase, payload.pageIds);
+}
+
+async function retryBatch(supabase: any, jobs: QueueJob[], now: Date, errorMessage: string) {
+  const nextAvailableAt = new Date(now.getTime() + RETRY_DELAY_MINUTES * 60000).toISOString();
+  const attempts = Math.max(...jobs.map((job) => job.attempts)) + 1;
+
+  await supabase
+    .from("bi_scheduled_update_queue")
+    .update({
+      status: "pending",
+      available_at: nextAvailableAt,
+      error_message: errorMessage,
+      attempts,
+    } as never)
+    .in("id", jobs.map((job) => job.id));
+}
+
+async function finalizeSchedulesForJobs(supabase: any, jobs: QueueJob[], now: Date) {
+  const scheduleMarkers = new Map<string, string>();
+
+  jobs.forEach((job) => {
+    const parts = job.queue_key.split("|");
+    const marker = parts[parts.length - 1] || "never";
+    scheduleMarkers.set(job.schedule_id, marker);
+  });
+
+  for (const [scheduleId, marker] of scheduleMarkers.entries()) {
+    const likePattern = `${scheduleId}|%|${marker}`;
+    const { data, error } = await supabase
+      .from("bi_scheduled_update_queue")
+      .select("status")
+      .eq("schedule_id", scheduleId)
+      .like("queue_key", likePattern);
+
+    if (error) {
+      throw new Error(`Error finalizing schedule ${scheduleId}: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) continue;
+    const allCompleted = data.every((row: { status: string }) => row.status === "completed");
+    if (!allCompleted) continue;
+
+    await supabase
+      .from("bi_scheduled_updates")
+      .update({ last_executed_at: now.toISOString() } as never)
+      .eq("id", scheduleId);
+  }
+}
+
+async function countPendingQueueJobs(supabase: any, now: Date) {
+  const { count, error } = await supabase
+    .from("bi_scheduled_update_queue")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending")
+    .lte("available_at", now.toISOString());
+
+  if (error) {
+    throw new Error(`Error counting pending queue jobs: ${error.message}`);
+  }
+
+  return count || 0;
+}
+
 async function updateAllPages(supabase: any, pageIds: string[]) {
+  const uniquePageIds = [...new Set(pageIds.filter(Boolean))];
+  if (uniquePageIds.length === 0) return;
+
   const ts = new Date().toISOString();
-  for (const pageId of pageIds) {
+  for (const pageId of uniquePageIds) {
     await supabase.from("bi_last_update").upsert(
       { page_id: pageId, last_update_at: ts },
       { onConflict: "page_id" }
