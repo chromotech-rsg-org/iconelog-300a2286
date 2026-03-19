@@ -263,8 +263,11 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
 
   // 2025 data fetch temporarily disabled
 
+  const { logManualRefresh } = useManualRefreshLog();
+
   const fetchFollowup = useCallback(async (_months?: number[], _years?: number[]) => {
     if (!codCli) return;
+    const refreshStart = Date.now();
     setRefreshing(true);
     const now = new Date();
     const fmt = (d: Date) =>
