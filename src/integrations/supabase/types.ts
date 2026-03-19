@@ -590,6 +590,9 @@ export type Database = {
           schedule_ids: string[] | null
           status: string
           total_ms: number | null
+          trigger_details: Json | null
+          trigger_type: string
+          triggered_by: string | null
         }
         Insert: {
           apis_processed?: number | null
@@ -602,6 +605,9 @@ export type Database = {
           schedule_ids?: string[] | null
           status?: string
           total_ms?: number | null
+          trigger_details?: Json | null
+          trigger_type?: string
+          triggered_by?: string | null
         }
         Update: {
           apis_processed?: number | null
@@ -614,6 +620,9 @@ export type Database = {
           schedule_ids?: string[] | null
           status?: string
           total_ms?: number | null
+          trigger_details?: Json | null
+          trigger_type?: string
+          triggered_by?: string | null
         }
         Relationships: []
       }
