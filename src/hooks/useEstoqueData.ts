@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useApiProxy } from "./useApiProxy";
 import { supabase } from "@/integrations/supabase/client";
+import { useManualRefreshLog } from "./useManualRefreshLog";
 
 export type EstoqueRefreshStage =
   | "requesting_mapalogistico"
