@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useApiProxy } from "./useApiProxy";
 import { supabase } from "@/integrations/supabase/client";
 import type { RefreshStage } from "@/components/dashboard/RefreshProgress";
+import { useManualRefreshLog } from "./useManualRefreshLog";
 
 interface CityRegionalMapping {
   cidade: string;
