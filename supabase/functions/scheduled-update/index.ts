@@ -60,6 +60,19 @@ Deno.serve(async (req) => {
 
   const globalStart = Date.now();
 
+  // Parse chain depth from request body
+  let chainDepth = 0;
+  let parentLogId: string | null = null;
+  try {
+    const body = await req.json().catch(() => ({}));
+    chainDepth = body?.chain_depth ?? 0;
+    parentLogId = body?.parent_log_id ?? null;
+  } catch (_) {
+    // ignore
+  }
+
+  const stageLabel = chainDepth > 0 ? ` [stage ${chainDepth + 1}]` : "";
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -69,14 +82,18 @@ Deno.serve(async (req) => {
     const brtTime = getBrtTime(now);
     const currentTime = `${String(brtTime.getHours()).padStart(2, "0")}:${String(brtTime.getMinutes()).padStart(2, "0")}`;
 
-    console.log("Scheduled update check at BRT:", currentTime);
+    console.log(`Scheduled update check at BRT: ${currentTime}${stageLabel}`);
 
-    const enqueueResult = await enqueueDueScheduleJobs(supabase, now, brtTime, currentTime);
+    // Only enqueue new jobs on the first stage (depth 0)
+    const enqueueResult = chainDepth === 0
+      ? await enqueueDueScheduleJobs(supabase, now, brtTime, currentTime)
+      : { dueSchedules: [], enqueuedJobs: 0, autoCompletedSchedules: [] as string[], notes: [] as unknown[] };
+
     const pendingJobs = await getPendingQueueJobs(supabase, now);
 
     if (enqueueResult.dueSchedules.length === 0 && pendingJobs.length === 0) {
-      console.log("No schedules or pending queue items to execute at", currentTime);
-      return new Response(JSON.stringify({ message: "No schedules or pending queue items", time: currentTime }), {
+      console.log(`No schedules or pending queue items to execute at ${currentTime}${stageLabel}`);
+      return new Response(JSON.stringify({ message: "No schedules or pending queue items", time: currentTime, stage: chainDepth + 1 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -88,80 +105,133 @@ Deno.serve(async (req) => {
       logPageIds.add(job.page_id);
     });
 
-    const { data: logRow } = await supabase
-      .from("scheduled_update_logs")
-      .insert({
-        executed_at: now.toISOString(),
-        schedule_ids: [...logScheduleIds],
-        page_ids: [...logPageIds],
-        status: "running",
-        total_ms: 0,
-        apis_processed: 0,
-        results: [] as unknown[],
-      } as never)
-      .select("id")
-      .single();
-
-    const logId = logRow?.id;
+    // Only create a new log row on stage 1; continuation stages update the parent log
+    let logId = parentLogId;
+    if (chainDepth === 0) {
+      const { data: logRow } = await supabase
+        .from("scheduled_update_logs")
+        .insert({
+          executed_at: now.toISOString(),
+          schedule_ids: [...logScheduleIds],
+          page_ids: [...logPageIds],
+          status: "running",
+          total_ms: 0,
+          apis_processed: 0,
+          results: [] as unknown[],
+        } as never)
+        .select("id")
+        .single();
+      logId = logRow?.id;
+    }
 
     const processResult = await processPendingQueueBatches(supabase, now, globalStart, pendingJobs);
 
     const totalTime = Date.now() - globalStart;
-    const finalStatus = processResult.hasErrors || processResult.remainingJobs > 0 ? "partial" : "success";
-    const finalResults = [
-      {
-        type: "enqueue",
-        due_schedules: enqueueResult.dueSchedules.length,
-        enqueued_jobs: enqueueResult.enqueuedJobs,
-        skipped_schedules_without_queue: enqueueResult.autoCompletedSchedules.length,
-      },
-      ...enqueueResult.notes,
-      ...processResult.results,
-    ];
+    const hasRemaining = processResult.remainingJobs > 0;
+    const willChain = hasRemaining && chainDepth < MAX_CHAIN_DEPTH;
+    const finalStatus = willChain ? "chaining" : (processResult.hasErrors || hasRemaining ? "partial" : "success");
+
+    const stageResult = {
+      stage: chainDepth + 1,
+      processed_batches: processResult.processedBatches,
+      remaining_jobs: processResult.remainingJobs,
+      time_ms: totalTime,
+      will_chain: willChain,
+      results: [
+        ...(chainDepth === 0 ? [{
+          type: "enqueue",
+          due_schedules: enqueueResult.dueSchedules.length,
+          enqueued_jobs: enqueueResult.enqueuedJobs,
+          skipped_schedules_without_queue: enqueueResult.autoCompletedSchedules.length,
+        }] : []),
+        ...enqueueResult.notes,
+        ...processResult.results,
+      ],
+    };
 
     if (logId) {
+      // Append stage results to existing log
+      const { data: existingLog } = await supabase
+        .from("scheduled_update_logs")
+        .select("results, apis_processed, total_ms")
+        .eq("id", logId)
+        .single();
+
+      const prevResults = Array.isArray(existingLog?.results) ? existingLog.results : [];
+      const prevApis = existingLog?.apis_processed ?? 0;
+      const prevMs = existingLog?.total_ms ?? 0;
+
       await supabase
         .from("scheduled_update_logs")
         .update({
-          status: finalStatus,
-          total_ms: totalTime,
-          apis_processed: processResult.processedBatches,
-          results: finalResults as never,
+          status: willChain ? "running" : finalStatus,
+          total_ms: prevMs + totalTime,
+          apis_processed: prevApis + processResult.processedBatches,
+          results: [...prevResults, stageResult] as never,
         } as never)
         .eq("id", logId);
     }
 
-    console.log(`Completed in ${totalTime}ms, ${processResult.processedBatches} queue batches processed, ${processResult.remainingJobs} remaining`);
+    console.log(`Stage ${chainDepth + 1} completed in ${totalTime}ms, ${processResult.processedBatches} batches processed, ${processResult.remainingJobs} remaining${willChain ? " → chaining next stage" : ""}`);
+
+    // Self-chain: invoke this same function again for the next stage
+    if (willChain) {
+      setTimeout(async () => {
+        try {
+          const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || serviceRoleKey;
+          await fetch(`${supabaseUrl}/functions/v1/scheduled-update`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${anonKey}`,
+            },
+            body: JSON.stringify({
+              chain_depth: chainDepth + 1,
+              parent_log_id: logId,
+            }),
+          });
+          console.log(`Chained stage ${chainDepth + 2} triggered`);
+        } catch (err: any) {
+          console.error(`Failed to chain stage ${chainDepth + 2}:`, err.message);
+        }
+      }, CHAIN_DELAY_MS);
+    }
 
     return new Response(JSON.stringify({
       success: true,
       time: currentTime,
+      stage: chainDepth + 1,
       total_ms: totalTime,
-      due_schedules: enqueueResult.dueSchedules.length,
-      enqueued_jobs: enqueueResult.enqueuedJobs,
-      processed_batches: processResult.processedBatches,
-      remaining_jobs: processResult.remainingJobs,
-      results: finalResults,
+      will_chain: willChain,
+      ...stageResult,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
-    console.error("Scheduled update error:", error.message);
+    console.error(`Scheduled update error${stageLabel}:`, error.message);
 
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const sb = createClient(supabaseUrl, serviceRoleKey);
-      await sb.from("scheduled_update_logs").insert({
-        status: "error",
-        total_ms: Date.now() - globalStart,
-        error_message: error.message,
-      } as never);
+
+      if (parentLogId) {
+        await sb.from("scheduled_update_logs").update({
+          status: "error",
+          error_message: `Stage ${chainDepth + 1}: ${error.message}`,
+        } as never).eq("id", parentLogId);
+      } else {
+        await sb.from("scheduled_update_logs").insert({
+          status: "error",
+          total_ms: Date.now() - globalStart,
+          error_message: error.message,
+        } as never);
+      }
     } catch (_) {
       // ignore logging errors
     }
 
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error.message, stage: chainDepth + 1 }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
