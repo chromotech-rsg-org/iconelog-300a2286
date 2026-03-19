@@ -158,16 +158,22 @@ Deno.serve(async (req) => {
       cacheAgeMap.set(c.cache_key, ageMinutes);
     });
 
-    const FRESHNESS_THRESHOLD_MINUTES = 30;
-    const results: any[] = [];
-    const fetchedKeys = new Set<string>();
-
-    // Sort integrations: fast APIs first (non-date-range), slow APIs last
+    // Round-robin for slow APIs: alternate which one goes first based on current hour
     const DATE_RANGE_APIS = ["FOLLOWUP", "PRODUTOSDISTRIBUIDOS"];
+    const currentHourNum = brtTime.getHours();
+    // Even hours: FOLLOWUP first, Odd hours: PRODUTOSDISTRIBUIDOS first
+    const slowApiOrder = currentHourNum % 2 === 0 
+      ? ["FOLLOWUP", "PRODUTOSDISTRIBUIDOS"]
+      : ["PRODUTOSDISTRIBUIDOS", "FOLLOWUP"];
+    
     const sortedIntegrations = [...integrations].sort((a, b) => {
-      const aIsSlow = DATE_RANGE_APIS.includes(a.name.toUpperCase()) ? 1 : 0;
-      const bIsSlow = DATE_RANGE_APIS.includes(b.name.toUpperCase()) ? 1 : 0;
-      return aIsSlow - bIsSlow;
+      const aIsSlow = DATE_RANGE_APIS.includes(a.name.toUpperCase());
+      const bIsSlow = DATE_RANGE_APIS.includes(b.name.toUpperCase());
+      if (!aIsSlow && !bIsSlow) return 0; // both fast
+      if (!aIsSlow) return -1; // a is fast, goes first
+      if (!bIsSlow) return 1;  // b is fast, goes first
+      // Both are slow: use round-robin order
+      return slowApiOrder.indexOf(a.name.toUpperCase()) - slowApiOrder.indexOf(b.name.toUpperCase());
     });
 
     let anyUpdated = false;
