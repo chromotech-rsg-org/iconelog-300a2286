@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useApiProxy } from "./useApiProxy";
 import { supabase } from "@/integrations/supabase/client";
+import { useManualRefreshLog } from "./useManualRefreshLog";
 
 export type EstoqueConsolidadoRefreshStage =
   | "requesting_mapalogistico"
@@ -122,9 +123,12 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
     setLastUpdateAt(now);
   }, []);
 
+  const { logManualRefresh } = useManualRefreshLog();
+
   const refreshData = useCallback(async () => {
     if (!codCli || refreshing) return;
     setRefreshing(true);
+    const refreshStart = Date.now();
 
     // MAPALOGISTICO
     setRefreshStage("requesting_mapalogistico");
@@ -173,12 +177,25 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
 
     setRefreshStage("done");
     setRefreshRecordCount(0);
+
+    // Log manual refresh
+    const totalMs = Date.now() - refreshStart;
+    logManualRefresh({
+      pageId: "estoque-consolidado",
+      apis: ["MAPALOGISTICO", "SALDOBASE"],
+      totalMs,
+      results: [
+        { api: "MAPALOGISTICO", records: mapaResult?.length || 0, time_ms: totalMs },
+        { api: "SALDOBASE", records: saldoResult?.length || 0, time_ms: totalMs },
+      ],
+    });
+
     if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
     doneTimerRef.current = setTimeout(() => {
       setRefreshStage(null);
       setRefreshing(false);
     }, 3000);
-  }, [codCli, refreshing, callMainApi, saveToCache, saveLastUpdate]);
+  }, [codCli, refreshing, callMainApi, saveToCache, saveLastUpdate, logManualRefresh]);
 
   // Process MAPALOGISTICO into EstoqueMatrizItem[]
   const estoqueMatriz = useMemo((): EstoqueMatrizItem[] => {

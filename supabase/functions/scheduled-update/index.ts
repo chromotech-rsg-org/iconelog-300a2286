@@ -108,6 +108,16 @@ Deno.serve(async (req) => {
     // Only create a new log row on stage 1; continuation stages update the parent log
     let logId = parentLogId;
     if (chainDepth === 0) {
+      // Build trigger_details with schedule rule info
+      const triggerDetails = enqueueResult.dueSchedules.map((s: DueSchedule) => ({
+        schedule_id: s.id,
+        page_id: s.page_id,
+        schedule_type: s.schedule_type,
+        ...(s.schedule_type === "interval"
+          ? { interval_minutes: s.interval_minutes }
+          : { update_time: s.update_time }),
+      }));
+
       const { data: logRow } = await supabase
         .from("scheduled_update_logs")
         .insert({
@@ -118,6 +128,8 @@ Deno.serve(async (req) => {
           total_ms: 0,
           apis_processed: 0,
           results: [] as unknown[],
+          trigger_type: "scheduled",
+          trigger_details: { schedules: triggerDetails },
         } as never)
         .select("id")
         .single();

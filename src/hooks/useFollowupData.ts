@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useApiProxy } from "./useApiProxy";
 import { supabase } from "@/integrations/supabase/client";
 import type { RefreshStage } from "@/components/dashboard/RefreshProgress";
+import { useManualRefreshLog } from "./useManualRefreshLog";
 
 interface CityRegionalMapping {
   cidade: string;
@@ -262,8 +263,11 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
 
   // 2025 data fetch temporarily disabled
 
+  const { logManualRefresh } = useManualRefreshLog();
+
   const fetchFollowup = useCallback(async (_months?: number[], _years?: number[]) => {
     if (!codCli) return;
+    const refreshStart = Date.now();
     setRefreshing(true);
     const now = new Date();
     const fmt = (d: Date) =>
@@ -346,6 +350,17 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     setRefreshStage("done");
     setRefreshRecordCount(0);
 
+    // Log manual refresh
+    const refreshApis = ["FOLLOWUP"];
+    const refreshResults: Array<{ api: string; records: number; time_ms: number }> = [
+      { api: "FOLLOWUP", records: allFollowup.length, time_ms: Date.now() - refreshStart },
+    ];
+    if (pageId === "minutas" || pageId === "tracking") {
+      refreshApis.push("PRODUTOSDISTRIBUIDOS");
+      refreshResults.push({ api: "PRODUTOSDISTRIBUIDOS", records: allProdutos.length, time_ms: Date.now() - refreshStart });
+    }
+    logManualRefresh({ pageId, apis: refreshApis, totalMs: Date.now() - refreshStart, results: refreshResults });
+
     // 2025 background fetch disabled temporarily
 
     if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
@@ -353,7 +368,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       setRefreshStage(null);
       setRefreshing(false);
     }, 3000);
-  }, [codCli, callMainApi, saveLastUpdate, saveToCache, pageId]);
+  }, [codCli, callMainApi, saveLastUpdate, saveToCache, pageId, logManualRefresh]);
 
   const getMinutasData = useCallback((months: number[], years: number[], dateRange?: { from?: Date; to?: Date }) => {
     const filtered = dateRange?.from
