@@ -1,76 +1,67 @@
 
 
-## Diagnóstico: Por que o FOLLOWUP sempre dá timeout na atualização agendada
+## Problema
 
-### Causa Raiz Identificada
+Dois problemas identificados:
 
-A Edge Function `scheduled-update` tem **dois limites de tempo**:
-- `API_TIMEOUT_MS = 20000` (20 segundos por chamada à API externa)
-- `MAX_EXECUTION_MS = 50000` (50 segundos de orçamento total)
+1. **404 na página duplicada**: O `DynamicBiRoute.tsx` usa um mapa fixo (`pageComponents`) que mapeia `page_id` para componentes. O BI duplicado tem `page_id: entregas-copy-1774032238111`, que não existe no mapa, causando 404.
 
-Para o FOLLOWUP, a função usa `getMonthChunks()` que gera 3 chunks (Jan, Fev, Mar de 2026). Cada chunk chama a API externa do FOLLOWUP, que é pesada e lenta. **O primeiro chunk já estoura os 20 segundos**, causando o `AbortError → "timeout"` que aparece no log.
+2. **Filtro de campanhas**: O `getEntregasData` atual **exclui** as campanhas BASICO (linhas 556-557). O novo BI "Kit Básico" precisa mostrar **apenas** essas campanhas.
 
-Nos logs recentes, o FOLLOWUP falhou em **todas** as execuções:
-- 19/03 23:00 → timeout (52s total)
-- 19/03 23:30 → timeout (23s)
-- 20/03 00:00 → timeout (49s)
-- 20/03 00:30 → timeout (40s)
-- 20/03 01:00 → skipped (cache fresh, pois o refresh manual das 00:58 salvou os dados)
+## Plano
 
-Outro problema: a função salva **todos os meses como uma única chave** (`followup_099`, 18MB!), enquanto o sistema de cache fragmentado usa chaves por mês (`followup_099_2026_01`). Isso significa que mesmo quando a função conseguisse completar, ela estaria usando a estratégia errada de cache.
+### 1. Resolver duplicações automáticas no DynamicBiRoute
 
-### Plano de Ajuste
+**Arquivo**: `src/components/auth/DynamicBiRoute.tsx`
 
-#### 1. Salvar cada mês individualmente (fragmentação no scheduled-update)
-**Arquivo**: `supabase/functions/scheduled-update/index.ts`
+Alterar a lógica para que, quando o `page_id` não for encontrado no mapa fixo, ele tente extrair o `page_id` base (antes do `-copy-`). Exemplo: `entregas-copy-1774032238111` resolve para `entregas`, que existe no mapa. Isso faz qualquer BI duplicado funcionar automaticamente.
 
-Modificar `fetchIntegrationData` para que, em vez de acumular tudo e retornar um array gigante, ele **salve cada chunk mensal diretamente no banco** com a chave fragmentada (ex: `followup_099_2026_01`). Isso:
-- Evita acumular 18MB em memória
-- Permite que chunks parciais sejam salvos mesmo se o orçamento de tempo acabar
-- Fica consistente com o que o `HistoricalDataLoader` já faz
+```
+page_id "entregas-copy-1774032238111" → base "entregas" → pageComponents["entregas"] ✓
+```
 
-#### 2. Aumentar o timeout da API para FOLLOWUP
-**Arquivo**: `supabase/functions/scheduled-update/index.ts`
+### 2. Criar variante de getEntregasData com filtro de campanhas parametrizável
 
-Aumentar `API_TIMEOUT_MS` de 20s para 45s para APIs do tipo `DATE_RANGE_APIS` (FOLLOWUP e PRODUTOSDISTRIBUIDOS), pois são as que retornam mais dados.
-
-#### 3. Processar um mês por batch (não todos de uma vez)
-**Arquivo**: `supabase/functions/scheduled-update/index.ts`
-
-Em vez de processar todos os meses do FOLLOWUP em uma única batch, criar **um job na fila por mês** para APIs de date-range. Assim, se o mês de janeiro completar mas fevereiro estourar o tempo, janeiro já está salvo e fevereiro será retentado na próxima etapa (chaining).
-
-#### 4. Atualizar a verificação de cache freshness para chaves fragmentadas
-**Arquivo**: `supabase/functions/scheduled-update/index.ts`
-
-A verificação de freshness hoje olha para `followup_099` (chave monolítica). Precisa verificar os fragmentos mensais individuais, checando se o mês atual já está fresco.
-
-#### 5. Manter compatibilidade no carregamento do cliente
 **Arquivo**: `src/hooks/useFollowupData.ts`
 
-O cliente já lê tanto a chave monolítica (`followup_099`) quanto os fragmentos (`followup_099_2026_01`). Após a migração, a chave monolítica pode ser removida ou simplesmente ignorada, pois os fragmentos terão os dados atualizados.
+Adicionar um parâmetro `campaignMode` ao `getEntregasData`:
+- `"kit-completo"` (padrão atual): exclui campanhas BASICO
+- `"kit-basico"`: inclui **apenas** campanhas BASICO (POSITIVAÇÃO KIT, KIT RESTAURANTE para Entrega; REPOSIÇÃO KIT para Reposição)
 
-### Detalhes Técnicos
+### 3. Fazer a página Entregas detectar qual BI está renderizando
 
-**Mudança principal em `fetchIntegrationData`**:
+**Arquivo**: `src/pages/Entregas.tsx`
 
-```text
-ANTES:
-  getMonthChunks() → fetch chunk 1 → fetch chunk 2 → fetch chunk 3 → return [todos os dados]
-  → salva tudo em followup_099 (18MB, frequentemente timeout)
+Usar o slug ou page_id atual (via URL ou contexto) para determinar se deve usar `"kit-completo"` ou `"kit-basico"`. Quando o slug é `b-side-entregas-kit-basico`, passa `campaignMode="kit-basico"` para `getEntregasData`.
 
-DEPOIS:
-  getMonthChunks() → fetch chunk 1 → salva em followup_099_2026_01
-                   → fetch chunk 2 → salva em followup_099_2026_02
-                   → fetch chunk 3 → salva em followup_099_2026_03
-  → cada chunk salvo independentemente, parcial = OK
+Lógica:
+- Detectar o `page_id` do BI atual via `useParams` + `useBiSettings`
+- Se o `page_id` contém `entregas` e o slug contém `basico` → modo `kit-basico`
+- Caso contrário → modo `kit-completo` (comportamento atual)
+
+### 4. Ajustar codCli para usar o page_id correto
+
+**Arquivo**: `src/pages/Entregas.tsx`
+
+O `getCodCli("entregas")` está hardcoded. Precisa resolver o `cod_cli` do BI atual (que pode ser `entregas-copy-...`), fazendo fallback para o base `entregas` se necessário.
+
+## Detalhes Técnicos
+
+**Resolução de page_id base** (DynamicBiRoute):
+```typescript
+function resolveBasePageId(pageId: string): string {
+  if (pageComponents[pageId]) return pageId;
+  const base = pageId.replace(/-copy-\d+$/, "");
+  return pageComponents[base] ? base : pageId;
+}
 ```
 
-**Timeout diferenciado**:
-```text
-APIs rápidas (SALDOBASE, MAPALOGISTICO): 20s timeout
-APIs pesadas (FOLLOWUP, PRODUTOSDISTRIBUIDOS): 45s timeout
-```
+**Campanhas Kit Básico** (apenas estas 3):
+- Entrega: `99FOOD_BASICO_POSITIVAÇÃO KIT`, `99FOOD_BASICO_KIT RESTAURANTE`
+- Reposição: `99FOOD_BASICO_REPOSIÇÃO KIT`
 
 **Arquivos a modificar**:
-- `supabase/functions/scheduled-update/index.ts` — Fragmentação, timeout, freshness check por mês
+- `src/components/auth/DynamicBiRoute.tsx` — resolver page_id base para duplicações
+- `src/hooks/useFollowupData.ts` — parametrizar filtro de campanhas
+- `src/pages/Entregas.tsx` — detectar modo e passar parâmetro correto
 
