@@ -15,7 +15,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { useRolesManagement, RoleWithPermissions, PagePermission as RolePagePermission, AdminPermission as RoleAdminPermission } from "@/hooks/useRolesManagement";
 import { useUsersManagement, UserWithRole } from "@/hooks/useUsersManagement";
-import { systemPages } from "@/data/authData";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Globe, Loader2, CheckSquare } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -78,8 +77,14 @@ const Admin = () => {
     loading: authLoading
   } = useAuth();
 
-  const { getSystemLogo, getSystemName } = useBiSettingsContext();
+  const { getSystemLogo, getSystemName, settings: biSettings } = useBiSettingsContext();
   const systemLogo = getSystemLogo();
+
+  // Dynamic system pages from bi_settings (replaces hardcoded systemPages)
+  const systemPages = biSettings
+    .filter(s => s.page_id !== "system")
+    .sort((a, b) => a.display_order - b.display_order)
+    .map(s => ({ id: s.page_id, nome: s.display_name }));
   const systemName = getSystemName();
 
   const { roles, loading: rolesLoading, createRole, updateRole, deleteRole } = useRolesManagement();
