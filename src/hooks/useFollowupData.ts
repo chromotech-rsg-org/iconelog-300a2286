@@ -182,10 +182,22 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
             if (fragData?.data && Array.isArray(fragData.data) && (fragData.data as FollowupItem[]).length > 0) {
               allFollowup = allFollowup.concat(fragData.data as FollowupItem[]);
               console.log(`Loaded ${(fragData.data as FollowupItem[]).length} followup records from ${cache.cache_key}`);
-              setFollowupData([...allFollowup]);
             }
           }
         }
+
+        // Deduplicate all loaded followup records
+        const seenFollowup = new Set<string>();
+        allFollowup = allFollowup.filter(item => {
+          const key = item.cod_conhecimento
+            ? String(item.cod_conhecimento)
+            : JSON.stringify(item);
+          if (seenFollowup.has(key)) return false;
+          seenFollowup.add(key);
+          return true;
+        });
+        console.log(`Total followup records after dedup: ${allFollowup.length}`);
+        setFollowupData(allFollowup);
 
         if (pageId === "minutas" || pageId === "tracking") {
           // Load main produtos cache first
