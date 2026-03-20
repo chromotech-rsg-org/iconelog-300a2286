@@ -169,9 +169,9 @@ const Entregas = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DocumentHead pageId="entregas" />
+      <DocumentHead pageId={currentPageId} />
       <SharedHeader
-        pageId="entregas"
+        pageId={currentPageId}
         lastUpdate={lastUpdate}
         showFilters={true}
         selectedMonths={selectedMonths}
