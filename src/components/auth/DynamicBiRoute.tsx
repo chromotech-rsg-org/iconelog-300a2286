@@ -40,7 +40,8 @@ const DynamicBiRoute = () => {
   const settingBySlug = settings.find((s) => s.slug === slug);
 
   if (settingBySlug) {
-    const PageComponent = pageComponents[settingBySlug.page_id];
+    const resolvedPageId = resolveBasePageId(settingBySlug.page_id);
+    const PageComponent = pageComponents[resolvedPageId];
     if (!PageComponent) return <NotFound />;
     return (
       <ProtectedRoute pageId={settingBySlug.page_id}>
