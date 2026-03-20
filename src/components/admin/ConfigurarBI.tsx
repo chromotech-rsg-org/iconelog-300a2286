@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, Loader2, Plus, Trash2, Link, Pencil, Search, ChevronDown, ChevronRight, Eye, EyeOff, Clock, Timer } from "lucide-react";
+import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, Loader2, Plus, Trash2, Link, Pencil, Search, ChevronDown, ChevronRight, Eye, EyeOff, Clock, Timer, ShieldCheck, ShieldAlert } from "lucide-react";
 import { useBiSettings, BiSetting } from "@/hooks/useBiSettings";
 import { toast } from "sonner";
 import defaultLogo from "@/assets/logo.jpg";
