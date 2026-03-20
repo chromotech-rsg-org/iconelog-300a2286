@@ -388,6 +388,7 @@ const ConfigurarBI = () => {
                 <TableHead className="text-muted-foreground">Cód. Cliente</TableHead>
                 <TableHead className="text-muted-foreground text-center">Intervalo</TableHead>
                 <TableHead className="text-muted-foreground text-center">Agendamento</TableHead>
+                <TableHead className="text-muted-foreground text-center">Permissões</TableHead>
                 <TableHead className="text-muted-foreground text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
