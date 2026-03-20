@@ -19,11 +19,20 @@ import { X, Loader2, AlertCircle, InboxIcon } from "lucide-react";
 
 const Entregas = () => {
   const { t } = useLanguage();
+  const { slug } = useParams<{ slug: string }>();
   const currentYear = new Date().getFullYear();
   const allMonths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-  const { getCodCli, loading: settingsLoading } = useBiSettingsContext();
-  const codCli = getCodCli("entregas");
+  // Detect campaign mode from slug
+  const campaignMode: "kit-completo" | "kit-basico" = 
+    slug?.toLowerCase().includes("basico") ? "kit-basico" : "kit-completo";
+
+  const { getCodCli, settings, loading: settingsLoading } = useBiSettingsContext();
+  
+  // Resolve cod_cli: try current page_id first, fallback to base "entregas"
+  const currentSetting = settings.find(s => s.slug === slug);
+  const currentPageId = currentSetting?.page_id || "entregas";
+  const codCli = getCodCli(currentPageId) || getCodCli("entregas");
 
   const {
     followupData,
@@ -37,7 +46,7 @@ const Entregas = () => {
     getEntregasData,
     cityMappings,
     lastUpdateAt,
-  } = useFollowupData(codCli, "entregas");
+  } = useFollowupData(codCli, currentPageId);
 
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonths);
