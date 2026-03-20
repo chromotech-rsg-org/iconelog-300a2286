@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Loader2, Clock } from "lucide-react";
+import { Send, Loader2, Clock, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -91,7 +92,7 @@ const handleSelectIntegration = (integrationId: string) => {
       };
       setResponse(result);
 
-      await supabase.from("api_test_logs").insert({
+      const { error: logError } = await supabase.from("api_test_logs").insert({
         endpoint: url,
         method,
         request_headers: parsedHeaders,
@@ -102,6 +103,10 @@ const handleSelectIntegration = (integrationId: string) => {
         execution_time_ms: elapsed,
         user_id: user?.id,
       });
+      if (logError) {
+        console.error("Erro ao salvar log:", logError);
+        toast.error("Erro ao salvar log do teste");
+      }
     } catch (err: any) {
       setResponse({ status: 0, body: { error: err.message }, headers: {}, time: Date.now() - startTime });
       toast.error("Erro na requisição: " + err.message);
@@ -115,6 +120,24 @@ const handleSelectIntegration = (integrationId: string) => {
     if (status >= 400 && status < 500) return "bg-yellow-500/20 text-yellow-400";
     if (status >= 500) return "bg-red-500/20 text-red-400";
     return "bg-muted text-muted-foreground";
+  };
+
+  const exportResponseToExcel = (responseData: any) => {
+    let sheetData: any[] = [];
+    if (Array.isArray(responseData)) sheetData = responseData;
+    else if (responseData?.ocorrencias && Array.isArray(responseData.ocorrencias)) sheetData = responseData.ocorrencias;
+    else if (responseData?.pedidos && Array.isArray(responseData.pedidos)) sheetData = responseData.pedidos;
+    else if (responseData?.data && Array.isArray(responseData.data)) sheetData = responseData.data;
+    else if (responseData?.results && Array.isArray(responseData.results)) sheetData = responseData.results;
+    else if (typeof responseData === "object" && responseData !== null) sheetData = [responseData];
+
+    if (sheetData.length === 0) { toast.error("Nenhum dado para exportar"); return; }
+
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Response");
+    XLSX.writeFile(wb, `api-response-${new Date().toISOString().slice(0,19).replace(/:/g,"-")}.xlsx`);
+    toast.success("Excel exportado!");
   };
 
   return (
@@ -189,6 +212,16 @@ const handleSelectIntegration = (integrationId: string) => {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base text-foreground">Resposta</CardTitle>
               <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="border-dashboard-border text-xs" onClick={() => exportResponseToExcel(response.body)}>
+                  <Download className="h-3 w-3 mr-1" />Excel
+                </Button>
+                <Button variant="outline" size="sm" className="border-dashboard-border text-xs" onClick={() => {
+                  const blob = new Blob([JSON.stringify(response.body, null, 2)], { type: "application/json" });
+                  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "response.json"; a.click();
+                  toast.success("JSON exportado!");
+                }}>
+                  <Download className="h-3 w-3 mr-1" />JSON
+                </Button>
                 <Badge className={getStatusColor(response.status)}>{response.status || "Erro"}</Badge>
                 <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" />{response.time}ms</Badge>
               </div>
