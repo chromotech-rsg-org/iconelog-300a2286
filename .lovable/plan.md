@@ -1,58 +1,76 @@
 
-Objetivo: corrigir de forma definitiva a perda recorrente do perfil de Desenvolvedor e estabilizar a troca de login/email e senha no painel de usuários.
 
-Diagnóstico confirmado
-1) O usuário desenvolvedor (dev@iconelog.com) está sem vínculo em `user_roles` no banco (perfil realmente removido).
-2) A causa raiz está no fluxo de edição de usuário:
-- `src/pages/Admin.tsx` sempre envia `role_id` ao salvar, mesmo sem mudança de perfil.
-- `src/hooks/useUsersManagement.ts` faz `delete` + `insert` em `user_roles`.
-- Quando o próprio desenvolvedor edita a própria conta, o `delete` remove a role que dava permissão e o `insert` seguinte pode falhar por RLS, deixando o usuário sem perfil.
-3) O modal fecha mesmo com erro (falha silenciosa para o operador).
-4) A função de backend `update-user-auth` está frágil na autenticação manual (`getClaims`), com histórico de “Auth session missing” em logs, o que contribui para erros 401/“non-2xx”.
+## Diagnóstico: Por que o FOLLOWUP sempre dá timeout na atualização agendada
 
-Implementação proposta (sequência)
-1. Correção imediata de dados (desbloqueio)
-- Recriar o vínculo do desenvolvedor com a role `Desenvolvedor` em `user_roles` (upsert seguro).
-- Validar que `dev@iconelog.com` voltou a ter role.
+### Causa Raiz Identificada
 
-2. Corrigir o fluxo de salvar usuário no frontend
-- Arquivo: `src/pages/Admin.tsx`
-- Ajustes:
-  - Só enviar `role_id` para atualização quando houver mudança real de perfil.
-  - Não fechar o modal se `updateUser` falhar.
-  - Interromper o fluxo de troca de credenciais quando a etapa de atualização do usuário falhar.
-  - Melhorar feedback de erro para exibir causa real quando backend retornar não-2xx.
+A Edge Function `scheduled-update` tem **dois limites de tempo**:
+- `API_TIMEOUT_MS = 20000` (20 segundos por chamada à API externa)
+- `MAX_EXECUTION_MS = 50000` (50 segundos de orçamento total)
 
-3. Blindar atualização de role para não perder permissão no meio da operação
-- Arquivo: `src/hooks/useUsersManagement.ts`
-- Substituir padrão “delete e depois insert” por fluxo seguro:
-  - Buscar vínculo(s) atual(is) do usuário.
-  - Se não mudou, não tocar em `user_roles`.
-  - Se mudou, atualizar vínculo existente (ou inserir quando não existir), sem janela de usuário “sem perfil”.
-  - Normalizar múltiplos vínculos legados sem apagar antes de garantir vínculo válido.
-  - Tratar e propagar todos os erros (inclusive erro de delete/update/insert).
-- Resultado: evita perda de perfil mesmo em cenário de edição do próprio usuário.
+Para o FOLLOWUP, a função usa `getMonthChunks()` que gera 3 chunks (Jan, Fev, Mar de 2026). Cada chunk chama a API externa do FOLLOWUP, que é pesada e lenta. **O primeiro chunk já estoura os 20 segundos**, causando o `AbortError → "timeout"` que aparece no log.
 
-4. Estabilizar autenticação/autorização da função de troca de credenciais
-- Arquivo: `supabase/functions/update-user-auth/index.ts`
-- Ajustes:
-  - Trocar validação manual para abordagem consistente com as outras funções do projeto (`auth.getUser(token)`).
-  - Manter validação server-side de permissão via `has_admin_permission`.
-  - Padronizar respostas 401/403 com mensagem clara.
-  - Adicionar logs de diagnóstico objetivos (sem vazar dados sensíveis) para facilitar suporte futuro.
+Nos logs recentes, o FOLLOWUP falhou em **todas** as execuções:
+- 19/03 23:00 → timeout (52s total)
+- 19/03 23:30 → timeout (23s)
+- 20/03 00:00 → timeout (49s)
+- 20/03 00:30 → timeout (40s)
+- 20/03 01:00 → skipped (cache fresh, pois o refresh manual das 00:58 salvou os dados)
 
-5. Validação funcional completa (fim-a-fim)
-- Cenários obrigatórios:
-  - Desenvolvedor editar próprio nome/email/senha sem perder role.
-  - Desenvolvedor editar outro usuário (nome, status, perfil, email, senha).
-  - Usuário sem permissão de `usuarios/editar` receber bloqueio correto.
-  - Confirmar que após salvar, menu e acessos permanecem corretos sem “sumir perfil”.
-  - Repetir fluxo duas ou três vezes para validar que o problema não reaparece.
+Outro problema: a função salva **todos os meses como uma única chave** (`followup_099`, 18MB!), enquanto o sistema de cache fragmentado usa chaves por mês (`followup_099_2026_01`). Isso significa que mesmo quando a função conseguisse completar, ela estaria usando a estratégia errada de cache.
 
-Critérios de aceite
-- dev@iconelog.com permanece com role Desenvolvedor após alterações de credenciais.
-- Troca de email e senha retorna sucesso consistente para usuário autorizado.
-- Nenhum salvamento de usuário deixa `user_roles` vazio por efeito colateral.
-- Em falhas reais, o operador recebe mensagem clara e o modal não fecha indevidamente.
+### Plano de Ajuste
 
-Se você aprovar, eu implemento exatamente nessa ordem para resolver de vez e deixar o fluxo estável.
+#### 1. Salvar cada mês individualmente (fragmentação no scheduled-update)
+**Arquivo**: `supabase/functions/scheduled-update/index.ts`
+
+Modificar `fetchIntegrationData` para que, em vez de acumular tudo e retornar um array gigante, ele **salve cada chunk mensal diretamente no banco** com a chave fragmentada (ex: `followup_099_2026_01`). Isso:
+- Evita acumular 18MB em memória
+- Permite que chunks parciais sejam salvos mesmo se o orçamento de tempo acabar
+- Fica consistente com o que o `HistoricalDataLoader` já faz
+
+#### 2. Aumentar o timeout da API para FOLLOWUP
+**Arquivo**: `supabase/functions/scheduled-update/index.ts`
+
+Aumentar `API_TIMEOUT_MS` de 20s para 45s para APIs do tipo `DATE_RANGE_APIS` (FOLLOWUP e PRODUTOSDISTRIBUIDOS), pois são as que retornam mais dados.
+
+#### 3. Processar um mês por batch (não todos de uma vez)
+**Arquivo**: `supabase/functions/scheduled-update/index.ts`
+
+Em vez de processar todos os meses do FOLLOWUP em uma única batch, criar **um job na fila por mês** para APIs de date-range. Assim, se o mês de janeiro completar mas fevereiro estourar o tempo, janeiro já está salvo e fevereiro será retentado na próxima etapa (chaining).
+
+#### 4. Atualizar a verificação de cache freshness para chaves fragmentadas
+**Arquivo**: `supabase/functions/scheduled-update/index.ts`
+
+A verificação de freshness hoje olha para `followup_099` (chave monolítica). Precisa verificar os fragmentos mensais individuais, checando se o mês atual já está fresco.
+
+#### 5. Manter compatibilidade no carregamento do cliente
+**Arquivo**: `src/hooks/useFollowupData.ts`
+
+O cliente já lê tanto a chave monolítica (`followup_099`) quanto os fragmentos (`followup_099_2026_01`). Após a migração, a chave monolítica pode ser removida ou simplesmente ignorada, pois os fragmentos terão os dados atualizados.
+
+### Detalhes Técnicos
+
+**Mudança principal em `fetchIntegrationData`**:
+
+```text
+ANTES:
+  getMonthChunks() → fetch chunk 1 → fetch chunk 2 → fetch chunk 3 → return [todos os dados]
+  → salva tudo em followup_099 (18MB, frequentemente timeout)
+
+DEPOIS:
+  getMonthChunks() → fetch chunk 1 → salva em followup_099_2026_01
+                   → fetch chunk 2 → salva em followup_099_2026_02
+                   → fetch chunk 3 → salva em followup_099_2026_03
+  → cada chunk salvo independentemente, parcial = OK
+```
+
+**Timeout diferenciado**:
+```text
+APIs rápidas (SALDOBASE, MAPALOGISTICO): 20s timeout
+APIs pesadas (FOLLOWUP, PRODUTOSDISTRIBUIDOS): 45s timeout
+```
+
+**Arquivos a modificar**:
+- `supabase/functions/scheduled-update/index.ts` — Fragmentação, timeout, freshness check por mês
+
