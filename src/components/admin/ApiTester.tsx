@@ -194,6 +194,16 @@ const handleSelectIntegration = (integrationId: string) => {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base text-foreground">Resposta</CardTitle>
               <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="border-dashboard-border text-xs" onClick={() => exportResponseToExcel(response.body)}>
+                  <Download className="h-3 w-3 mr-1" />Excel
+                </Button>
+                <Button variant="outline" size="sm" className="border-dashboard-border text-xs" onClick={() => {
+                  const blob = new Blob([JSON.stringify(response.body, null, 2)], { type: "application/json" });
+                  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "response.json"; a.click();
+                  toast.success("JSON exportado!");
+                }}>
+                  <Download className="h-3 w-3 mr-1" />JSON
+                </Button>
                 <Badge className={getStatusColor(response.status)}>{response.status || "Erro"}</Badge>
                 <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" />{response.time}ms</Badge>
               </div>
