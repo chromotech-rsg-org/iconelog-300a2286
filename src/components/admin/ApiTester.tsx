@@ -92,7 +92,7 @@ const handleSelectIntegration = (integrationId: string) => {
       };
       setResponse(result);
 
-      await supabase.from("api_test_logs").insert({
+      const { error: logError } = await supabase.from("api_test_logs").insert({
         endpoint: url,
         method,
         request_headers: parsedHeaders,
@@ -103,6 +103,10 @@ const handleSelectIntegration = (integrationId: string) => {
         execution_time_ms: elapsed,
         user_id: user?.id,
       });
+      if (logError) {
+        console.error("Erro ao salvar log:", logError);
+        toast.error("Erro ao salvar log do teste");
+      }
     } catch (err: any) {
       setResponse({ status: 0, body: { error: err.message }, headers: {}, time: Date.now() - startTime });
       toast.error("Erro na requisição: " + err.message);
