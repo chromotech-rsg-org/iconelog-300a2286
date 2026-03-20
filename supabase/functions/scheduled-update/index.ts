@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const API_TIMEOUT_MS = 20000;
+const HEAVY_API_TIMEOUT_MS = 45000;
 const MAX_EXECUTION_MS = 50000;
 const RETRY_DELAY_MINUTES = 5;
 const FRESHNESS_THRESHOLD_MINUTES = 30;
@@ -108,7 +109,6 @@ Deno.serve(async (req) => {
     // Only create a new log row on stage 1; continuation stages update the parent log
     let logId = parentLogId;
     if (chainDepth === 0) {
-      // Build trigger_details with schedule rule info
       const triggerDetails = enqueueResult.dueSchedules.map((s: DueSchedule) => ({
         schedule_id: s.id,
         page_id: s.page_id,
@@ -162,7 +162,6 @@ Deno.serve(async (req) => {
     };
 
     if (logId) {
-      // Append stage results to existing log
       const { data: existingLog } = await supabase
         .from("scheduled_update_logs")
         .select("results, apis_processed, total_ms")
@@ -294,6 +293,14 @@ async function enqueueDueScheduleJobs(supabase: any, now: Date, brtTime: Date, c
     apiIdsByPage.set(link.bi_page_id, current);
   });
 
+  // Load integration names to identify DATE_RANGE_APIS
+  const allApiIds = [...new Set((apiLinks || []).map((l: any) => l.api_integration_id))];
+  const { data: integrationRows } = allApiIds.length > 0
+    ? await supabase.from("api_integrations").select("id, name").in("id", allApiIds)
+    : { data: [] };
+  const integrationNameById = new Map<string, string>();
+  (integrationRows || []).forEach((r: any) => integrationNameById.set(r.id, r.name));
+
   const queueRows: Array<Record<string, unknown>> = [];
   const autoCompletedSchedules: string[] = [];
   const notes: unknown[] = [];
@@ -314,16 +321,39 @@ async function enqueueDueScheduleJobs(supabase: any, now: Date, brtTime: Date, c
     }
 
     for (const apiIntegrationId of apiIds) {
-      queueRows.push({
-        schedule_id: schedule.id,
-        page_id: schedule.page_id,
-        cod_cli: codCli,
-        api_integration_id: apiIntegrationId,
-        status: "pending",
-        attempts: 0,
-        available_at: now.toISOString(),
-        queue_key: buildQueueKey(schedule, apiIntegrationId, codCli),
-      });
+      const apiName = integrationNameById.get(apiIntegrationId) || "";
+      const isDateRange = DATE_RANGE_APIS.includes(apiName.toUpperCase());
+
+      if (isDateRange) {
+        // Create one job per month for heavy APIs
+        const chunks = getMonthChunks(getBrtTime(new Date()));
+        for (const chunk of chunks) {
+          const monthNum = parseInt(chunk.data_inicial.substring(5, 7), 10);
+          const yearNum = parseInt(chunk.data_inicial.substring(0, 4), 10);
+          const monthSuffix = `_${yearNum}_${String(monthNum).padStart(2, "0")}`;
+          queueRows.push({
+            schedule_id: schedule.id,
+            page_id: schedule.page_id,
+            cod_cli: codCli,
+            api_integration_id: apiIntegrationId,
+            status: "pending",
+            attempts: 0,
+            available_at: now.toISOString(),
+            queue_key: buildQueueKey(schedule, apiIntegrationId, codCli) + monthSuffix,
+          });
+        }
+      } else {
+        queueRows.push({
+          schedule_id: schedule.id,
+          page_id: schedule.page_id,
+          cod_cli: codCli,
+          api_integration_id: apiIntegrationId,
+          status: "pending",
+          attempts: 0,
+          available_at: now.toISOString(),
+          queue_key: buildQueueKey(schedule, apiIntegrationId, codCli),
+        });
+      }
     }
   }
 
@@ -352,7 +382,7 @@ async function enqueueDueScheduleJobs(supabase: any, now: Date, brtTime: Date, c
     await updateAllPages(supabase, [...new Set(autoCompletedPageIds)]);
   }
 
-  console.log(`Found ${dueSchedules.length} due schedules, enqueued ${queueRows.length} jobs`);
+  console.log(`Found ${dueSchedules.length} due schedules, enqueued ${queueRows.length} jobs (date-range APIs split by month)`);
 
   return {
     dueSchedules,
@@ -401,6 +431,16 @@ async function getPendingQueueJobs(supabase: any, now: Date): Promise<QueueJob[]
   return (data || []) as QueueJob[];
 }
 
+/**
+ * Extract month suffix from queue_key if present.
+ * Queue keys for date-range APIs end with _YYYY_MM (e.g. ...|never_2026_01)
+ */
+function extractMonthFromQueueKey(queueKey: string): { year: number; month: number } | null {
+  const match = queueKey.match(/_(\d{4})_(\d{2})$/);
+  if (!match) return null;
+  return { year: parseInt(match[1], 10), month: parseInt(match[2], 10) };
+}
+
 async function processPendingQueueBatches(supabase: any, now: Date, globalStart: number, pendingJobs: QueueJob[]) {
   if (pendingJobs.length === 0) {
     return {
@@ -426,15 +466,30 @@ async function processPendingQueueBatches(supabase: any, now: Date, globalStart:
     integrationMap.set(integration.id, integration);
   });
 
-  const batches = buildQueueBatches(pendingJobs, integrationMap);
+  // Process jobs individually (each job = one API call, possibly one month chunk)
   const results: unknown[] = [];
   let processedBatches = 0;
   let hasErrors = false;
 
-  for (const batch of batches) {
+  // Group jobs: non-date-range APIs are batched; date-range jobs are processed individually
+  const nonDateRangeJobs: QueueJob[] = [];
+  const dateRangeJobs: QueueJob[] = [];
+
+  for (const job of pendingJobs) {
+    const integration = integrationMap.get(job.api_integration_id);
+    if (integration && DATE_RANGE_APIS.includes(integration.name.toUpperCase())) {
+      dateRangeJobs.push(job);
+    } else {
+      nonDateRangeJobs.push(job);
+    }
+  }
+
+  // Process non-date-range APIs as batches (original logic)
+  const nonDateRangeBatches = buildQueueBatches(nonDateRangeJobs, integrationMap);
+  for (const batch of nonDateRangeBatches) {
     const elapsed = Date.now() - globalStart;
     if (elapsed > MAX_EXECUTION_MS) {
-      console.warn(`Time budget exhausted (${elapsed}ms), keeping ${batches.length - processedBatches} batches pending`);
+      console.warn(`Time budget exhausted (${elapsed}ms), keeping remaining batches pending`);
       break;
     }
 
@@ -442,13 +497,7 @@ async function processPendingQueueBatches(supabase: any, now: Date, globalStart:
     if (!integration) {
       await retryBatch(supabase, batch.jobs, now, "integration_not_found");
       hasErrors = true;
-      results.push({
-        type: "batch",
-        api: batch.integrationName,
-        cod_cli: batch.codCli,
-        status: "error",
-        error: "integration_not_found",
-      });
+      results.push({ type: "batch", api: batch.integrationName, cod_cli: batch.codCli, status: "error", error: "integration_not_found" });
       processedBatches += 1;
       continue;
     }
@@ -464,70 +513,118 @@ async function processPendingQueueBatches(supabase: any, now: Date, globalStart:
 
       const cacheAge = await getCacheAgeMinutes(supabase, cacheKey, now);
       if (cacheAge !== null && cacheAge < FRESHNESS_THRESHOLD_MINUTES) {
-        await completeBatch(supabase, batch.jobs, {
-          execution_ms: Date.now() - startTime,
-          records_processed: 0,
-          pageIds: [...new Set(batch.jobs.map((job) => job.page_id))],
-        });
+        await completeBatch(supabase, batch.jobs, { execution_ms: Date.now() - startTime, records_processed: 0, pageIds: [...new Set(batch.jobs.map((job) => job.page_id))] });
         await finalizeSchedulesForJobs(supabase, batch.jobs, now);
-        results.push({
-          type: "batch",
-          api: integration.name,
-          cod_cli: batch.codCli,
-          status: "skipped",
-          reason: "cache_fresh",
-          cache_age_minutes: Math.round(cacheAge),
-        });
+        results.push({ type: "batch", api: integration.name, cod_cli: batch.codCli, status: "skipped", reason: "cache_fresh", cache_age_minutes: Math.round(cacheAge) });
         processedBatches += 1;
         continue;
       }
 
-      const allDataArray = await fetchIntegrationData(integration, batch.codCli, globalStart);
+      const allDataArray = await fetchSingleApiCall(integration, batch.codCli);
       const execTime = Date.now() - startTime;
 
       if (allDataArray.length > 0) {
         await supabase.from("bi_data_cache").upsert(
-          {
-            page_id: "_shared",
-            cache_key: cacheKey,
-            data: allDataArray as never,
-            cached_at: new Date().toISOString(),
-          },
+          { page_id: "_shared", cache_key: cacheKey, data: allDataArray as never, cached_at: new Date().toISOString() },
           { onConflict: "page_id,cache_key" }
         );
       }
 
       const pageIds = [...new Set(batch.jobs.map((job) => job.page_id))];
-      await completeBatch(supabase, batch.jobs, {
-        execution_ms: execTime,
-        records_processed: allDataArray.length,
-        pageIds,
-      });
+      await completeBatch(supabase, batch.jobs, { execution_ms: execTime, records_processed: allDataArray.length, pageIds });
       await finalizeSchedulesForJobs(supabase, batch.jobs, now);
 
       console.log(`Done batch: ${integration.name} (${batch.codCli}) => ${allDataArray.length} records, ${execTime}ms`);
-      results.push({
-        type: "batch",
-        api: integration.name,
-        cod_cli: batch.codCli,
-        status: 200,
-        records: allDataArray.length,
-        time_ms: execTime,
-        pages: pageIds,
-      });
+      results.push({ type: "batch", api: integration.name, cod_cli: batch.codCli, status: 200, records: allDataArray.length, time_ms: execTime, pages: pageIds });
     } catch (error: any) {
       hasErrors = true;
       console.error(`Batch error: ${batch.integrationName} (${batch.codCli}) => ${error.message}`);
       await retryBatch(supabase, batch.jobs, now, error.message);
-      results.push({
-        type: "batch",
-        api: batch.integrationName,
-        cod_cli: batch.codCli,
-        status: "error",
-        error: error.message,
-      });
+      results.push({ type: "batch", api: batch.integrationName, cod_cli: batch.codCli, status: "error", error: error.message });
+    }
+    processedBatches += 1;
+  }
+
+  // Process date-range jobs individually (one month per job)
+  for (const job of dateRangeJobs) {
+    const elapsed = Date.now() - globalStart;
+    if (elapsed > MAX_EXECUTION_MS) {
+      console.warn(`Time budget exhausted (${elapsed}ms), keeping remaining date-range jobs pending`);
+      break;
     }
 
+    const integration = integrationMap.get(job.api_integration_id);
+    if (!integration || !job.cod_cli) {
+      await retryBatch(supabase, [job], now, "integration_not_found");
+      hasErrors = true;
+      processedBatches += 1;
+      continue;
+    }
+
+    const monthInfo = extractMonthFromQueueKey(job.queue_key);
+    if (!monthInfo) {
+      // Legacy job without month suffix — process all months (fallback)
+      console.warn(`Legacy date-range job without month suffix: ${job.queue_key}`);
+      await retryBatch(supabase, [job], now, "legacy_queue_key_no_month");
+      hasErrors = true;
+      processedBatches += 1;
+      continue;
+    }
+
+    const fragmentKey = `${integration.name.toLowerCase()}_${job.cod_cli}_${monthInfo.year}_${String(monthInfo.month).padStart(2, "0")}`;
+
+    try {
+      const startTime = Date.now();
+
+      await supabase
+        .from("bi_scheduled_update_queue")
+        .update({ status: "running", started_at: new Date().toISOString(), error_message: null } as never)
+        .eq("id", job.id);
+
+      // Check freshness of this specific month fragment
+      const cacheAge = await getCacheAgeMinutes(supabase, fragmentKey, now);
+      if (cacheAge !== null && cacheAge < FRESHNESS_THRESHOLD_MINUTES) {
+        await completeBatch(supabase, [job], { execution_ms: Date.now() - startTime, records_processed: 0, pageIds: [job.page_id] });
+        await finalizeSchedulesForJobs(supabase, [job], now);
+        results.push({ type: "month_chunk", api: integration.name, cod_cli: job.cod_cli, month: `${monthInfo.year}/${String(monthInfo.month).padStart(2, "0")}`, status: "skipped", reason: "cache_fresh", cache_age_minutes: Math.round(cacheAge!) });
+        processedBatches += 1;
+        continue;
+      }
+
+      // Build date range for this specific month
+      const firstDay = new Date(monthInfo.year, monthInfo.month - 1, 1);
+      const lastDay = new Date(monthInfo.year, monthInfo.month, 0);
+      const dataInicial = `${formatDate(firstDay)} 00:00`;
+      const dataFinal = `${formatDate(lastDay)} 23:59`;
+
+      const chunkData = await fetchSingleApiCall(integration, job.cod_cli, { data_inicial: dataInicial, data_final: dataFinal }, true);
+      const execTime = Date.now() - startTime;
+
+      // Tag records with month/year
+      const tagged = chunkData.map((row: any) => ({
+        ...row,
+        _fetch_month: monthInfo.month,
+        _fetch_year: monthInfo.year,
+      }));
+
+      // Save directly with fragmented key
+      await supabase.from("bi_data_cache").upsert(
+        { page_id: "_shared", cache_key: fragmentKey, data: tagged as never, cached_at: new Date().toISOString() },
+        { onConflict: "page_id,cache_key" }
+      );
+
+      const pageIds = [job.page_id];
+      await completeBatch(supabase, [job], { execution_ms: execTime, records_processed: tagged.length, pageIds });
+      await finalizeSchedulesForJobs(supabase, [job], now);
+
+      console.log(`Done month chunk: ${integration.name} ${monthInfo.year}/${String(monthInfo.month).padStart(2, "0")} (${job.cod_cli}) => ${tagged.length} records, ${execTime}ms`);
+      results.push({ type: "month_chunk", api: integration.name, cod_cli: job.cod_cli, month: `${monthInfo.year}/${String(monthInfo.month).padStart(2, "0")}`, status: 200, records: tagged.length, time_ms: execTime });
+    } catch (error: any) {
+      hasErrors = true;
+      console.error(`Month chunk error: ${integration.name} ${monthInfo.year}/${String(monthInfo.month).padStart(2, "0")} (${job.cod_cli}) => ${error.message}`);
+      await retryBatch(supabase, [job], now, error.message);
+      results.push({ type: "month_chunk", api: integration.name, cod_cli: job.cod_cli, month: `${monthInfo.year}/${String(monthInfo.month).padStart(2, "0")}`, status: "error", error: error.message });
+    }
     processedBatches += 1;
   }
 
@@ -569,14 +666,7 @@ function buildQueueBatches(pendingJobs: QueueJob[], integrationMap: Map<string, 
     });
   }
 
-  return [...grouped.values()].sort((a, b) => {
-    if (a.firstAvailableAt !== b.firstAvailableAt) {
-      return a.firstAvailableAt.localeCompare(b.firstAvailableAt);
-    }
-    const aSlow = DATE_RANGE_APIS.includes(a.integrationName.toUpperCase()) ? 1 : 0;
-    const bSlow = DATE_RANGE_APIS.includes(b.integrationName.toUpperCase()) ? 1 : 0;
-    return aSlow - bSlow;
-  });
+  return [...grouped.values()].sort((a, b) => a.firstAvailableAt.localeCompare(b.firstAvailableAt));
 }
 
 async function getCacheAgeMinutes(supabase: any, cacheKey: string, now: Date) {
@@ -595,7 +685,16 @@ async function getCacheAgeMinutes(supabase: any, cacheKey: string, now: Date) {
   return (now.getTime() - new Date(data.cached_at).getTime()) / 60000;
 }
 
-async function fetchIntegrationData(integration: IntegrationRow, codCli: string, globalStart: number) {
+/**
+ * Fetch data from a single API call (non-date-range or a specific month chunk).
+ * Uses HEAVY_API_TIMEOUT_MS for date-range APIs.
+ */
+async function fetchSingleApiCall(
+  integration: IntegrationRow,
+  codCli: string,
+  extraBody?: Record<string, unknown>,
+  isHeavy?: boolean,
+): Promise<any[]> {
   if (!integration.base_url) {
     throw new Error("missing_base_url");
   }
@@ -614,40 +713,18 @@ async function fetchIntegrationData(integration: IntegrationRow, codCli: string,
     ? integration.default_body
     : {};
 
-  if (!DATE_RANGE_APIS.includes(integration.name.toUpperCase())) {
-    return await fetchSinglePayload(integration.base_url, headers, {
-      ...defaultBody,
-      cod_cli: codCli,
-    });
-  }
+  const timeout = isHeavy ? HEAVY_API_TIMEOUT_MS : API_TIMEOUT_MS;
 
-  const allDataArray: any[] = [];
-  for (const chunk of getMonthChunks(getBrtTime(new Date()))) {
-    if (Date.now() - globalStart > MAX_EXECUTION_MS) {
-      console.warn(`Time budget hit during ${integration.name} chunks, saving partial data`);
-      break;
-    }
-
-    const chunkData = await fetchSinglePayload(integration.base_url, headers, {
-      ...defaultBody,
-      cod_cli: codCli,
-      ...chunk,
-    });
-
-    const tagged = chunkData.map((row: any) => ({
-      ...row,
-      _fetch_month: parseInt(chunk.data_inicial.substring(5, 7), 10),
-      _fetch_year: parseInt(chunk.data_inicial.substring(0, 4), 10),
-    }));
-    allDataArray.push(...tagged);
-  }
-
-  return allDataArray;
+  return await fetchSinglePayload(integration.base_url, headers, {
+    ...defaultBody,
+    cod_cli: codCli,
+    ...extraBody,
+  }, timeout);
 }
 
-async function fetchSinglePayload(url: string, headers: Record<string, string>, body: Record<string, unknown>) {
+async function fetchSinglePayload(url: string, headers: Record<string, string>, body: Record<string, unknown>, timeoutMs: number = API_TIMEOUT_MS) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
@@ -734,12 +811,14 @@ async function finalizeSchedulesForJobs(supabase: any, jobs: QueueJob[], now: Da
 
   jobs.forEach((job) => {
     const parts = job.queue_key.split("|");
-    const marker = parts[parts.length - 1] || "never";
+    // For date-range jobs, the marker is the 4th segment (before _YYYY_MM suffix)
+    // Original format: scheduleId|apiId|codCli|marker or scheduleId|apiId|codCli|marker_YYYY_MM
+    const marker = parts.length >= 4 ? parts[3].replace(/_\d{4}_\d{2}$/, "") : "never";
     scheduleMarkers.set(job.schedule_id, marker);
   });
 
   for (const [scheduleId, marker] of scheduleMarkers.entries()) {
-    const likePattern = `${scheduleId}|%|${marker}`;
+    const likePattern = `${scheduleId}|%|${marker}%`;
     const { data, error } = await supabase
       .from("bi_scheduled_update_queue")
       .select("status")
