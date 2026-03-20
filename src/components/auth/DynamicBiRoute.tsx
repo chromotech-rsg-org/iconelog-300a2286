@@ -61,7 +61,8 @@ const DynamicBiRoute = () => {
       return <Navigate to={`/${settingByPageId.slug}`} replace />;
     }
     // page_id IS the slug (no custom slug set) — render it
-    const PageComponent = pageComponents[settingByPageId.page_id];
+    const resolvedPageId = resolveBasePageId(settingByPageId.page_id);
+    const PageComponent = pageComponents[resolvedPageId];
     if (!PageComponent) return <NotFound />;
     return (
       <ProtectedRoute pageId={settingByPageId.page_id}>
