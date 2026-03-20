@@ -74,6 +74,8 @@ const ConfigurarBI = () => {
   const [newIntervalMinutes, setNewIntervalMinutes] = useState(0);
   const [expandedCharts, setExpandedCharts] = useState(false);
   const [expandedSchedules, setExpandedSchedules] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<Record<string, boolean>>({});
+  const [syncingPermission, setSyncingPermission] = useState<string | null>(null);
 
   const systemSetting = useMemo(() => getSystemSetting(), [getSystemSetting]);
   const orderedBiSettings = useMemo(() => getOrderedBiSettings(), [getOrderedBiSettings]);
