@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useTransition } from "react";
+import { useParams } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
