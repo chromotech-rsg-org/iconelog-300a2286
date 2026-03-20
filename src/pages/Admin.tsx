@@ -15,7 +15,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBiSettingsContext } from "@/contexts/BiSettingsContext";
 import { useRolesManagement, RoleWithPermissions, PagePermission as RolePagePermission, AdminPermission as RoleAdminPermission } from "@/hooks/useRolesManagement";
 import { useUsersManagement, UserWithRole } from "@/hooks/useUsersManagement";
-import { systemPages } from "@/data/authData";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Globe, Loader2, CheckSquare } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
