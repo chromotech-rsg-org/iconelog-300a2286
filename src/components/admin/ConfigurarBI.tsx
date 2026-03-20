@@ -84,6 +84,15 @@ const ConfigurarBI = () => {
     if (systemSetting) setEditingSystemName(systemSetting.display_name);
   }, [systemSetting]);
 
+  const checkPermissionStatus = useCallback(async (pageIds: string[]) => {
+    if (pageIds.length === 0) return;
+    const { data } = await supabase.from("page_permissions").select("page_id").in("page_id", pageIds);
+    const found = new Set((data || []).map((r: any) => r.page_id));
+    const status: Record<string, boolean> = {};
+    pageIds.forEach(pid => { status[pid] = found.has(pid); });
+    setPermissionStatus(prev => ({ ...prev, ...status }));
+  }, []);
+
   useEffect(() => {
     const fetchAll = async () => {
       const [clientsRes, intRes, linksRes, schedRes] = await Promise.all([
@@ -109,6 +118,12 @@ const ConfigurarBI = () => {
     };
     fetchAll();
   }, []);
+
+  // Check permission status for all BI pages
+  useEffect(() => {
+    const biPageIds = orderedBiSettings.map(s => s.page_id).filter(pid => pid !== "system");
+    checkPermissionStatus(biPageIds);
+  }, [orderedBiSettings, checkPermissionStatus]);
 
   const filteredSettings = useMemo(() => {
     if (!searchQuery) return orderedBiSettings;
