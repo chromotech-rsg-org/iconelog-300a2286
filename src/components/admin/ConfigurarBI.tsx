@@ -179,6 +179,39 @@ const ConfigurarBI = () => {
     refetch();
   };
 
+  const syncPermissionsForPage = async (pageId: string) => {
+    setSyncingPermission(pageId);
+    try {
+      // Get all roles
+      const { data: roles } = await supabase.from("roles").select("id");
+      if (!roles || roles.length === 0) { toast.error("Nenhum perfil encontrado"); return; }
+
+      // Get existing permissions for this page
+      const { data: existing } = await supabase.from("page_permissions").select("role_id").eq("page_id", pageId);
+      const existingRoleIds = new Set((existing || []).map((r: any) => r.role_id));
+
+      // Find missing roles
+      const missingRoles = roles.filter(r => !existingRoleIds.has(r.id));
+      if (missingRoles.length === 0) {
+        toast.info("Permissões já estão criadas para todos os perfis");
+        setPermissionStatus(prev => ({ ...prev, [pageId]: true }));
+        return;
+      }
+
+      // Insert permissions (all disabled by default)
+      const inserts = missingRoles.map(r => ({
+        page_id: pageId, role_id: r.id,
+        visualizar: false, exportar: false, atualizar: false, idioma: false, apenas_dev: false,
+      }));
+      const { error } = await supabase.from("page_permissions").insert(inserts);
+      if (error) { toast.error("Erro: " + error.message); return; }
+      toast.success(`Permissões criadas para ${missingRoles.length} perfil(is)!`);
+      setPermissionStatus(prev => ({ ...prev, [pageId]: true }));
+    } finally {
+      setSyncingPermission(null);
+    }
+  };
+
   const handleDuplicate = async (setting: BiSetting) => {
     const newPageId = `${setting.page_id}-copy-${Date.now()}`;
     const { error } = await supabase.from("bi_settings").insert({
@@ -187,7 +220,9 @@ const ConfigurarBI = () => {
       cod_cli: setting.cod_cli, company_name: setting.company_name,
     });
     if (error) { toast.error("Erro: " + error.message); return; }
-    toast.success("BI duplicado!");
+    // Auto-create permissions for all roles
+    await syncPermissionsForPage(newPageId);
+    toast.success("BI duplicado com permissões!");
     refetch();
   };
 
