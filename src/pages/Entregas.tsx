@@ -66,8 +66,8 @@ const Entregas = () => {
 
   // Get delivery data filtered by months/years
   const deliveryData = useMemo(
-    () => getEntregasData(selectedMonths, selectedYears),
-    [getEntregasData, selectedMonths, selectedYears]
+    () => getEntregasData(selectedMonths, selectedYears, campaignMode),
+    [getEntregasData, selectedMonths, selectedYears, campaignMode]
   );
 
   // Filter by selected regions from header
