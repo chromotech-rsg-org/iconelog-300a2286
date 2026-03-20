@@ -436,6 +436,22 @@ const ConfigurarBI = () => {
                       );
                     })()}
                   </TableCell>
+                  <TableCell className="text-center">
+                    {permissionStatus[setting.page_id] ? (
+                      <div className="flex items-center justify-center" title="Permissões criadas">
+                        <ShieldCheck className="h-4 w-4 text-green-500" />
+                      </div>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="h-7 text-xs text-amber-500 hover:text-amber-400"
+                        title="Criar permissões para este BI"
+                        disabled={syncingPermission === setting.page_id}
+                        onClick={() => syncPermissionsForPage(setting.page_id)}>
+                        {syncingPermission === setting.page_id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <><ShieldAlert className="h-3.5 w-3.5 mr-1" />Criar</>}
+                      </Button>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => openEditModal(setting)}>
