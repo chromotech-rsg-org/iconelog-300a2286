@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useTransition } from "react";
+import { useParams } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { DocumentHead } from "@/components/shared/DocumentHead";
 import { SharedHeader } from "@/components/shared/SharedHeader";
@@ -18,11 +19,20 @@ import { X, Loader2, AlertCircle, InboxIcon } from "lucide-react";
 
 const Entregas = () => {
   const { t } = useLanguage();
+  const { slug } = useParams<{ slug: string }>();
   const currentYear = new Date().getFullYear();
   const allMonths = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-  const { getCodCli, loading: settingsLoading } = useBiSettingsContext();
-  const codCli = getCodCli("entregas");
+  // Detect campaign mode from slug
+  const campaignMode: "kit-completo" | "kit-basico" = 
+    slug?.toLowerCase().includes("basico") ? "kit-basico" : "kit-completo";
+
+  const { getCodCli, settings, loading: settingsLoading } = useBiSettingsContext();
+  
+  // Resolve cod_cli: try current page_id first, fallback to base "entregas"
+  const currentSetting = settings.find(s => s.slug === slug);
+  const currentPageId = currentSetting?.page_id || "entregas";
+  const codCli = getCodCli(currentPageId) || getCodCli("entregas");
 
   const {
     followupData,
@@ -36,7 +46,7 @@ const Entregas = () => {
     getEntregasData,
     cityMappings,
     lastUpdateAt,
-  } = useFollowupData(codCli, "entregas");
+  } = useFollowupData(codCli, currentPageId);
 
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [selectedMonths, setSelectedMonths] = useState<number[]>(allMonths);
@@ -56,8 +66,8 @@ const Entregas = () => {
 
   // Get delivery data filtered by months/years
   const deliveryData = useMemo(
-    () => getEntregasData(selectedMonths, selectedYears),
-    [getEntregasData, selectedMonths, selectedYears]
+    () => getEntregasData(selectedMonths, selectedYears, campaignMode),
+    [getEntregasData, selectedMonths, selectedYears, campaignMode]
   );
 
   // Filter by selected regions from header
@@ -159,9 +169,9 @@ const Entregas = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <DocumentHead pageId="entregas" />
+      <DocumentHead pageId={currentPageId} />
       <SharedHeader
-        pageId="entregas"
+        pageId={currentPageId}
         lastUpdate={lastUpdate}
         showFilters={true}
         selectedMonths={selectedMonths}

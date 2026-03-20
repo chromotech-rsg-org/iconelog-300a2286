@@ -515,7 +515,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     }, 0);
   }, [produtosData]);
 
-  const getEntregasData = useCallback((months?: number[], years?: number[]) => {
+  const getEntregasData = useCallback((months?: number[], years?: number[], campaignMode: "kit-completo" | "kit-basico" = "kit-completo") => {
     // Use _fetch_month/_fetch_year tags when available for accurate filtering
     // This matches the API's internal date logic rather than parsing record date fields
     const filtered = (months?.length || years?.length) 
@@ -543,6 +543,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       uf: string;
     }>();
 
+    const BASICO_CAMPAIGNS = ["99FOOD_BASICO_POSITIVACAO KIT", "99FOOD_BASICO_KIT RESTAURANTE", "99FOOD_BASICO_REPOSICAO KIT"];
+
     filtered.forEach(item => {
       const cidade = item.ds_cidade_DES || item.ds_cidade || item.cidade || "";
       const { regional, uf } = resolveRegionalAndUf(cidade, cityMappings);
@@ -552,9 +554,10 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
 
       if (tipoServico.includes("reentrega")) return;
 
-      // Exclude specific "BASICO" campaigns from B-Side Entregas
-      const EXCLUDED_CAMPAIGNS = ["99FOOD_BASICO_POSITIVACAO KIT", "99FOOD_BASICO_KIT RESTAURANTE", "99FOOD_BASICO_REPOSICAO KIT"];
-      if (EXCLUDED_CAMPAIGNS.some(exc => campanhaNorm.includes(exc))) return;
+      const isBasico = BASICO_CAMPAIGNS.some(exc => campanhaNorm.includes(exc));
+
+      if (campaignMode === "kit-completo" && isBasico) return;
+      if (campaignMode === "kit-basico" && !isBasico) return;
 
       let tipo: "entrega" | "reposicao" | null = null;
       if (campanhaNorm.includes("REPOSICAO") || campanhaNorm.includes("REPOSITIVACAO")) {

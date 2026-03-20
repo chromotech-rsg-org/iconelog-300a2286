@@ -16,6 +16,13 @@ const pageComponents: Record<string, React.LazyExoticComponent<React.ComponentTy
   analitico: lazy(() => import("@/pages/Analitico")),
 };
 
+// Resolve duplicated page_ids (e.g. "entregas-copy-1234") to their base component
+function resolveBasePageId(pageId: string): string {
+  if (pageComponents[pageId]) return pageId;
+  const base = pageId.replace(/-copy-\d+$/, "");
+  return pageComponents[base] ? base : pageId;
+}
+
 const LoadingFallback = () => (
   <div className="min-h-screen bg-dashboard-dark flex items-center justify-center">
     <Skeleton className="h-12 w-48" />
@@ -33,7 +40,8 @@ const DynamicBiRoute = () => {
   const settingBySlug = settings.find((s) => s.slug === slug);
 
   if (settingBySlug) {
-    const PageComponent = pageComponents[settingBySlug.page_id];
+    const resolvedPageId = resolveBasePageId(settingBySlug.page_id);
+    const PageComponent = pageComponents[resolvedPageId];
     if (!PageComponent) return <NotFound />;
     return (
       <ProtectedRoute pageId={settingBySlug.page_id}>
@@ -53,7 +61,8 @@ const DynamicBiRoute = () => {
       return <Navigate to={`/${settingByPageId.slug}`} replace />;
     }
     // page_id IS the slug (no custom slug set) — render it
-    const PageComponent = pageComponents[settingByPageId.page_id];
+    const resolvedPageId = resolveBasePageId(settingByPageId.page_id);
+    const PageComponent = pageComponents[resolvedPageId];
     if (!PageComponent) return <NotFound />;
     return (
       <ProtectedRoute pageId={settingByPageId.page_id}>
