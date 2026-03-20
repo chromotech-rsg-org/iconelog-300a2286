@@ -182,10 +182,22 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
             if (fragData?.data && Array.isArray(fragData.data) && (fragData.data as FollowupItem[]).length > 0) {
               allFollowup = allFollowup.concat(fragData.data as FollowupItem[]);
               console.log(`Loaded ${(fragData.data as FollowupItem[]).length} followup records from ${cache.cache_key}`);
-              setFollowupData([...allFollowup]);
             }
           }
         }
+
+        // Deduplicate all loaded followup records
+        const seenFollowup = new Set<string>();
+        allFollowup = allFollowup.filter(item => {
+          const key = item.cod_conhecimento
+            ? String(item.cod_conhecimento)
+            : JSON.stringify(item);
+          if (seenFollowup.has(key)) return false;
+          seenFollowup.add(key);
+          return true;
+        });
+        console.log(`Total followup records after dedup: ${allFollowup.length}`);
+        setFollowupData(allFollowup);
 
         if (pageId === "minutas" || pageId === "tracking") {
           // Load main produtos cache first
@@ -265,6 +277,30 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
 
   const { logManualRefresh } = useManualRefreshLog();
 
+  // Deduplicate records by cod_conhecimento (or full JSON as fallback)
+  const deduplicateRecords = useCallback((records: FollowupItem[]): FollowupItem[] => {
+    const seen = new Set<string>();
+    return records.filter(item => {
+      const key = item.cod_conhecimento
+        ? String(item.cod_conhecimento)
+        : JSON.stringify(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, []);
+
+  // Tag each record with _fetch_month/_fetch_year based on dt_expedicao (primary) or dt_baixa_minuta (fallback)
+  const tagRecordWithDate = useCallback((item: FollowupItem, fallbackYear: number): FollowupItem => {
+    const dtExp = safeParseDate(String(item.dt_expedicao || ""));
+    const dtBaixa = safeParseDate(String(item.dt_baixa_minuta || ""));
+    const refDate = dtExp || dtBaixa;
+    if (refDate) {
+      return { ...item, _fetch_month: refDate.getMonth() + 1, _fetch_year: refDate.getFullYear() };
+    }
+    return { ...item, _fetch_month: 1, _fetch_year: fallbackYear };
+  }, []);
+
   const fetchFollowup = useCallback(async (_months?: number[], _years?: number[]) => {
     if (!codCli) return;
     const refreshStart = Date.now();
@@ -273,36 +309,27 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     const fmt = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-    const chunks: { data_inicial: string; data_final: string }[] = [];
     const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
 
-    for (let m = 1; m <= currentMonth; m++) {
-      const firstDay = new Date(currentYear, m - 1, 1);
-      const lastDay = new Date(currentYear, m, 0);
-      chunks.push({
-        data_inicial: `${fmt(firstDay)} 00:00`,
-        data_final: `${fmt(lastDay)} 23:59`,
-      });
-    }
+    // Single full-year request: Jan 1 → today
+    // This avoids losing records where dt_inicio differs from dt_expedicao across month boundaries
+    const yearStart = new Date(currentYear, 0, 1);
+    const singleRange = {
+      data_inicial: `${fmt(yearStart)} 00:00`,
+      data_final: `${fmt(now)} 23:59`,
+    };
 
-    // 1) Fetch current year FIRST (fast, ~3 months)
+    // 1) Fetch FOLLOWUP for the entire year in one request
     setRefreshStage("requesting_followup");
+    setRefreshRecordCount(0);
     let allFollowup: FollowupItem[] = [];
-    for (let i = 0; i < chunks.length; i++) {
-      setRefreshRecordCount(allFollowup.length);
-      const result = await callMainApi("FOLLOWUP", codCli, chunks[i], pageId);
-      if (result) {
-        const tagged = result.map((item: FollowupItem) => ({
-          ...item,
-          _fetch_month: i + 1,
-          _fetch_year: currentYear,
-        }));
-        allFollowup = allFollowup.concat(tagged);
-      }
+    const result = await callMainApi("FOLLOWUP", codCli, singleRange, pageId);
+    if (result && Array.isArray(result)) {
+      // Tag each record based on its actual dt_expedicao/dt_baixa_minuta
+      allFollowup = result.map((item: FollowupItem) => tagRecordWithDate(item, currentYear));
+      // Deduplicate
+      allFollowup = deduplicateRecords(allFollowup);
     }
-
-    // 2025 merge disabled temporarily
 
     if (allFollowup.length > 0) {
       setRefreshStage("receiving_followup");
@@ -310,14 +337,14 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       setFollowupData(allFollowup);
     }
 
-    // Fetch PRODUTOSDISTRIBUIDOS for minutas and tracking
+    // Fetch PRODUTOSDISTRIBUIDOS for minutas and tracking (also single request)
     let allProdutos: FollowupItem[] = [];
     if (pageId === "minutas" || pageId === "tracking") {
       setRefreshStage("requesting_produtos");
-      for (let i = 0; i < chunks.length; i++) {
-        setRefreshRecordCount(allProdutos.length);
-        const result = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, chunks[i], pageId);
-        if (result) allProdutos = allProdutos.concat(result);
+      setRefreshRecordCount(0);
+      const prodResult = await callMainApi("PRODUTOSDISTRIBUIDOS", codCli, singleRange, pageId);
+      if (prodResult && Array.isArray(prodResult)) {
+        allProdutos = deduplicateRecords(prodResult);
       }
 
       if (allProdutos.length > 0) {
@@ -330,14 +357,11 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     setRefreshStage("saving");
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      // Save current year data only to main cache key (historical data lives in monthly fragments)
+      // Save current year data to main cache key
       const currentYearOnly = allFollowup.filter(i => Number(i._fetch_year) === currentYear);
       if (currentYearOnly.length > 0) {
         await saveToCache("followup", currentYearOnly);
       }
-
-      // Re-merge with historical fragments already in memory for display
-      // (no need to re-read from DB, they're already in followupData state)
 
       if ((pageId === "minutas" || pageId === "tracking") && allProdutos.length > 0) {
         await saveToCache("produtosdistribuidos", allProdutos);
@@ -361,14 +385,12 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     }
     logManualRefresh({ pageId, apis: refreshApis, totalMs: Date.now() - refreshStart, results: refreshResults });
 
-    // 2025 background fetch disabled temporarily
-
     if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
     doneTimerRef.current = setTimeout(() => {
       setRefreshStage(null);
       setRefreshing(false);
     }, 3000);
-  }, [codCli, callMainApi, saveLastUpdate, saveToCache, pageId, logManualRefresh]);
+  }, [codCli, callMainApi, saveLastUpdate, saveToCache, pageId, logManualRefresh, deduplicateRecords, tagRecordWithDate]);
 
   const getMinutasData = useCallback((months: number[], years: number[], dateRange?: { from?: Date; to?: Date }) => {
     const filtered = dateRange?.from
