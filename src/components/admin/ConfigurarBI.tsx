@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, Loader2, Plus, Trash2, Link, Pencil, Search, ChevronDown, ChevronRight, Eye, EyeOff, Clock, Timer } from "lucide-react";
+import { Upload, Save, Image as ImageIcon, Building2, LayoutGrid, Copy, Loader2, Plus, Trash2, Link, Pencil, Search, ChevronDown, ChevronRight, Eye, EyeOff, Clock, Timer, ShieldCheck, ShieldAlert } from "lucide-react";
 import { useBiSettings, BiSetting } from "@/hooks/useBiSettings";
 import { toast } from "sonner";
 import defaultLogo from "@/assets/logo.jpg";
@@ -74,6 +74,8 @@ const ConfigurarBI = () => {
   const [newIntervalMinutes, setNewIntervalMinutes] = useState(0);
   const [expandedCharts, setExpandedCharts] = useState(false);
   const [expandedSchedules, setExpandedSchedules] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<Record<string, boolean>>({});
+  const [syncingPermission, setSyncingPermission] = useState<string | null>(null);
 
   const systemSetting = useMemo(() => getSystemSetting(), [getSystemSetting]);
   const orderedBiSettings = useMemo(() => getOrderedBiSettings(), [getOrderedBiSettings]);
@@ -81,6 +83,15 @@ const ConfigurarBI = () => {
   useEffect(() => {
     if (systemSetting) setEditingSystemName(systemSetting.display_name);
   }, [systemSetting]);
+
+  const checkPermissionStatus = useCallback(async (pageIds: string[]) => {
+    if (pageIds.length === 0) return;
+    const { data } = await supabase.from("page_permissions").select("page_id").in("page_id", pageIds);
+    const found = new Set((data || []).map((r: any) => r.page_id));
+    const status: Record<string, boolean> = {};
+    pageIds.forEach(pid => { status[pid] = found.has(pid); });
+    setPermissionStatus(prev => ({ ...prev, ...status }));
+  }, []);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -107,6 +118,12 @@ const ConfigurarBI = () => {
     };
     fetchAll();
   }, []);
+
+  // Check permission status for all BI pages
+  useEffect(() => {
+    const biPageIds = orderedBiSettings.map(s => s.page_id).filter(pid => pid !== "system");
+    checkPermissionStatus(biPageIds);
+  }, [orderedBiSettings, checkPermissionStatus]);
 
   const filteredSettings = useMemo(() => {
     if (!searchQuery) return orderedBiSettings;
@@ -162,6 +179,39 @@ const ConfigurarBI = () => {
     refetch();
   };
 
+  const syncPermissionsForPage = async (pageId: string) => {
+    setSyncingPermission(pageId);
+    try {
+      // Get all roles
+      const { data: roles } = await supabase.from("roles").select("id");
+      if (!roles || roles.length === 0) { toast.error("Nenhum perfil encontrado"); return; }
+
+      // Get existing permissions for this page
+      const { data: existing } = await supabase.from("page_permissions").select("role_id").eq("page_id", pageId);
+      const existingRoleIds = new Set((existing || []).map((r: any) => r.role_id));
+
+      // Find missing roles
+      const missingRoles = roles.filter(r => !existingRoleIds.has(r.id));
+      if (missingRoles.length === 0) {
+        toast.info("Permissões já estão criadas para todos os perfis");
+        setPermissionStatus(prev => ({ ...prev, [pageId]: true }));
+        return;
+      }
+
+      // Insert permissions (all disabled by default)
+      const inserts = missingRoles.map(r => ({
+        page_id: pageId, role_id: r.id,
+        visualizar: false, exportar: false, atualizar: false, idioma: false, apenas_dev: false,
+      }));
+      const { error } = await supabase.from("page_permissions").insert(inserts);
+      if (error) { toast.error("Erro: " + error.message); return; }
+      toast.success(`Permissões criadas para ${missingRoles.length} perfil(is)!`);
+      setPermissionStatus(prev => ({ ...prev, [pageId]: true }));
+    } finally {
+      setSyncingPermission(null);
+    }
+  };
+
   const handleDuplicate = async (setting: BiSetting) => {
     const newPageId = `${setting.page_id}-copy-${Date.now()}`;
     const { error } = await supabase.from("bi_settings").insert({
@@ -170,7 +220,9 @@ const ConfigurarBI = () => {
       cod_cli: setting.cod_cli, company_name: setting.company_name,
     });
     if (error) { toast.error("Erro: " + error.message); return; }
-    toast.success("BI duplicado!");
+    // Auto-create permissions for all roles
+    await syncPermissionsForPage(newPageId);
+    toast.success("BI duplicado com permissões!");
     refetch();
   };
 
@@ -336,6 +388,7 @@ const ConfigurarBI = () => {
                 <TableHead className="text-muted-foreground">Cód. Cliente</TableHead>
                 <TableHead className="text-muted-foreground text-center">Intervalo</TableHead>
                 <TableHead className="text-muted-foreground text-center">Agendamento</TableHead>
+                <TableHead className="text-muted-foreground text-center">Permissões</TableHead>
                 <TableHead className="text-muted-foreground text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -383,6 +436,22 @@ const ConfigurarBI = () => {
                       );
                     })()}
                   </TableCell>
+                  <TableCell className="text-center">
+                    {permissionStatus[setting.page_id] ? (
+                      <div className="flex items-center justify-center" title="Permissões criadas">
+                        <ShieldCheck className="h-4 w-4 text-green-500" />
+                      </div>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="h-7 text-xs text-amber-500 hover:text-amber-400"
+                        title="Criar permissões para este BI"
+                        disabled={syncingPermission === setting.page_id}
+                        onClick={() => syncPermissionsForPage(setting.page_id)}>
+                        {syncingPermission === setting.page_id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <><ShieldAlert className="h-3.5 w-3.5 mr-1" />Criar</>}
+                      </Button>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => openEditModal(setting)}>
@@ -414,7 +483,7 @@ const ConfigurarBI = () => {
               ))}
               {filteredSettings.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum BI encontrado</TableCell>
+                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum BI encontrado</TableCell>
                 </TableRow>
               )}
             </TableBody>
