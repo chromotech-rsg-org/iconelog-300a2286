@@ -77,8 +77,14 @@ const Admin = () => {
     loading: authLoading
   } = useAuth();
 
-  const { getSystemLogo, getSystemName } = useBiSettingsContext();
+  const { getSystemLogo, getSystemName, settings: biSettings } = useBiSettingsContext();
   const systemLogo = getSystemLogo();
+
+  // Dynamic system pages from bi_settings (replaces hardcoded systemPages)
+  const systemPages = biSettings
+    .filter(s => s.page_id !== "system")
+    .sort((a, b) => a.display_order - b.display_order)
+    .map(s => ({ id: s.page_id, nome: s.display_name }));
   const systemName = getSystemName();
 
   const { roles, loading: rolesLoading, createRole, updateRole, deleteRole } = useRolesManagement();
