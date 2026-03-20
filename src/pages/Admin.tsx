@@ -265,17 +265,29 @@ const Admin = () => {
 
   const handleEditProfile = (role: RoleWithPermissions) => {
     setEditingRole(role);
+    // Always use developer role's apenas_dev for visibility control
+    const devRole = roles.find(r => r.id === "00000000-0000-0000-0000-000000000002");
     const pagePerms = initializePagePermissions();
     Object.entries(role.pagePermissions).forEach(([pageId, perm]) => {
       if (pagePerms[pageId]) {
-        pagePerms[pageId] = { page_id: pageId, visualizar: perm.visualizar, exportar: perm.exportar, atualizar: perm.atualizar, idioma: perm.idioma ?? false, apenas_dev: perm.apenas_dev };
+        const devApenasDevPage = devRole?.pagePermissions[pageId]?.apenas_dev ?? perm.apenas_dev;
+        pagePerms[pageId] = { page_id: pageId, visualizar: perm.visualizar, exportar: perm.exportar, atualizar: perm.atualizar, idioma: perm.idioma ?? false, apenas_dev: devApenasDevPage };
       }
     });
+    // For pages that exist in bi_settings but NOT in the role's permissions, inherit dev apenas_dev
+    if (devRole) {
+      Object.entries(devRole.pagePermissions).forEach(([pageId, devPerm]) => {
+        if (pagePerms[pageId] && !role.pagePermissions[pageId]) {
+          pagePerms[pageId].apenas_dev = devPerm.apenas_dev;
+        }
+      });
+    }
 
     const adminPerms = initializeAdminPermissions();
     Object.entries(role.adminPermissions).forEach(([key, perm]) => {
       if (adminPerms[key]) {
-        adminPerms[key] = { ver: perm.ver, editar: perm.editar, criar: perm.criar, excluir: perm.excluir, apenas_dev: perm.apenas_dev };
+        const devApenasDevAdmin = devRole?.adminPermissions[key]?.apenas_dev ?? perm.apenas_dev;
+        adminPerms[key] = { ver: perm.ver, editar: perm.editar, criar: perm.criar, excluir: perm.excluir, apenas_dev: devApenasDevAdmin };
       }
     });
 
