@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -64,7 +64,7 @@ export const GeneralDailyChart = ({
   onDayClick,
 }: GeneralDailyChartProps) => {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<"diaria" | "geral">("diaria");
+  
 
   // Aggregate all regions into a single daily series
   const generalData = useMemo(() => {
@@ -103,31 +103,14 @@ export const GeneralDailyChart = ({
 
   return (
     <div className="rounded-lg border border-dashboard-border bg-dashboard-card/50 p-4 mb-0 shrink-0">
-      <div className="flex items-center gap-4 mb-3">
-        <button
-          onClick={() => setActiveTab("diaria")}
-          className={`text-sm font-semibold transition-colors ${
-            activeTab === "diaria" ? "text-dashboard-accent" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {t("Evolução Diária")}
-        </button>
-        <button
-          onClick={() => setActiveTab("geral")}
-          className={`text-sm font-semibold px-3 py-1 rounded transition-colors ${
-            activeTab === "geral"
-              ? "bg-dashboard-accent/20 text-dashboard-accent"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {t("Geral")}
-        </button>
+      <h3 className="mb-3 text-sm font-semibold text-dashboard-accent">
+        {t("Evolução Diária Geral")}
         {selectedDay !== null && (
-          <span className="text-xs text-muted-foreground">
+          <span className="ml-2 text-xs font-normal text-muted-foreground">
             ({t("Dia")} {selectedDay} {t("destacado")})
           </span>
         )}
-      </div>
+      </h3>
       <div className="chart-scroll-x">
         <div style={{ width: chartWidthPx || "100%", height: 140 }}>
           <ResponsiveContainer width="100%" height="100%">
