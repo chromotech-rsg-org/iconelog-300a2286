@@ -44,6 +44,8 @@ interface ProductForm {
   ativo: boolean;
   kit_quantity: number;
   unified_code: string;
+  kit_completo: boolean;
+  kit_basico: boolean;
 }
 
 export const StockProductsManager = () => {
