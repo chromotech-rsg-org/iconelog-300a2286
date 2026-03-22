@@ -342,9 +342,6 @@ export const StockProductsManager = () => {
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(item)} title="Editar">
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleToggleActive(item)} title={item.product.ativo ? "Desativar" : "Ativar"}>
-                      <Checkbox checked={item.product.ativo} className="cursor-pointer" />
-                    </Button>
                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item)} title="Deletar">
                       <Trash2 className="h-4 w-4" />
                     </Button>

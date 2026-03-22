@@ -4,6 +4,7 @@ import { SharedHeader } from "@/components/shared/SharedHeader";
 import { KPICards } from "@/components/dashboard/KPICards";
 import { RegionalBarChart } from "@/components/dashboard/RegionalBarChart";
 import { RegionalLineCharts } from "@/components/dashboard/RegionalLineCharts";
+import { GeneralDailyChart } from "@/components/dashboard/GeneralDailyChart";
 import { ActiveFilters } from "@/components/dashboard/ActiveFilters";
 import { RefreshProgress } from "@/components/dashboard/RefreshProgress";
 import { useFollowupData } from "@/hooks/useFollowupData";
