@@ -64,7 +64,7 @@ export const GeneralDailyChart = ({
   onDayClick,
 }: GeneralDailyChartProps) => {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<"diaria" | "geral">("diaria");
+  
 
   // Aggregate all regions into a single daily series
   const generalData = useMemo(() => {
