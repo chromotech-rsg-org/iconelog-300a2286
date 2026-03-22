@@ -20,6 +20,8 @@ interface Product {
   ativo: boolean;
   unified_code: string | null;
   foto_url: string | null;
+  kit_completo: boolean;
+  kit_basico: boolean;
   created_at: string;
 }
 
