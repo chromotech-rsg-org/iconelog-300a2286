@@ -58,7 +58,7 @@ export const StockProductsManager = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<CombinedProduct | null>(null);
-  const [form, setForm] = useState<ProductForm>({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "" });
+  const [form, setForm] = useState<ProductForm>({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "", kit_completo: true, kit_basico: false });
 
   const [photoMap, setPhotoMap] = useState<Map<string, string>>(new Map());
 
