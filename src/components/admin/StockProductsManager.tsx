@@ -330,10 +330,10 @@ export const StockProductsManager = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Switch checked={item.product.kit_completo} disabled className="pointer-events-none scale-75" />
+                    <Switch checked={item.product.kit_completo} onCheckedChange={() => handleToggleKitCompleto(item)} className="scale-75" />
                   </TableCell>
                   <TableCell className="text-center">
-                    <Switch checked={item.product.kit_basico} disabled className="pointer-events-none scale-75" />
+                    <Switch checked={item.product.kit_basico} onCheckedChange={() => handleToggleKitBasico(item)} className="scale-75" />
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge variant="outline" className="text-dashboard-accent border-dashboard-accent/50">
