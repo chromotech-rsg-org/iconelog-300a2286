@@ -249,6 +249,17 @@ export const StockLocationTables = ({
                     </TableCell>
                     <TableCell className="text-foreground text-right text-sm py-1.5">{formatNumber(item.stockQuantity)}</TableCell>
                     <TableCell className="text-foreground text-right text-sm py-1.5">{formatNumber(item.kitsQuantity)}</TableCell>
+                    <TableCell className="text-center text-sm py-1.5">
+                      {item.kitCompleto && item.kitBasico ? (
+                        <span className="text-dashboard-accent text-xs">Ambos</span>
+                      ) : item.kitCompleto ? (
+                        <span className="text-dashboard-orange text-xs">Completo</span>
+                      ) : item.kitBasico ? (
+                        <span className="text-dashboard-blue text-xs">Básico</span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      )}
+                    </TableCell>
                     <TableCell
                       className="text-muted-foreground text-right text-sm py-1.5 cursor-pointer hover:underline"
                       onClick={() => item.lastEntryDate && onDateClick?.(item.lastEntryDate)}
