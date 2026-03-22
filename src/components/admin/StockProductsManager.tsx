@@ -143,6 +143,8 @@ export const StockProductsManager = () => {
       ativo: item.product.ativo,
       kit_quantity: item.kit?.kit_quantity || 1,
       unified_code: item.product.unified_code || "",
+      kit_completo: item.product.kit_completo,
+      kit_basico: item.product.kit_basico,
     });
     setIsDialogOpen(true);
   };
