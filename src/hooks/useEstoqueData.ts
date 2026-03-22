@@ -46,6 +46,8 @@ interface ProductWhitelist {
   product_name: string | null;
   ativo: boolean;
   unified_code: string | null;
+  kit_completo: boolean;
+  kit_basico: boolean;
 }
 
 export const useEstoqueData = (codCli: string) => {
