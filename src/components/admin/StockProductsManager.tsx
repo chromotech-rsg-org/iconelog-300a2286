@@ -131,7 +131,7 @@ export const StockProductsManager = () => {
 
   const handleOpenNew = () => {
     setEditingProduct(null);
-    setForm({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "" });
+    setForm({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "", kit_completo: true, kit_basico: false });
     setIsDialogOpen(true);
   };
 
