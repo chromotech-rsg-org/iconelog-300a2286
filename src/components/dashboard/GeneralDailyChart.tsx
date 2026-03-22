@@ -102,7 +102,7 @@ export const GeneralDailyChart = ({
   const dotRadius = generalData.length > 60 ? 2 : 4;
 
   return (
-    <div className="rounded-lg border border-dashboard-border bg-dashboard-card/50 p-4 mb-0 shrink-0">
+    <div className="rounded-lg border border-dashboard-border bg-dashboard-card/50 p-4 mb-0 shrink-0 overflow-hidden">
       <h3 className="mb-3 text-sm font-semibold text-dashboard-accent">
         {t("Evolução Diária Geral")}
         {selectedDay !== null && (
@@ -112,7 +112,7 @@ export const GeneralDailyChart = ({
         )}
       </h3>
       <div className="chart-scroll-x">
-        <div style={{ width: chartWidthPx || "100%", height: 140 }}>
+        <div style={{ width: chartWidthPx || "100%", minWidth: chartWidthPx || "100%", height: 140 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={generalData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <XAxis
