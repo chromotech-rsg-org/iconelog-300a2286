@@ -296,6 +296,7 @@ const Estoque = () => {
             matrizQtdeSKUs={filteredTotals.qtdeSKUs}
             matrizKits={filteredTotals.kits}
             matrizKitsCompleto={filteredTotals.kitsCompleto}
+            matrizKitsBasico={filteredTotals.kitsBasico}
           />
 
           <StockLocationTables
