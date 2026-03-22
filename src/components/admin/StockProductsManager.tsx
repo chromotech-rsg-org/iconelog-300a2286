@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,6 +20,8 @@ interface Product {
   ativo: boolean;
   unified_code: string | null;
   foto_url: string | null;
+  kit_completo: boolean;
+  kit_basico: boolean;
   created_at: string;
 }
 
@@ -41,6 +44,8 @@ interface ProductForm {
   ativo: boolean;
   kit_quantity: number;
   unified_code: string;
+  kit_completo: boolean;
+  kit_basico: boolean;
 }
 
 export const StockProductsManager = () => {
@@ -53,7 +58,7 @@ export const StockProductsManager = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<CombinedProduct | null>(null);
-  const [form, setForm] = useState<ProductForm>({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "" });
+  const [form, setForm] = useState<ProductForm>({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "", kit_completo: true, kit_basico: false });
 
   const [photoMap, setPhotoMap] = useState<Map<string, string>>(new Map());
 
@@ -126,7 +131,7 @@ export const StockProductsManager = () => {
 
   const handleOpenNew = () => {
     setEditingProduct(null);
-    setForm({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "" });
+    setForm({ product_code: "", product_name: "", ativo: true, kit_quantity: 1, unified_code: "", kit_completo: true, kit_basico: false });
     setIsDialogOpen(true);
   };
 
@@ -138,6 +143,8 @@ export const StockProductsManager = () => {
       ativo: item.product.ativo,
       kit_quantity: item.kit?.kit_quantity || 1,
       unified_code: item.product.unified_code || "",
+      kit_completo: item.product.kit_completo,
+      kit_basico: item.product.kit_basico,
     });
     setIsDialogOpen(true);
   };
@@ -155,7 +162,7 @@ export const StockProductsManager = () => {
     if (editingProduct) {
       const { error: prodErr } = await supabase
         .from("stock_product_whitelist")
-        .update({ product_code: code, product_name: name, ativo: form.ativo, unified_code: unifiedCode })
+        .update({ product_code: code, product_name: name, ativo: form.ativo, unified_code: unifiedCode, kit_completo: form.kit_completo, kit_basico: form.kit_basico })
         .eq("id", editingProduct.product.id);
       if (prodErr) { toast.error("Erro: " + prodErr.message); return; }
 
@@ -171,7 +178,7 @@ export const StockProductsManager = () => {
       toast.success("Produto atualizado!");
     } else {
       const { error: prodErr } = await supabase.from("stock_product_whitelist")
-        .insert({ product_code: code, product_name: name, ativo: form.ativo, unified_code: unifiedCode });
+        .insert({ product_code: code, product_name: name, ativo: form.ativo, unified_code: unifiedCode, kit_completo: form.kit_completo, kit_basico: form.kit_basico });
       if (prodErr) { toast.error("Erro: " + prodErr.message); return; }
 
       if (form.kit_quantity > 1) {
@@ -268,6 +275,8 @@ export const StockProductsManager = () => {
                 <TableHead className="text-muted-foreground">Nome</TableHead>
                 <TableHead className="text-muted-foreground">Prod. Unificado</TableHead>
                 <TableHead className="text-muted-foreground text-center">Status</TableHead>
+                <TableHead className="text-muted-foreground text-center">Completo</TableHead>
+                <TableHead className="text-muted-foreground text-center">Básico</TableHead>
                 <TableHead className="text-muted-foreground text-center">Qtd por Kit</TableHead>
                 <TableHead className="text-muted-foreground text-right">Ações</TableHead>
               </TableRow>
@@ -301,6 +310,12 @@ export const StockProductsManager = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">
+                    <Switch checked={item.product.kit_completo} disabled className="pointer-events-none scale-75" />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Switch checked={item.product.kit_basico} disabled className="pointer-events-none scale-75" />
+                  </TableCell>
+                  <TableCell className="text-center">
                     <Badge variant="outline" className="text-dashboard-accent border-dashboard-accent/50">
                       {item.kit?.kit_quantity || 1} un.
                     </Badge>
@@ -320,7 +335,7 @@ export const StockProductsManager = () => {
               ))}
               {paginatedList.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                     {searchTerm ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
                   </TableCell>
                 </TableRow>
@@ -430,6 +445,24 @@ export const StockProductsManager = () => {
                 placeholder="Código para agrupar produtos (ex: KIT-A)"
               />
               <p className="text-xs text-muted-foreground mt-1">Produtos com o mesmo código unificado terão seus kits somados no cálculo de Kits Completo.</p>
+            </div>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="kit-completo"
+                  checked={form.kit_completo}
+                  onCheckedChange={(checked) => setForm({ ...form, kit_completo: checked })}
+                />
+                <Label htmlFor="kit-completo" className="text-sm text-foreground cursor-pointer">Kit Completo</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="kit-basico"
+                  checked={form.kit_basico}
+                  onCheckedChange={(checked) => setForm({ ...form, kit_basico: checked })}
+                />
+                <Label htmlFor="kit-basico" className="text-sm text-foreground cursor-pointer">Kit Básico</Label>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox
