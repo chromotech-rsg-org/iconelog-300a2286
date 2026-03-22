@@ -334,18 +334,30 @@ const Index = () => {
               />
             </div>
           </div>
-          <div className="w-full md:w-[70%] h-[500px] md:h-full">
-            <RegionalLineCharts
+          <div className="w-full md:w-[70%] h-[500px] md:h-full flex flex-col gap-0">
+            {/* Fixed general daily evolution chart */}
+            <GeneralDailyChart
               data={sortedDailyData}
               selectedDay={selectedDay}
               selectedMetric={selectedMetric}
               selectedMonths={selectedMonths}
               selectedDateRange={selectedDateRange}
-              selectedRegion={selectedRegions.length === 1 ? selectedRegions[0] : "all"}
               onDayClick={handleDayClick}
-              onRegionClick={handleRegionClick}
-              onLinePointClick={handleLinePointClick}
             />
+            {/* Scrollable regional charts */}
+            <div className="flex-1 min-h-0">
+              <RegionalLineCharts
+                data={sortedDailyData}
+                selectedDay={selectedDay}
+                selectedMetric={selectedMetric}
+                selectedMonths={selectedMonths}
+                selectedDateRange={selectedDateRange}
+                selectedRegion={selectedRegions.length === 1 ? selectedRegions[0] : "all"}
+                onDayClick={handleDayClick}
+                onRegionClick={handleRegionClick}
+                onLinePointClick={handleLinePointClick}
+              />
+            </div>
           </div>
         </div>
       )}
