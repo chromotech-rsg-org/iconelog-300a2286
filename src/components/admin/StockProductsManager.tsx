@@ -446,6 +446,24 @@ export const StockProductsManager = () => {
               />
               <p className="text-xs text-muted-foreground mt-1">Produtos com o mesmo código unificado terão seus kits somados no cálculo de Kits Completo.</p>
             </div>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="kit-completo"
+                  checked={form.kit_completo}
+                  onCheckedChange={(checked) => setForm({ ...form, kit_completo: checked })}
+                />
+                <Label htmlFor="kit-completo" className="text-sm text-foreground cursor-pointer">Kit Completo</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="kit-basico"
+                  checked={form.kit_basico}
+                  onCheckedChange={(checked) => setForm({ ...form, kit_basico: checked })}
+                />
+                <Label htmlFor="kit-basico" className="text-sm text-foreground cursor-pointer">Kit Básico</Label>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <Checkbox
                 id="product-ativo"
