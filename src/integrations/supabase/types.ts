@@ -659,6 +659,8 @@ export type Database = {
           created_at: string
           foto_url: string | null
           id: string
+          kit_basico: boolean
+          kit_completo: boolean
           product_code: string
           product_name: string | null
           unified_code: string | null
@@ -668,6 +670,8 @@ export type Database = {
           created_at?: string
           foto_url?: string | null
           id?: string
+          kit_basico?: boolean
+          kit_completo?: boolean
           product_code: string
           product_name?: string | null
           unified_code?: string | null
@@ -677,6 +681,8 @@ export type Database = {
           created_at?: string
           foto_url?: string | null
           id?: string
+          kit_basico?: boolean
+          kit_completo?: boolean
           product_code?: string
           product_name?: string | null
           unified_code?: string | null
