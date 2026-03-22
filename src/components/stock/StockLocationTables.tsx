@@ -193,6 +193,7 @@ export const StockLocationTables = ({
                   <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("kitsQuantity")}>
                     <span className="flex items-center justify-end">Kits <SortIcon field="kitsQuantity" /></span>
                   </TableHead>
+                  <TableHead className="text-muted-foreground text-sm text-center">Kit</TableHead>
                   <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("lastEntryDate")}>
                     <span className="flex items-center justify-end">{t("Ult. Ent. Data")} <SortIcon field="lastEntryDate" /></span>
                   </TableHead>
