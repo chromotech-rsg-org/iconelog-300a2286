@@ -213,6 +213,26 @@ export const StockProductsManager = () => {
     fetchData();
   };
 
+  const handleToggleKitCompleto = async (item: CombinedProduct) => {
+    const { error } = await supabase
+      .from("stock_product_whitelist")
+      .update({ kit_completo: !item.product.kit_completo })
+      .eq("id", item.product.id);
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success(`Kit Completo ${!item.product.kit_completo ? "ativado" : "desativado"}!`);
+    fetchData();
+  };
+
+  const handleToggleKitBasico = async (item: CombinedProduct) => {
+    const { error } = await supabase
+      .from("stock_product_whitelist")
+      .update({ kit_basico: !item.product.kit_basico })
+      .eq("id", item.product.id);
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success(`Kit Básico ${!item.product.kit_basico ? "ativado" : "desativado"}!`);
+    fetchData();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -310,10 +330,10 @@ export const StockProductsManager = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Switch checked={item.product.kit_completo} disabled className="pointer-events-none scale-75" />
+                    <Switch checked={item.product.kit_completo} onCheckedChange={() => handleToggleKitCompleto(item)} className="scale-75" />
                   </TableCell>
                   <TableCell className="text-center">
-                    <Switch checked={item.product.kit_basico} disabled className="pointer-events-none scale-75" />
+                    <Switch checked={item.product.kit_basico} onCheckedChange={() => handleToggleKitBasico(item)} className="scale-75" />
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge variant="outline" className="text-dashboard-accent border-dashboard-accent/50">

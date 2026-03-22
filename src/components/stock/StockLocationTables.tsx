@@ -193,6 +193,7 @@ export const StockLocationTables = ({
                   <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("kitsQuantity")}>
                     <span className="flex items-center justify-end">Kits <SortIcon field="kitsQuantity" /></span>
                   </TableHead>
+                  <TableHead className="text-muted-foreground text-sm text-center">Kit</TableHead>
                   <TableHead className="text-muted-foreground text-sm text-right cursor-pointer hover:text-foreground" onClick={() => handleSort("lastEntryDate")}>
                     <span className="flex items-center justify-end">{t("Ult. Ent. Data")} <SortIcon field="lastEntryDate" /></span>
                   </TableHead>
@@ -248,6 +249,17 @@ export const StockLocationTables = ({
                     </TableCell>
                     <TableCell className="text-foreground text-right text-sm py-1.5">{formatNumber(item.stockQuantity)}</TableCell>
                     <TableCell className="text-foreground text-right text-sm py-1.5">{formatNumber(item.kitsQuantity)}</TableCell>
+                    <TableCell className="text-center text-sm py-1.5">
+                      {item.kitCompleto && item.kitBasico ? (
+                        <span className="text-dashboard-accent text-xs">Ambos</span>
+                      ) : item.kitCompleto ? (
+                        <span className="text-dashboard-orange text-xs">Completo</span>
+                      ) : item.kitBasico ? (
+                        <span className="text-dashboard-blue text-xs">Básico</span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      )}
+                    </TableCell>
                     <TableCell
                       className="text-muted-foreground text-right text-sm py-1.5 cursor-pointer hover:underline"
                       onClick={() => item.lastEntryDate && onDateClick?.(item.lastEntryDate)}

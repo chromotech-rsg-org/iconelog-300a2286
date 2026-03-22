@@ -46,6 +46,8 @@ interface ProductWhitelist {
   product_name: string | null;
   ativo: boolean;
   unified_code: string | null;
+  kit_completo: boolean;
+  kit_basico: boolean;
 }
 
 export const useEstoqueData = (codCli: string) => {
@@ -69,7 +71,7 @@ export const useEstoqueData = (codCli: string) => {
     const fetchConfigs = async () => {
       const [kitRes, whitelistRes] = await Promise.all([
         supabase.from("stock_kit_config").select("sku_code, sku_name, kit_quantity"),
-        supabase.from("stock_product_whitelist").select("product_code, product_name, ativo, unified_code").eq("ativo", true),
+        supabase.from("stock_product_whitelist").select("product_code, product_name, ativo, unified_code, kit_completo, kit_basico").eq("ativo", true),
       ]);
       if (kitRes.data) setKitConfigs(kitRes.data);
       if (whitelistRes.data) setWhitelist(whitelistRes.data);
@@ -183,6 +185,7 @@ export const useEstoqueData = (codCli: string) => {
   const stockItems = useMemo((): StockItem[] => {
     const whitelistCodes = new Set(whitelist.map(w => w.product_code));
     const kitMap = new Map(kitConfigs.map(k => [k.sku_code, k.kit_quantity]));
+    const whitelistMap = new Map(whitelist.map(w => [w.product_code, w]));
 
     return mapaData
       .filter(item => {
@@ -197,6 +200,7 @@ export const useEstoqueData = (codCli: string) => {
         const kitQty = kitMap.get(sku) || 1;
         const totalValue = parseFloat(item.vl_total || "0");
         const unitPrice = qty > 0 ? totalValue / qty : 0;
+        const wl = whitelistMap.get(sku);
 
         return {
           sku,
@@ -220,6 +224,8 @@ export const useEstoqueData = (codCli: string) => {
           totalExitQty: item.nr_qtde_saida ? parseInt(item.nr_qtde_saida) : undefined,
           daysSinceLastMovement: item.nr_qtde_dias_ultima_mov ? parseInt(item.nr_qtde_dias_ultima_mov) : undefined,
           condition: item.fl_condicao || undefined,
+          kitCompleto: wl?.kit_completo ?? true,
+          kitBasico: wl?.kit_basico ?? false,
         };
       });
   }, [mapaData, kitConfigs, whitelist]);

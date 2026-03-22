@@ -9,6 +9,7 @@ interface StockDualKPICardsProps {
   matrizQtdeSKUs: number;
   matrizKits: number;
   matrizKitsCompleto: number;
+  matrizKitsBasico: number;
 }
 
 export const StockDualKPICards = ({
@@ -17,6 +18,7 @@ export const StockDualKPICards = ({
   matrizQtdeSKUs,
   matrizKits,
   matrizKitsCompleto,
+  matrizKitsBasico,
 }: StockDualKPICardsProps) => {
   const { t } = useLanguage();
   return (
@@ -25,7 +27,7 @@ export const StockDualKPICards = ({
         <CardTitle className="text-base font-medium text-dashboard-accent">{t("ESTOQUE MATRIZ (BARUERI)")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           <div className="text-center">
             <DollarSign className="h-5 w-5 mx-auto mb-1 text-green-500" />
             <p className="text-sm text-muted-foreground">{t("Valor")}</p>
@@ -45,6 +47,11 @@ export const StockDualKPICards = ({
            <Boxes className="h-5 w-5 mx-auto mb-1 text-dashboard-orange" />
             <p className="text-sm text-muted-foreground">{t("Kits Completo")}</p>
             <p className="text-xl font-bold text-foreground">{formatNumber(matrizKitsCompleto)}</p>
+          </div>
+          <div className="text-center">
+           <Boxes className="h-5 w-5 mx-auto mb-1 text-dashboard-blue" />
+            <p className="text-sm text-muted-foreground">{t("Kits Básico")}</p>
+            <p className="text-xl font-bold text-foreground">{formatNumber(matrizKitsBasico)}</p>
           </div>
         </div>
       </CardContent>

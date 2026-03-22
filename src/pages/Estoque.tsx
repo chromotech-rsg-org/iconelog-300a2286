@@ -157,23 +157,31 @@ const Estoque = () => {
       if (w.unified_code) unifiedMap.set(w.product_code, w.unified_code);
     });
 
-    // Group kits by unified_code, sum them; standalone items keep individual value
-    const groupedKits = new Map<string, number>();
-    const standaloneKits: number[] = [];
+    // Helper to calc kit min by unified grouping, filtered by kit type flag
+    const calcKitMin = (items: typeof displayItems, flagKey: 'kitCompleto' | 'kitBasico') => {
+      const filtered = items.filter(i => i[flagKey]);
+      if (filtered.length === 0) return 0;
 
-    displayItems.forEach(item => {
-      const uCode = unifiedMap.get(item.sku);
-      if (uCode) {
-        groupedKits.set(uCode, (groupedKits.get(uCode) || 0) + item.kitsQuantity);
-      } else {
-        standaloneKits.push(item.kitsQuantity);
-      }
-    });
+      const groupedKits = new Map<string, number>();
+      const standaloneKits: number[] = [];
 
-    const allKitValues = [...groupedKits.values(), ...standaloneKits];
-    const kitsCompleto = allKitValues.length > 0 ? Math.min(...allKitValues) : 0;
+      filtered.forEach(item => {
+        const uCode = unifiedMap.get(item.sku);
+        if (uCode) {
+          groupedKits.set(uCode, (groupedKits.get(uCode) || 0) + item.kitsQuantity);
+        } else {
+          standaloneKits.push(item.kitsQuantity);
+        }
+      });
 
-    return { valor, m3, qtdeSKUs: displayItems.length, kits, kitsCompleto };
+      const allKitValues = [...groupedKits.values(), ...standaloneKits];
+      return allKitValues.length > 0 ? Math.min(...allKitValues) : 0;
+    };
+
+    const kitsCompleto = calcKitMin(displayItems, 'kitCompleto');
+    const kitsBasico = calcKitMin(displayItems, 'kitBasico');
+
+    return { valor, m3, qtdeSKUs: displayItems.length, kits, kitsCompleto, kitsBasico };
   }, [displayItems, whitelist]);
 
   const hasActiveFilters = selectedSKU !== null || filterByName !== null || filterByDate !== null || filterByCategory !== null;
@@ -288,6 +296,7 @@ const Estoque = () => {
             matrizQtdeSKUs={filteredTotals.qtdeSKUs}
             matrizKits={filteredTotals.kits}
             matrizKitsCompleto={filteredTotals.kitsCompleto}
+            matrizKitsBasico={filteredTotals.kitsBasico}
           />
 
           <StockLocationTables
