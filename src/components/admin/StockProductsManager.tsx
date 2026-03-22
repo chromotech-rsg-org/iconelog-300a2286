@@ -310,6 +310,12 @@ export const StockProductsManager = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">
+                    <Switch checked={item.product.kit_completo} disabled className="pointer-events-none scale-75" />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Switch checked={item.product.kit_basico} disabled className="pointer-events-none scale-75" />
+                  </TableCell>
+                  <TableCell className="text-center">
                     <Badge variant="outline" className="text-dashboard-accent border-dashboard-accent/50">
                       {item.kit?.kit_quantity || 1} un.
                     </Badge>
