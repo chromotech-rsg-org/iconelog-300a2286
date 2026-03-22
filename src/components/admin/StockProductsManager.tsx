@@ -325,9 +325,7 @@ export const StockProductsManager = () => {
                   <TableCell className="text-foreground">{item.product.product_name || "-"}</TableCell>
                   <TableCell className="text-muted-foreground font-mono text-sm">{item.product.unified_code || "-"}</TableCell>
                   <TableCell className="text-center">
-                    <Badge variant={item.product.ativo ? "default" : "secondary"} className={item.product.ativo ? "bg-green-500/20 text-green-400" : ""}>
-                      {item.product.ativo ? "Ativo" : "Inativo"}
-                    </Badge>
+                    <Switch checked={item.product.ativo} onCheckedChange={() => handleToggleActive(item)} className="scale-75" />
                   </TableCell>
                   <TableCell className="text-center">
                     <Switch checked={item.product.kit_completo} onCheckedChange={() => handleToggleKitCompleto(item)} className="scale-75" />
