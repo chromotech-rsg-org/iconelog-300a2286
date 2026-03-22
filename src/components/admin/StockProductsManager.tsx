@@ -178,7 +178,7 @@ export const StockProductsManager = () => {
       toast.success("Produto atualizado!");
     } else {
       const { error: prodErr } = await supabase.from("stock_product_whitelist")
-        .insert({ product_code: code, product_name: name, ativo: form.ativo, unified_code: unifiedCode });
+        .insert({ product_code: code, product_name: name, ativo: form.ativo, unified_code: unifiedCode, kit_completo: form.kit_completo, kit_basico: form.kit_basico });
       if (prodErr) { toast.error("Erro: " + prodErr.message); return; }
 
       if (form.kit_quantity > 1) {
