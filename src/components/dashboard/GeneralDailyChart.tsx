@@ -102,7 +102,7 @@ export const GeneralDailyChart = ({
   const dotRadius = generalData.length > 60 ? 2 : 4;
 
   return (
-    <div className="rounded-lg border border-dashboard-border bg-dashboard-card/50 p-4 mb-0 shrink-0 overflow-hidden">
+    <div className="rounded-lg border border-dashboard-border bg-dashboard-card/50 p-4 mb-0 shrink-0">
       <h3 className="mb-3 text-sm font-semibold text-dashboard-accent">
         {t("Evolução Diária Geral")}
         {selectedDay !== null && (
