@@ -71,7 +71,7 @@ export const useEstoqueData = (codCli: string) => {
     const fetchConfigs = async () => {
       const [kitRes, whitelistRes] = await Promise.all([
         supabase.from("stock_kit_config").select("sku_code, sku_name, kit_quantity"),
-        supabase.from("stock_product_whitelist").select("product_code, product_name, ativo, unified_code").eq("ativo", true),
+        supabase.from("stock_product_whitelist").select("product_code, product_name, ativo, unified_code, kit_completo, kit_basico").eq("ativo", true),
       ]);
       if (kitRes.data) setKitConfigs(kitRes.data);
       if (whitelistRes.data) setWhitelist(whitelistRes.data);
