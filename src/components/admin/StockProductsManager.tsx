@@ -275,6 +275,8 @@ export const StockProductsManager = () => {
                 <TableHead className="text-muted-foreground">Nome</TableHead>
                 <TableHead className="text-muted-foreground">Prod. Unificado</TableHead>
                 <TableHead className="text-muted-foreground text-center">Status</TableHead>
+                <TableHead className="text-muted-foreground text-center">Completo</TableHead>
+                <TableHead className="text-muted-foreground text-center">Básico</TableHead>
                 <TableHead className="text-muted-foreground text-center">Qtd por Kit</TableHead>
                 <TableHead className="text-muted-foreground text-right">Ações</TableHead>
               </TableRow>
