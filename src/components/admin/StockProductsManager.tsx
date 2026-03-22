@@ -162,7 +162,7 @@ export const StockProductsManager = () => {
     if (editingProduct) {
       const { error: prodErr } = await supabase
         .from("stock_product_whitelist")
-        .update({ product_code: code, product_name: name, ativo: form.ativo, unified_code: unifiedCode })
+        .update({ product_code: code, product_name: name, ativo: form.ativo, unified_code: unifiedCode, kit_completo: form.kit_completo, kit_basico: form.kit_basico })
         .eq("id", editingProduct.product.id);
       if (prodErr) { toast.error("Erro: " + prodErr.message); return; }
 
