@@ -45,12 +45,12 @@ export const StockDualKPICards = ({
           </div>
           <div className="text-center">
            <Boxes className="h-5 w-5 mx-auto mb-1 text-dashboard-orange" />
-            <p className="text-sm text-muted-foreground">{t("Tipo Completo")}</p>
+            <p className="text-sm text-muted-foreground">{t("Kits Completo")}</p>
             <p className="text-xl font-bold text-foreground">{formatNumber(matrizKitsCompleto)}</p>
           </div>
           <div className="text-center">
            <Boxes className="h-5 w-5 mx-auto mb-1 text-dashboard-blue" />
-            <p className="text-sm text-muted-foreground">{t("Tipo Básico")}</p>
+            <p className="text-sm text-muted-foreground">{t("Kits Básico")}</p>
             <p className="text-xl font-bold text-foreground">{formatNumber(matrizKitsBasico)}</p>
           </div>
         </div>
