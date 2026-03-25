@@ -105,6 +105,19 @@ const filterByDateRange = (items: FollowupItem[], from: Date, to: Date): Followu
   });
 };
 
+const dateMatchesPeriod = (
+  dt: any,
+  months: number[],
+  years: number[],
+  dateRange?: { from?: Date; to?: Date }
+): boolean => {
+  if (dateRange?.from) {
+    return isDateInDateRange(dt, dateRange.from, dateRange.to || dateRange.from);
+  }
+
+  return dateMatchesMonthYear(dt, months, years);
+};
+
 export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   const { callMainApi, error } = useApiProxy();
   const [followupData, setFollowupData] = useState<FollowupItem[]>([]);
@@ -471,11 +484,11 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       const dtExp = item.dt_expedicao ? safeParseDate(String(item.dt_expedicao)) : null;
       const dtBaixa = item.dt_baixa_minuta ? safeParseDate(String(item.dt_baixa_minuta)) : null;
 
-      if (dtExp && isDateInRange(dtExp)) {
+      if (dtExp && isDateInRange(dtExp) && dateMatchesPeriod(item.dt_expedicao, months, years, dateRange)) {
         const totals = addToDay(regional, toDateKey(dtExp));
         totals.expedidas++;
       }
-      if (dtBaixa && isDateInRange(dtBaixa)) {
+      if (dtBaixa && isDateInRange(dtBaixa) && dateMatchesPeriod(item.dt_baixa_minuta, months, years, dateRange)) {
         const totals = addToDay(regional, toDateKey(dtBaixa));
         totals.baixadas++;
       }

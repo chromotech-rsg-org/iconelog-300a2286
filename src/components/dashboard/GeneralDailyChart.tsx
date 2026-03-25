@@ -59,8 +59,6 @@ export const GeneralDailyChart = ({
   data,
   selectedDay,
   selectedMetric,
-  selectedMonths,
-  selectedDateRange,
   onDayClick,
 }: GeneralDailyChartProps) => {
   const { t } = useLanguage();
@@ -68,16 +66,17 @@ export const GeneralDailyChart = ({
 
   // Aggregate all regions into a single daily series
   const generalData = useMemo(() => {
-    const dayMap = new Map<number, { day: number; dateStr?: string; expedidas: number; baixadas: number }>();
+    const dayMap = new Map<string, { day: number; dateStr?: string; expedidas: number; baixadas: number }>();
     data.forEach((regional) => {
       regional.data.forEach((d) => {
-        const existing = dayMap.get(d.day);
+        const mapKey = d.dateStr || String(d.day);
+        const existing = dayMap.get(mapKey);
         if (existing) {
           existing.expedidas += d.expedidas;
           existing.baixadas += d.baixadas;
           if (!existing.dateStr && d.dateStr) existing.dateStr = d.dateStr;
         } else {
-          dayMap.set(d.day, { day: d.day, dateStr: d.dateStr, expedidas: d.expedidas, baixadas: d.baixadas });
+          dayMap.set(mapKey, { day: d.day, dateStr: d.dateStr, expedidas: d.expedidas, baixadas: d.baixadas });
         }
       });
     });
@@ -124,15 +123,7 @@ export const GeneralDailyChart = ({
                     const parts = value.split("-");
                     return `${parts[2]}/${parts[1]}`;
                   }
-                  let month = "";
-                  if (selectedMonths && selectedMonths.length > 0) {
-                    month = String(selectedMonths[0]).padStart(2, "0");
-                  } else if (selectedDateRange?.from) {
-                    month = String(selectedDateRange.from.getMonth() + 1).padStart(2, "0");
-                  } else {
-                    month = String(new Date().getMonth() + 1).padStart(2, "0");
-                  }
-                  return `${value}/${month}`;
+                  return String(value);
                 }}
                 interval={generalData.length > 60 ? Math.floor(generalData.length / 20) : generalData.length > 20 ? 4 : generalData.length > 10 ? 2 : 0}
               />
