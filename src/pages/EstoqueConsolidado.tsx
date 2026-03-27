@@ -624,7 +624,7 @@ const EstoqueConsolidado = () => {
                   <TableBody>
                     {pagedBase.map((item) => {
                       const vlItem = item.saldo > 0 ? item.vlTotal / item.saldo : 0;
-                      const m3Total = item.m3 * item.saldo;
+                      const m3Unitario = item.saldo > 0 ? item.m3 / item.saldo : 0;
                       return (
                       <TableRow key={item.id}
                         className={`border-border hover:bg-muted/50 cursor-pointer text-xs ${selectedBase === item.base ? 'bg-primary/10' : ''}`}
