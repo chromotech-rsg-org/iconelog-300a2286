@@ -542,10 +542,10 @@ const EstoqueConsolidado = () => {
                     <TableRow className="border-border bg-muted/40 font-bold text-xs sticky bottom-0 z-10">
                       <TableCell className="text-primary text-[11px] px-2 py-1.5 whitespace-nowrap" colSpan={3}>{t("Total")} ({searchedMatriz.length})</TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + i.estoque, 0))}</TableCell>
-                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + (i.estoque > 0 ? i.vlTotal / i.estoque : 0), 0), 2)}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{searchedMatriz.reduce((s, i) => s + (i.estoque > 0 ? i.vlTotal / i.estoque : 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatCurrency(searchedMatriz.reduce((s, i) => s + i.vlTotal, 0))}</TableCell>
-                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + i.m3Unitario, 0), 4)}</TableCell>
-                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + i.m3Total, 0), 4)}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{searchedMatriz.reduce((s, i) => s + i.m3Unitario, 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{searchedMatriz.reduce((s, i) => s + i.m3Total, 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
                     </TableRow>
                   </tfoot>
                 </Table>
