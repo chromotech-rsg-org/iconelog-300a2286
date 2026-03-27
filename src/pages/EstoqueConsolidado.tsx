@@ -611,15 +611,18 @@ const EstoqueConsolidado = () => {
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Código")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M3</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Produto")}</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Qtde. Entrada")}</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Qtde. Saída")}</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Região")}</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Saldo")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Stock</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Vl. Item")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Vl. Total")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Unit M³</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M³ Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pagedBase.map((item) => (
+                    {pagedBase.map((item) => {
+                      const vlItem = item.saldo > 0 ? item.vlTotal / item.saldo : 0;
+                      const m3Total = item.m3 * item.saldo;
+                      return (
                       <TableRow key={item.id}
                         className={`border-border hover:bg-muted/50 cursor-pointer text-xs ${selectedBase === item.base ? 'bg-primary/10' : ''}`}
                         onClick={() => setSelectedBase(prev => prev === item.base ? null : item.base)}>
@@ -637,24 +640,23 @@ const EstoqueConsolidado = () => {
                             <span className="cursor-help">{item.produto}</span>
                           </EstoqueBaseHoverCard>
                         </TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeEntrada)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeSaida)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.regiao}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap font-medium">{formatNumber(item.saldo)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{vlItem.toFixed(2).replace('.', ',')}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(item.vlTotal)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3.toFixed(4)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{m3Total.toFixed(4)}</TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                   <tfoot>
                     <TableRow className="border-border bg-muted/40 font-bold text-xs sticky bottom-0 z-10">
-                      <TableCell className="text-primary text-[11px] px-2 py-1.5 whitespace-nowrap" colSpan={4}>{t("Total")} ({searchedBase.length})</TableCell>
-                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{searchedBase.reduce((s, i) => s + i.m3, 0).toFixed(4)}</TableCell>
-                      <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
-                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedBase.reduce((s, i) => s + i.qtdeEntrada, 0))}</TableCell>
-                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedBase.reduce((s, i) => s + i.qtdeSaida, 0))}</TableCell>
-                      <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
+                      <TableCell className="text-primary text-[11px] px-2 py-1.5 whitespace-nowrap" colSpan={6}>{t("Total")} ({searchedBase.length})</TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedBase.reduce((s, i) => s + i.saldo, 0))}</TableCell>
+                      <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatCurrency(searchedBase.reduce((s, i) => s + i.vlTotal, 0))}</TableCell>
+                      <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{searchedBase.reduce((s, i) => s + (i.m3 * i.saldo), 0).toFixed(4)}</TableCell>
                     </TableRow>
                   </tfoot>
                 </Table>
