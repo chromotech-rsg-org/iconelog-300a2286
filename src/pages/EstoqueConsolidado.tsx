@@ -141,7 +141,7 @@ const EstoqueConsolidado = () => {
 
   const filteredBaseTotals = useMemo(() => ({
     valor: filteredBase.reduce((s, i) => s + i.vlTotal, 0),
-    m3: filteredBase.reduce((s, i) => s + (i.m3 * i.saldo), 0),
+    m3: filteredBase.reduce((s, i) => s + i.m3, 0),
     qtdeSKUs: new Set(filteredBase.map(i => i.codigo)).size,
   }), [filteredBase]);
 
@@ -624,7 +624,7 @@ const EstoqueConsolidado = () => {
                   <TableBody>
                     {pagedBase.map((item) => {
                       const vlItem = item.saldo > 0 ? item.vlTotal / item.saldo : 0;
-                      const m3Total = item.m3 * item.saldo;
+                      const m3Unitario = item.saldo > 0 ? item.m3 / item.saldo : 0;
                       return (
                       <TableRow key={item.id}
                         className={`border-border hover:bg-muted/50 cursor-pointer text-xs ${selectedBase === item.base ? 'bg-primary/10' : ''}`}
@@ -645,8 +645,8 @@ const EstoqueConsolidado = () => {
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap font-medium">{formatNumber(item.saldo)}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{vlItem.toFixed(2).replace('.', ',')}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(item.vlTotal)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{m3Unitario.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{m3Total.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
                       </TableRow>
                       );
                     })}
@@ -658,7 +658,7 @@ const EstoqueConsolidado = () => {
                       <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatCurrency(searchedBase.reduce((s, i) => s + i.vlTotal, 0))}</TableCell>
                       <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
-                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{searchedBase.reduce((s, i) => s + (i.m3 * i.saldo), 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{searchedBase.reduce((s, i) => s + i.m3, 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
                     </TableRow>
                   </tfoot>
                 </Table>

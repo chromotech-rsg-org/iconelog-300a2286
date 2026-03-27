@@ -222,7 +222,8 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
         const estoque = parseInt(item.nr_qtde_saldo || "0");
         const vlTotal = parseFloat(item.vl_total || "0");
         const dias = meta ? parseInt(meta.nr_qtde_dias_ultima_mov || "0") : 0;
-        const m3Unitario = meta ? parseFloat(meta.M3 || meta.m3 || "0") : 0;
+        const m3Total = parseFloat(item.M3 || item.m3 || "0");
+        const m3Unitario = estoque > 0 ? m3Total / estoque : 0;
         return {
           id: `matriz-${index}`,
           base: "BARUERI",
@@ -237,7 +238,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
           vlItem: estoque > 0 ? vlTotal / estoque : 0,
           vlTotal,
           m3Unitario,
-          m3Total: m3Unitario * estoque,
+          m3Total,
           dtUltimaEntrada: meta?.dt_ultima_entrada || "",
           qtdeUltimaEntrada: meta ? parseInt(meta.nr_qtde_Ultima_entrada || "0") : 0,
           dtUltimaSaida: meta?.dt_ultima_saida || "",
@@ -270,10 +271,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
         cidade: item.cidade || item.ds_cidade || item.nm_cidade || "",
         uf: item.uf || item.ds_uf || item.sg_uf || "",
         codigo,
-        m3: (() => {
-          const mapaItem = mapaMetadataMap.get(codigo);
-          return mapaItem ? parseFloat(mapaItem.M3 || mapaItem.m3 || "0") : 0;
-        })(),
+        m3: parseFloat(item.M3 || item.m3 || "0"),
         produto: item.Descricao || item.nm_produto || item.descricao || "",
         qtdeEntrada: parseInt(item.nr_qtde_total_entrada || item.qtde_entrada || "0"),
         qtdeSaida: parseInt(item.nr_qtde_saida || item.qtde_saida || "0"),
@@ -283,7 +281,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
         fotoUrl: item.foto_produto || mapaPhotoMap.get(codigo) || undefined,
       };
     });
-  }, [saldoData, mapaPhotoMap, mapaMetadataMap]);
+  }, [saldoData, mapaPhotoMap]);
 
   // KPI totals
   const matrizTotals = useMemo(() => ({
