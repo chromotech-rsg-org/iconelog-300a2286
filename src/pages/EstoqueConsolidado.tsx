@@ -634,7 +634,6 @@ const EstoqueConsolidado = () => {
                             <span className="cursor-help underline decoration-dotted">{item.codigo}</span>
                           </EstoqueBaseHoverCard>
                         </TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3.toFixed(4)}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap truncate max-w-[150px]">
                           <EstoqueBaseHoverCard product={item}>
                             <span className="cursor-help">{item.produto}</span>
