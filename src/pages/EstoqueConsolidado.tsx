@@ -141,7 +141,7 @@ const EstoqueConsolidado = () => {
 
   const filteredBaseTotals = useMemo(() => ({
     valor: filteredBase.reduce((s, i) => s + i.vlTotal, 0),
-    m3: filteredBase.reduce((s, i) => s + (i.m3 * i.saldo), 0),
+    m3: filteredBase.reduce((s, i) => s + i.m3, 0),
     qtdeSKUs: new Set(filteredBase.map(i => i.codigo)).size,
   }), [filteredBase]);
 
