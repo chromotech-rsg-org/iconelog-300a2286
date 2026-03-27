@@ -533,8 +533,8 @@ const EstoqueConsolidado = () => {
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap font-medium">{formatNumber(item.estoque)}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.vlItem.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(item.vlTotal)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.m3Unitario, 4)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.m3Total, 4)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3Unitario.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3Total.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
