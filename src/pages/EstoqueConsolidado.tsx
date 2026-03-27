@@ -330,7 +330,7 @@ const EstoqueConsolidado = () => {
                 <div className="text-center">
                   <Box className="h-7 w-7 mx-auto mb-1 text-blue-500" />
                   <p className="text-sm font-medium text-muted-foreground">{t("M³")}</p>
-                  <p className="text-xl sm:text-3xl font-black text-foreground">{filteredMatrizTotals.m3.toFixed(1)}</p>
+                  <p className="text-xl sm:text-3xl font-black text-foreground">{filteredMatrizTotals.m3.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</p>
                 </div>
                 <div className="text-center">
                   <Package className="h-7 w-7 mx-auto mb-1 text-primary" />
@@ -355,7 +355,7 @@ const EstoqueConsolidado = () => {
                 <div className="text-center">
                   <Box className="h-7 w-7 mx-auto mb-1 text-blue-500" />
                   <p className="text-sm font-medium text-muted-foreground">{t("M³")}</p>
-                  <p className="text-xl sm:text-3xl font-black text-foreground">{filteredBaseTotals.m3.toFixed(1)}</p>
+                  <p className="text-xl sm:text-3xl font-black text-foreground">{filteredBaseTotals.m3.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</p>
                 </div>
                 <div className="text-center">
                   <Package className="h-7 w-7 mx-auto mb-1 text-primary" />
@@ -645,8 +645,8 @@ const EstoqueConsolidado = () => {
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap font-medium">{formatNumber(item.saldo)}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{vlItem.toFixed(2).replace('.', ',')}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(item.vlTotal)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3.toFixed(4)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{m3Total.toFixed(4)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{m3Total.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
                       </TableRow>
                       );
                     })}
@@ -658,7 +658,7 @@ const EstoqueConsolidado = () => {
                       <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatCurrency(searchedBase.reduce((s, i) => s + i.vlTotal, 0))}</TableCell>
                       <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
-                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{searchedBase.reduce((s, i) => s + (i.m3 * i.saldo), 0).toFixed(4)}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{searchedBase.reduce((s, i) => s + (i.m3 * i.saldo), 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
                     </TableRow>
                   </tfoot>
                 </Table>
