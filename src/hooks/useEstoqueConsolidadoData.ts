@@ -271,10 +271,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
         cidade: item.cidade || item.ds_cidade || item.nm_cidade || "",
         uf: item.uf || item.ds_uf || item.sg_uf || "",
         codigo,
-        m3: (() => {
-          const mapaItem = mapaMetadataMap.get(codigo);
-          return mapaItem ? parseFloat(mapaItem.M3 || mapaItem.m3 || "0") : 0;
-        })(),
+        m3: parseFloat(item.M3 || item.m3 || "0"),
         produto: item.Descricao || item.nm_produto || item.descricao || "",
         qtdeEntrada: parseInt(item.nr_qtde_total_entrada || item.qtde_entrada || "0"),
         qtdeSaida: parseInt(item.nr_qtde_saida || item.qtde_saida || "0"),
