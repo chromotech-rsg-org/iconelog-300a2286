@@ -100,7 +100,7 @@ const EstoqueConsolidado = () => {
   }, [estoqueMatriz, selectedGrupo, selectedSKU, selectedTempoParado]);
 
   const filteredBase = useMemo(() => {
-    let result = estoqueBase.filter(i => i.base.toUpperCase() !== "BARUERI");
+    let result = estoqueBase.filter(i => i.base.toUpperCase() === "BARUERI");
     if (selectedGrupo) result = result.filter(i => i.produto.includes(selectedGrupo));
     if (selectedBase) result = result.filter(i => i.base === selectedBase);
     return result;
