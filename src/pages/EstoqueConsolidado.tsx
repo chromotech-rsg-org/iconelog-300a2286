@@ -509,10 +509,11 @@ const EstoqueConsolidado = () => {
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Código")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Produto")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Grupo")}</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Qtde. Entrada")}</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Qtde. Saída")}</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Saldo")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Stock")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Vl. Item")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Vl. Total")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Unit M³")}</TableHead>
+                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("M³ Total")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -529,20 +530,22 @@ const EstoqueConsolidado = () => {
                           </EstoqueMatrizHoverCard>
                         </TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap">{item.grupo}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeEntrada)}</TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.qtdeSaida)}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap font-medium">{formatNumber(item.estoque)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.vlItem, 2)}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatCurrency(item.vlTotal)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.m3Unitario, 4)}</TableCell>
+                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{formatNumber(item.m3Total, 4)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                   <tfoot>
                     <TableRow className="border-border bg-muted/40 font-bold text-xs sticky bottom-0 z-10">
                       <TableCell className="text-primary text-[11px] px-2 py-1.5 whitespace-nowrap" colSpan={3}>{t("Total")} ({searchedMatriz.length})</TableCell>
-                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + i.qtdeEntrada, 0))}</TableCell>
-                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + i.qtdeSaida, 0))}</TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + i.estoque, 0))}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + (i.estoque > 0 ? i.vlTotal / i.estoque : 0), 0), 2)}</TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatCurrency(searchedMatriz.reduce((s, i) => s + i.vlTotal, 0))}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + i.m3Unitario, 0), 4)}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + i.m3Total, 0), 4)}</TableCell>
                     </TableRow>
                   </tfoot>
                 </Table>
