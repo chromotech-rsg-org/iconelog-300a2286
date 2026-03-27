@@ -536,6 +536,15 @@ const EstoqueConsolidado = () => {
                       </TableRow>
                     ))}
                   </TableBody>
+                  <tfoot>
+                    <TableRow className="border-border bg-muted/40 font-bold text-xs sticky bottom-0 z-10">
+                      <TableCell className="text-primary text-[11px] px-2 py-1.5 whitespace-nowrap" colSpan={3}>{t("Total")} ({searchedMatriz.length})</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + i.qtdeEntrada, 0))}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + i.qtdeSaida, 0))}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedMatriz.reduce((s, i) => s + i.estoque, 0))}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatCurrency(searchedMatriz.reduce((s, i) => s + i.vlTotal, 0))}</TableCell>
+                    </TableRow>
+                  </tfoot>
                 </Table>
               </div>
               <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-muted/30 sticky bottom-0 z-10">
