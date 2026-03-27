@@ -650,7 +650,7 @@ const EstoqueConsolidado = () => {
                   </TableBody>
                   <tfoot>
                     <TableRow className="border-border bg-muted/40 font-bold text-xs sticky bottom-0 z-10">
-                      <TableCell className="text-primary text-[11px] px-2 py-1.5 whitespace-nowrap" colSpan={6}>{t("Total")} ({searchedBase.length})</TableCell>
+                      <TableCell className="text-primary text-[11px] px-2 py-1.5 whitespace-nowrap" colSpan={5}>{t("Total")} ({searchedBase.length})</TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedBase.reduce((s, i) => s + i.saldo, 0))}</TableCell>
                       <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatCurrency(searchedBase.reduce((s, i) => s + i.vlTotal, 0))}</TableCell>
