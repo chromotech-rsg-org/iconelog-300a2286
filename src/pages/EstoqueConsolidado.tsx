@@ -609,7 +609,7 @@ const EstoqueConsolidado = () => {
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Cidade")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("UF")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Código")}</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M3</TableHead>
+                      
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Produto")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Stock</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Vl. Item")}</TableHead>
