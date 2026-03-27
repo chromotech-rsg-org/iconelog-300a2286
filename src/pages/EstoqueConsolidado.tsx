@@ -355,7 +355,7 @@ const EstoqueConsolidado = () => {
                 <div className="text-center">
                   <Box className="h-7 w-7 mx-auto mb-1 text-blue-500" />
                   <p className="text-sm font-medium text-muted-foreground">{t("M³")}</p>
-                  <p className="text-xl sm:text-3xl font-black text-foreground">{filteredBaseTotals.m3.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</p>
+                  <p className="text-xl sm:text-3xl font-black text-foreground">{<p className="text-xl sm:text-3xl font-black text-foreground">{filteredBaseTotals.m3.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</p>}</p>
                 </div>
                 <div className="text-center">
                   <Package className="h-7 w-7 mx-auto mb-1 text-primary" />
