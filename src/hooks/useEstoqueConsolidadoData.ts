@@ -197,42 +197,57 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
     }, 3000);
   }, [codCli, refreshing, callMainApi, saveToCache, saveLastUpdate, logManualRefresh]);
 
-  // Process MAPALOGISTICO into EstoqueMatrizItem[]
+  // Build metadata map from MAPALOGISTICO (has Grupo, SubGrupo, Categoria, tempoParado, foto, etc.)
+  const mapaMetadataMap = useMemo(() => {
+    const map = new Map<string, any>();
+    mapaData.forEach(item => {
+      if (item.produto) {
+        map.set(item.produto, item);
+      }
+    });
+    return map;
+  }, [mapaData]);
+
+  // Process Estoque Matriz: use SALDOBASE filtered by BARUERI for quantities,
+  // enriched with MAPALOGISTICO metadata (Grupo, Categoria, tempoParado, foto, etc.)
   const estoqueMatriz = useMemo((): EstoqueMatrizItem[] => {
-    return mapaData
+    return saldoData
       .filter(item => {
-        const base = (item.base || item.ds_base || "BARUERI").toUpperCase();
+        const base = (item.ds_base || "").toUpperCase();
         return base === "BARUERI";
       })
       .map((item, index) => {
-      const estoque = parseInt(item.nr_qtde_saldo || "0");
-      const vlTotal = parseFloat(item.vl_total || "0");
-      const dias = parseInt(item.nr_qtde_dias_ultima || item.nr_qtde_dias_ultima_mov || "0");
-      return {
-        id: `matriz-${index}`,
-        base: item.base || "BARUERI",
-        codigo: item.produto || "",
-        descricao: item.Descricao || item.nm_produto || "",
-        grupo: item.Grupo || "",
-        subGrupo: item.SubGrupo || "",
-        categoria: item.Categoria || "",
-        qtdeEntrada: parseInt(item.nr_qtde_total_entrada || "0"),
-        qtdeSaida: parseInt(item.nr_qtde_saida || "0"),
-        estoque,
-        vlItem: estoque > 0 ? vlTotal / estoque : 0,
-        vlTotal,
-        m3Unitario: parseFloat(item.m3 || "0"),
-        m3Total: parseFloat(item.m3_total || "0"),
-        dtUltimaEntrada: item.dt_ultima_entrada || "",
-        qtdeUltimaEntrada: parseInt(item.nr_qtde_Ultima_entrada || "0"),
-        dtUltimaSaida: item.dt_ultima_saida || "",
-        qtdeUltimaSaida: parseInt(item.nr_qrde_ultima_saida || "0"),
-        diasSemMovto: dias,
-        tempoParado: getTempoParadoFaixa(dias),
-        fotoUrl: item.foto_produto || undefined,
-      };
-    });
-  }, [mapaData]);
+        const codigo = item.produto || item.cd_produto || "";
+        const meta = mapaMetadataMap.get(codigo);
+        const estoque = parseInt(item.nr_qtde_saldo || "0");
+        const vlTotal = parseFloat(item.vl_total || "0");
+        const dias = meta ? parseInt(meta.nr_qtde_dias_ultima_mov || "0") : 0;
+        const m3Unitario = parseFloat(item.M3 || item.m3 || "0");
+        return {
+          id: `matriz-${index}`,
+          base: "BARUERI",
+          codigo,
+          descricao: item.nm_produto || (meta ? (meta.Descricao || meta.nm_produto || "") : ""),
+          grupo: meta?.Grupo || "",
+          subGrupo: meta?.SubGrupo || "",
+          categoria: meta?.Categoria || "",
+          qtdeEntrada: parseInt(item.nr_qtde_total_entrada || "0"),
+          qtdeSaida: parseInt(item.nr_qtde_saida || "0"),
+          estoque,
+          vlItem: estoque > 0 ? vlTotal / estoque : 0,
+          vlTotal,
+          m3Unitario,
+          m3Total: m3Unitario * estoque,
+          dtUltimaEntrada: meta?.dt_ultima_entrada || "",
+          qtdeUltimaEntrada: meta ? parseInt(meta.nr_qtde_Ultima_entrada || "0") : 0,
+          dtUltimaSaida: meta?.dt_ultima_saida || "",
+          qtdeUltimaSaida: meta ? parseInt(meta.nr_qrde_ultima_saida || "0") : 0,
+          diasSemMovto: dias,
+          tempoParado: getTempoParadoFaixa(dias),
+          fotoUrl: meta?.foto_produto || undefined,
+        };
+      });
+  }, [saldoData, mapaMetadataMap]);
 
   // Build photo map from mapaData (MAPALOGISTICO has foto_produto, SALDOBASE does not)
   const mapaPhotoMap = useMemo(() => {
