@@ -609,7 +609,7 @@ const EstoqueConsolidado = () => {
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Cidade")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("UF")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Código")}</TableHead>
-                      <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">M3</TableHead>
+                      
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap">{t("Produto")}</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">Stock</TableHead>
                       <TableHead className="text-muted-foreground text-[10px] px-2 whitespace-nowrap text-right">{t("Vl. Item")}</TableHead>
@@ -634,7 +634,6 @@ const EstoqueConsolidado = () => {
                             <span className="cursor-help underline decoration-dotted">{item.codigo}</span>
                           </EstoqueBaseHoverCard>
                         </TableCell>
-                        <TableCell className="text-foreground text-[11px] px-2 py-1 text-right whitespace-nowrap">{item.m3.toFixed(4)}</TableCell>
                         <TableCell className="text-foreground text-[11px] px-2 py-1 whitespace-nowrap truncate max-w-[150px]">
                           <EstoqueBaseHoverCard product={item}>
                             <span className="cursor-help">{item.produto}</span>
@@ -651,7 +650,7 @@ const EstoqueConsolidado = () => {
                   </TableBody>
                   <tfoot>
                     <TableRow className="border-border bg-muted/40 font-bold text-xs sticky bottom-0 z-10">
-                      <TableCell className="text-primary text-[11px] px-2 py-1.5 whitespace-nowrap" colSpan={6}>{t("Total")} ({searchedBase.length})</TableCell>
+                      <TableCell className="text-primary text-[11px] px-2 py-1.5 whitespace-nowrap" colSpan={5}>{t("Total")} ({searchedBase.length})</TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatNumber(searchedBase.reduce((s, i) => s + i.saldo, 0))}</TableCell>
                       <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatCurrency(searchedBase.reduce((s, i) => s + i.vlTotal, 0))}</TableCell>
