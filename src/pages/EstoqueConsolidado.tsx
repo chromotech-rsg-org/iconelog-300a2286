@@ -658,7 +658,7 @@ const EstoqueConsolidado = () => {
                       <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
                       <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{formatCurrency(searchedBase.reduce((s, i) => s + i.vlTotal, 0))}</TableCell>
                       <TableCell className="text-[11px] px-2 py-1.5"></TableCell>
-                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{searchedBase.reduce((s, i) => s + (i.m3 * i.saldo), 0).toFixed(4)}</TableCell>
+                      <TableCell className="text-foreground text-[11px] px-2 py-1.5 text-right whitespace-nowrap">{searchedBase.reduce((s, i) => s + (i.m3 * i.saldo), 0).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</TableCell>
                     </TableRow>
                   </tfoot>
                 </Table>
