@@ -1,10 +1,28 @@
 
 
-## Ajuste: M³ nos cards com 1 casa decimal
+## Filtrar Estoque Matriz apenas por base BARUERI
 
-**Arquivo:** `src/pages/EstoqueConsolidado.tsx`
+### Problema
+A tabela Estoque Matriz está somando produtos de todas as bases do MAPALOGISTICO. Conforme os dados da API, o campo `base`/`ds_base` indica a base do registro. O Estoque Matriz deve considerar apenas os registros da base **BARUERI**.
 
-Alterar a formatação dos valores de M³ nos KPI cards superiores (tanto Estoque Matriz quanto Estoque Base) de 4 casas decimais para 1 casa decimal.
+### Alteração
 
-Trocar `minimumFractionDigits: 4, maximumFractionDigits: 4` por `minimumFractionDigits: 1, maximumFractionDigits: 1` apenas nos cards KPI de M³. As tabelas e rodapés continuam com 4 casas decimais.
+**Arquivo: `src/hooks/useEstoqueConsolidadoData.ts`** (linhas 201-230)
+
+No `useMemo` que processa `estoqueMatriz`, adicionar um `.filter()` antes do `.map()` para incluir apenas registros onde `item.base` seja "BARUERI" (ou onde o campo esteja vazio, mantendo o default atual):
+
+```ts
+const estoqueMatriz = useMemo((): EstoqueMatrizItem[] => {
+  return mapaData
+    .filter(item => {
+      const base = (item.base || item.ds_base || "BARUERI").toUpperCase();
+      return base === "BARUERI";
+    })
+    .map((item, index) => {
+      // ... resto do mapeamento igual
+    });
+}, [mapaData]);
+```
+
+Isso garante que os KPIs do Estoque Matriz (cards, gráficos e tabela) reflitam apenas os dados da base BARUERI, consistente com o relatório de referência.
 
