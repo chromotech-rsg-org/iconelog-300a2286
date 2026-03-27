@@ -281,7 +281,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
         fotoUrl: item.foto_produto || mapaPhotoMap.get(codigo) || undefined,
       };
     });
-  }, [saldoData, mapaPhotoMap, mapaMetadataMap]);
+  }, [saldoData, mapaPhotoMap]);
 
   // KPI totals
   const matrizTotals = useMemo(() => ({
