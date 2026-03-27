@@ -199,7 +199,12 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
 
   // Process MAPALOGISTICO into EstoqueMatrizItem[]
   const estoqueMatriz = useMemo((): EstoqueMatrizItem[] => {
-    return mapaData.map((item, index) => {
+    return mapaData
+      .filter(item => {
+        const base = (item.base || item.ds_base || "BARUERI").toUpperCase();
+        return base === "BARUERI";
+      })
+      .map((item, index) => {
       const estoque = parseInt(item.nr_qtde_saldo || "0");
       const vlTotal = parseFloat(item.vl_total || "0");
       const dias = parseInt(item.nr_qtde_dias_ultima || item.nr_qtde_dias_ultima_mov || "0");
