@@ -222,7 +222,7 @@ export const useEstoqueConsolidadoData = (codCli: string) => {
         const estoque = parseInt(item.nr_qtde_saldo || "0");
         const vlTotal = parseFloat(item.vl_total || "0");
         const dias = meta ? parseInt(meta.nr_qtde_dias_ultima_mov || "0") : 0;
-        const m3Unitario = parseFloat(item.M3 || item.m3 || "0");
+        const m3Unitario = meta ? parseFloat(meta.M3 || meta.m3 || "0") : 0;
         return {
           id: `matriz-${index}`,
           base: "BARUERI",
