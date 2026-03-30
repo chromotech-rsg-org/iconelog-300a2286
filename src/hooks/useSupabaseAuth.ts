@@ -405,10 +405,21 @@ export const useSupabaseAuth = () => {
     }
 
     if (data.user) {
-      const profileData = await fetchProfile(data.user.id);
-      if (profileData && !profileData.ativo) {
-        await supabase.auth.signOut();
-        return { success: false, message: "Usuário inativo. Contate o administrador." };
+      try {
+        // Timeout de 5s para verificação de perfil - evita login preso quando DB está lento
+        const profilePromise = fetchProfile(data.user.id, 0);
+        const timeoutPromise = new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error("timeout")), 5000)
+        );
+        const profileData = await Promise.race([profilePromise, timeoutPromise]);
+        
+        if (profileData && !profileData.ativo) {
+          await supabase.auth.signOut();
+          return { success: false, message: "Usuário inativo. Contate o administrador." };
+        }
+      } catch (err) {
+        // Se timeout, prosseguir com login - dados carregarão via onAuthStateChange
+        console.warn("Profile check timed out or failed, proceeding with login:", err);
       }
     }
 
