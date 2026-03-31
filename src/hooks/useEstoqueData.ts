@@ -48,6 +48,7 @@ interface ProductWhitelist {
   unified_code: string | null;
   kit_completo: boolean;
   kit_basico: boolean;
+  foto_url: string | null;
 }
 
 export const useEstoqueData = (codCli: string) => {
@@ -71,7 +72,7 @@ export const useEstoqueData = (codCli: string) => {
     const fetchConfigs = async () => {
       const [kitRes, whitelistRes] = await Promise.all([
         supabase.from("stock_kit_config").select("sku_code, sku_name, kit_quantity"),
-        supabase.from("stock_product_whitelist").select("product_code, product_name, ativo, unified_code, kit_completo, kit_basico").eq("ativo", true),
+        supabase.from("stock_product_whitelist").select("product_code, product_name, ativo, unified_code, kit_completo, kit_basico, foto_url").eq("ativo", true),
       ]);
       if (kitRes.data) setKitConfigs(kitRes.data);
       if (whitelistRes.data) setWhitelist(whitelistRes.data);
@@ -217,7 +218,7 @@ export const useEstoqueData = (codCli: string) => {
           m3: parseFloat(item.m3 || "0"),
           m3Total: parseFloat(item.m3_total || "0"),
           totalValue,
-          imageUrl: item.foto_produto || undefined,
+          imageUrl: item.foto_produto || wl.foto_url || undefined,
           lastEntryQty: item.nr_qtde_Ultima_entrada ? parseInt(item.nr_qtde_Ultima_entrada) : undefined,
           lastEntryDate: item.dt_ultima_entrada || undefined,
           lastExitQty: item.nr_qrde_ultima_saida ? parseInt(item.nr_qrde_ultima_saida) : undefined,
@@ -245,7 +246,7 @@ export const useEstoqueData = (codCli: string) => {
         m3: 0,
         m3Total: 0,
         totalValue: 0,
-        imageUrl: undefined,
+        imageUrl: wl.foto_url || undefined,
         kitCompleto: wl.kit_completo ?? true,
         kitBasico: wl.kit_basico ?? false,
       };
