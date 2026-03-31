@@ -183,28 +183,30 @@ export const useEstoqueData = (codCli: string) => {
 
   // Process stock items from MAPALOGISTICO: filter by whitelist, calculate kits, hide zero stock
   const stockItems = useMemo((): StockItem[] => {
-    const whitelistCodes = new Set(whitelist.map(w => w.product_code));
     const kitMap = new Map(kitConfigs.map(k => [k.sku_code, k.kit_quantity]));
     const whitelistMap = new Map(whitelist.map(w => [w.product_code, w]));
 
-    return mapaData
-      .filter(item => {
-        const code = item.produto || "";
-        if (whitelistCodes.size > 0 && !whitelistCodes.has(code)) return false;
+    // Index API data by product code
+    const apiDataMap = new Map<string, any>();
+    mapaData.forEach(item => {
+      const code = item.produto || "";
+      if (code) apiDataMap.set(code, item);
+    });
+
+    // Build items from ALL active whitelist products, filling zeros when API has no data
+    return whitelist.map(wl => {
+      const sku = wl.product_code;
+      const item = apiDataMap.get(sku);
+      const kitQty = kitMap.get(sku) || 1;
+
+      if (item) {
         const qty = parseInt(item.nr_qtde_saldo || "0");
-        return qty > 0;
-      })
-      .map(item => {
-        const sku = item.produto || "";
-        const qty = parseInt(item.nr_qtde_saldo || "0");
-        const kitQty = kitMap.get(sku) || 1;
         const totalValue = parseFloat(item.vl_total || "0");
         const unitPrice = qty > 0 ? totalValue / qty : 0;
-        const wl = whitelistMap.get(sku);
 
         return {
           sku,
-          name: item.Descricao || item.nm_produto || sku,
+          name: item.Descricao || item.nm_produto || wl.product_name || sku,
           description: item.Descricao || "",
           category: item.Categoria || "",
           group: item.Grupo || "",
@@ -224,10 +226,30 @@ export const useEstoqueData = (codCli: string) => {
           totalExitQty: item.nr_qtde_saida ? parseInt(item.nr_qtde_saida) : undefined,
           daysSinceLastMovement: item.nr_qtde_dias_ultima_mov ? parseInt(item.nr_qtde_dias_ultima_mov) : undefined,
           condition: item.fl_condicao || undefined,
-          kitCompleto: wl?.kit_completo ?? true,
-          kitBasico: wl?.kit_basico ?? false,
+          kitCompleto: wl.kit_completo ?? true,
+          kitBasico: wl.kit_basico ?? false,
         };
-      });
+      }
+
+      // Product is active in whitelist but API returned no data — show with zeros
+      return {
+        sku,
+        name: wl.product_name || sku,
+        description: "",
+        category: "",
+        group: "",
+        subGroup: "",
+        stockQuantity: 0,
+        kitsQuantity: 0,
+        unitPrice: 0,
+        m3: 0,
+        m3Total: 0,
+        totalValue: 0,
+        imageUrl: undefined,
+        kitCompleto: wl.kit_completo ?? true,
+        kitBasico: wl.kit_basico ?? false,
+      };
+    });
   }, [mapaData, kitConfigs, whitelist]);
 
   // Calculate totals
