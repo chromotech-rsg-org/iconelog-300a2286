@@ -1,61 +1,45 @@
 
 
-## Problema Diagnosticado
+## Diagnóstico Completo
 
-O banco de dados do projeto está com **timeout de conexão** — todas as requisições REST falham. Isso afeta tanto o preview quanto a produção. O login fica preso em "Entrando..." porque após autenticar, o sistema tenta carregar o perfil do usuário (`fetchProfile`) que nunca retorna.
+**Causa raiz confirmada**: O banco de dados está com **queries pesadas travadas** na tabela `bi_data_cache` que consomem todas as conexões disponíveis (pool de 10 conexões). Isso impede que a autenticação complete:
 
-## Causa Raiz
+- Query travada há **3 minutos** (estado: aborted, ocupando conexão)
+- Query ativa há **1 min 15s** carregando cache de 1.8MB
+- A tabela `bi_data_cache` tem **16MB** com registros individuais de até **1.8MB** de JSON
 
-A instância do banco de dados pode estar sobrecarregada ou com recursos insuficientes. Isso causa timeouts em cascata em todas as funcionalidades.
+Quando um usuário abre a página de login, o `BiSettingsProvider` e `LanguageProvider` já disparam queries ao banco. Quando múltiplos usuários fazem isso simultaneamente, as 10 conexões se esgotam, e o endpoint de autenticação (`/auth/v1/token`) retorna **504 timeout** após 35 segundos.
 
-## Ação Imediata (Infraestrutura)
+## Solução em 3 Partes
 
-Acesse **Cloud → Overview → Advanced settings** e aumente o tamanho da instância do banco de dados. Aguarde 2-3 minutos para normalizar.
+### 1. Matar queries travadas (imediato)
+Não é possível via código — precisa ser feito via migração com `SELECT pg_terminate_backend(pid)` para liberar as conexões bloqueadas.
 
-## Melhoria no Código (Resiliência do Login)
+### 2. Otimizar carregamento do cache (código)
+O problema é que `useFollowupData` carrega **todos os fragmentos de cache sequencialmente** no mount, cada um com 500KB-1.8MB de JSON. Isso satura o banco.
 
-### Arquivo: `src/hooks/useSupabaseAuth.ts`
+**Arquivo: `src/hooks/useFollowupData.ts`**
+- Carregar apenas o cache principal (`followup_{codCli}`) no mount
+- Carregar fragmentos históricos (`followup_{codCli}_YYYY_MM`) somente sob demanda (quando o usuário filtra por mês/ano específico)
+- Adicionar `AbortController` com timeout de 10s para cada query de cache
 
-**Problema**: O `signIn` chama `fetchProfile` após autenticação, que tem retentativas de até 3x com delays progressivos (2s, 4s, 6s). Se o banco está fora, o usuário fica ~12 segundos preso, sem feedback.
+### 3. Adicionar statement_timeout nas queries pesadas (migração)
+Criar uma migração que define `statement_timeout` no role `authenticator` para evitar que queries de cache bloqueiem a autenticação indefinidamente.
 
-**Solução**: Adicionar um timeout no `signIn` para o `fetchProfile`. Se falhar, ainda assim completar o login (o `onAuthStateChange` cuidará de carregar os dados quando o banco voltar).
+### 4. Melhorar resiliência do login (código)
+**Arquivo: `src/pages/Auth.tsx`**
+- O `handleLogin` já tem o timeout de 5s, mas o `signInWithPassword` do Supabase SDK não tem timeout próprio — ele espera até 35s+ pelo servidor
+- Envolver a chamada `login()` em um `Promise.race` com timeout de 15s, mostrando mensagem amigável "Servidor lento, tente novamente em alguns segundos"
 
-```typescript
-// No signIn, adicionar timeout para fetchProfile
-const signIn = useCallback(async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  
-  if (error) { ... }
+**Arquivo: `src/hooks/useSupabaseAuth.ts`**
+- No `signIn`, envolver o `signInWithPassword` em um timeout de 15s (atualmente só o fetchProfile tem timeout)
 
-  if (data.user) {
-    try {
-      // Timeout de 5s para verificação de perfil ativo
-      const profilePromise = fetchProfile(data.user.id);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("timeout")), 5000)
-      );
-      const profileData = await Promise.race([profilePromise, timeoutPromise]);
-      
-      if (profileData && !profileData.ativo) {
-        await supabase.auth.signOut();
-        return { success: false, message: "Usuário inativo." };
-      }
-    } catch {
-      // Se timeout, prosseguir com login - dados carregarão via onAuthStateChange
-      console.warn("Profile check timed out, proceeding with login");
-    }
-  }
+## Resumo de Mudanças
 
-  return { success: true, message: "Login realizado com sucesso!" };
-});
-```
-
-### Arquivo: `src/hooks/useSupabaseAuth.ts` - fetchProfile
-
-Reduzir retentativas no contexto de login de 3 para 1, para não bloquear o fluxo por muito tempo.
-
-## Resumo
-
-1. **Infraestrutura**: Aumentar instância do banco (ação do usuário no Cloud)
-2. **Código**: Adicionar timeout de 5s no fetchProfile durante login, para que o usuário não fique preso infinitamente quando o banco está lento/fora
+| Arquivo | Mudança |
+|---------|---------|
+| Migração SQL | `pg_terminate_backend` para matar queries travadas + `statement_timeout` de 30s |
+| `src/hooks/useFollowupData.ts` | Lazy-load de fragmentos históricos, timeout de 10s por query |
+| `src/hooks/useSupabaseAuth.ts` | Timeout de 15s no `signInWithPassword` |
+| `src/pages/Auth.tsx` | Mensagem amigável quando servidor está lento |
 
