@@ -217,7 +217,7 @@ export const useEstoqueData = (codCli: string) => {
           m3: parseFloat(item.m3 || "0"),
           m3Total: parseFloat(item.m3_total || "0"),
           totalValue,
-          imageUrl: item.foto_produto || undefined,
+          imageUrl: item.foto_produto || wl.foto_url || undefined,
           lastEntryQty: item.nr_qtde_Ultima_entrada ? parseInt(item.nr_qtde_Ultima_entrada) : undefined,
           lastEntryDate: item.dt_ultima_entrada || undefined,
           lastExitQty: item.nr_qrde_ultima_saida ? parseInt(item.nr_qrde_ultima_saida) : undefined,
