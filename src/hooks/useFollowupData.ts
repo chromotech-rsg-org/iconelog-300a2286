@@ -153,106 +153,55 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
 
   // Load cached data on mount - uses shared cache (one extraction per API)
   // Loads main cache first, then historical caches sequentially to avoid timeout
+  // Helper: fetch a single cache key with a 10s timeout via AbortController
+  const fetchCacheWithTimeout = useCallback(async (cacheKey: string): Promise<FollowupItem[] | null> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    try {
+      const { data, error } = await supabase
+        .from("bi_data_cache")
+        .select("data")
+        .eq("page_id", "_shared")
+        .eq("cache_key", cacheKey)
+        .maybeSingle()
+        .abortSignal(controller.signal);
+      clearTimeout(timeoutId);
+      if (error) {
+        console.warn(`Cache fetch error (${cacheKey}):`, error.message);
+        return null;
+      }
+      if (data?.data && Array.isArray(data.data)) return data.data as FollowupItem[];
+      return null;
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') console.warn(`Cache fetch timed out (${cacheKey})`);
+      else console.warn(`Cache fetch failed (${cacheKey}):`, err.message);
+      return null;
+    }
+  }, []);
+
+  // Track which historical fragments have been loaded
+  const [loadedFragments, setLoadedFragments] = useState<Set<string>>(new Set());
+
+  // Load ONLY main cache on mount — no historical fragments (lazy-loaded on demand)
   useEffect(() => {
     const loadCache = async () => {
       if (!codCli || cacheLoaded || cacheLoading) return;
       setCacheLoading(true);
       try {
-        // Load main followup cache first (current year data)
-        const { data: mainFollowup, error: mainFollowupErr } = await supabase
-          .from("bi_data_cache")
-          .select("data, cache_key")
-          .eq("page_id", "_shared")
-          .eq("cache_key", `followup_${codCli}`)
-          .maybeSingle();
-
-        let allFollowup: FollowupItem[] = [];
-        
-        if (mainFollowupErr) {
-          console.warn("Cache load error (followup main):", mainFollowupErr.message);
-        } else if (mainFollowup?.data && Array.isArray(mainFollowup.data)) {
-          allFollowup = mainFollowup.data as FollowupItem[];
-          console.log(`Loaded ${allFollowup.length} followup records from main cache`);
-          setFollowupData(allFollowup);
+        // Load main followup cache only (current data)
+        const mainFollowup = await fetchCacheWithTimeout(`followup_${codCli}`);
+        if (mainFollowup && mainFollowup.length > 0) {
+          console.log(`Loaded ${mainFollowup.length} followup records from main cache`);
+          setFollowupData(mainFollowup);
         }
 
-        // Load historical/monthly fragment caches (e.g., followup_099_2025_01, followup_099_2025_12)
-        const { data: fragmentCaches, error: fragErr } = await supabase
-          .from("bi_data_cache")
-          .select("cache_key")
-          .eq("page_id", "_shared")
-          .like("cache_key", `followup_${codCli}_%`);
-
-        if (!fragErr && fragmentCaches && fragmentCaches.length > 0) {
-          for (const cache of fragmentCaches) {
-            const { data: fragData } = await supabase
-              .from("bi_data_cache")
-              .select("data")
-              .eq("page_id", "_shared")
-              .eq("cache_key", cache.cache_key)
-              .maybeSingle();
-            
-            if (fragData?.data && Array.isArray(fragData.data) && (fragData.data as FollowupItem[]).length > 0) {
-              allFollowup = allFollowup.concat(fragData.data as FollowupItem[]);
-              console.log(`Loaded ${(fragData.data as FollowupItem[]).length} followup records from ${cache.cache_key}`);
-            }
-          }
-        }
-
-        // Deduplicate all loaded followup records
-        const seenFollowup = new Set<string>();
-        allFollowup = allFollowup.filter(item => {
-          const key = item.cod_conhecimento
-            ? String(item.cod_conhecimento)
-            : JSON.stringify(item);
-          if (seenFollowup.has(key)) return false;
-          seenFollowup.add(key);
-          return true;
-        });
-        console.log(`Total followup records after dedup: ${allFollowup.length}`);
-        setFollowupData(allFollowup);
-
+        // Load main produtos cache only (if needed)
         if (pageId === "minutas" || pageId === "tracking") {
-          // Load main produtos cache first
-          const { data: mainProdutos, error: mainProdutosErr } = await supabase
-            .from("bi_data_cache")
-            .select("data, cache_key")
-            .eq("page_id", "_shared")
-            .eq("cache_key", `produtosdistribuidos_${codCli}`)
-            .maybeSingle();
-
-          let allProdutos: FollowupItem[] = [];
-
-          if (mainProdutosErr) {
-            console.warn("Cache load error (produtos main):", mainProdutosErr.message);
-          } else if (mainProdutos?.data && Array.isArray(mainProdutos.data)) {
-            allProdutos = mainProdutos.data as FollowupItem[];
-            console.log(`Loaded ${allProdutos.length} produtos records from main cache`);
-            setProdutosData(allProdutos);
-          }
-
-          // Load historical/monthly fragment produtos caches
-          const { data: fragmentProdutos, error: fragProdErr } = await supabase
-            .from("bi_data_cache")
-            .select("cache_key")
-            .eq("page_id", "_shared")
-            .like("cache_key", `produtosdistribuidos_${codCli}_%`);
-
-          if (!fragProdErr && fragmentProdutos && fragmentProdutos.length > 0) {
-            for (const cache of fragmentProdutos) {
-              const { data: fragData } = await supabase
-                .from("bi_data_cache")
-                .select("data")
-                .eq("page_id", "_shared")
-                .eq("cache_key", cache.cache_key)
-                .maybeSingle();
-              
-              if (fragData?.data && Array.isArray(fragData.data) && (fragData.data as FollowupItem[]).length > 0) {
-                allProdutos = allProdutos.concat(fragData.data as FollowupItem[]);
-                console.log(`Loaded ${(fragData.data as FollowupItem[]).length} produtos records from ${cache.cache_key}`);
-                setProdutosData([...allProdutos]);
-              }
-            }
+          const mainProdutos = await fetchCacheWithTimeout(`produtosdistribuidos_${codCli}`);
+          if (mainProdutos && mainProdutos.length > 0) {
+            console.log(`Loaded ${mainProdutos.length} produtos records from main cache`);
+            setProdutosData(mainProdutos);
           }
         }
       } catch (err) {
@@ -263,7 +212,50 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       }
     };
     loadCache();
-  }, [codCli, cacheLoaded, cacheLoading, pageId]);
+  }, [codCli, cacheLoaded, cacheLoading, pageId, fetchCacheWithTimeout]);
+
+  // Lazy-load historical fragments when user filters by specific month/year
+  const loadHistoricalFragments = useCallback(async (year: number, month: number) => {
+    if (!codCli) return;
+    const fragKey = `followup_${codCli}_${year}_${String(month).padStart(2, "0")}`;
+    if (loadedFragments.has(fragKey)) return; // Already loaded
+
+    console.log(`Lazy-loading historical fragment: ${fragKey}`);
+    const fragData = await fetchCacheWithTimeout(fragKey);
+    if (fragData && fragData.length > 0) {
+      setFollowupData(prev => {
+        const combined = [...prev, ...fragData];
+        // Deduplicate
+        const seen = new Set<string>();
+        return combined.filter(item => {
+          const key = item.cod_conhecimento ? String(item.cod_conhecimento) : JSON.stringify(item);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      });
+    }
+
+    // Also load produtos fragment if applicable
+    if (pageId === "minutas" || pageId === "tracking") {
+      const prodFragKey = `produtosdistribuidos_${codCli}_${year}_${String(month).padStart(2, "0")}`;
+      const prodFragData = await fetchCacheWithTimeout(prodFragKey);
+      if (prodFragData && prodFragData.length > 0) {
+        setProdutosData(prev => {
+          const combined = [...prev, ...prodFragData];
+          const seen = new Set<string>();
+          return combined.filter(item => {
+            const key = item.cod_conhecimento ? String(item.cod_conhecimento) : JSON.stringify(item);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        });
+      }
+    }
+
+    setLoadedFragments(prev => new Set(prev).add(fragKey));
+  }, [codCli, pageId, loadedFragments, fetchCacheWithTimeout]);
 
   const saveLastUpdate = useCallback(async () => {
     const now = new Date();

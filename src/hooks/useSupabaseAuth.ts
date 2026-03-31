@@ -396,11 +396,31 @@ export const useSupabaseAuth = () => {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // Wrap signInWithPassword in a 15s timeout to prevent infinite hang when DB is down
+    const signInPromise = supabase.auth.signInWithPassword({ email, password });
+    const timeoutSignIn = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("LOGIN_TIMEOUT")), 15000)
+    );
+
+    let data: any;
+    let error: any;
+    try {
+      const result = await Promise.race([signInPromise, timeoutSignIn]);
+      data = result.data;
+      error = result.error;
+    } catch (err: any) {
+      if (err.message === "LOGIN_TIMEOUT") {
+        return { success: false, message: "Servidor lento. Tente novamente em alguns segundos." };
+      }
+      return { success: false, message: "Erro de conexão. Tente novamente." };
+    }
 
     if (error) {
       if (error.message.includes("Invalid login credentials")) return { success: false, message: "Email ou senha inválidos." };
       if (error.message.includes("Email not confirmed")) return { success: false, message: "Email não confirmado. Verifique sua caixa de entrada." };
+      if (error.message.includes("Failed to fetch") || error.message.includes("timeout")) {
+        return { success: false, message: "Servidor indisponível. Tente novamente em alguns segundos." };
+      }
       return { success: false, message: error.message };
     }
 
