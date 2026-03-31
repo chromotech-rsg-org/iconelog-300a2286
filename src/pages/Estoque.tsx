@@ -57,7 +57,7 @@ const Estoque = () => {
     const hasYearFilter = selectedYears.length > 0;
     if (hasMonthFilter || hasYearFilter) {
       items = items.filter(item => {
-        if (!item.lastEntryDate) return false;
+        if (!item.lastEntryDate) return true;
         const normalized = String(item.lastEntryDate).replace(/\//g, "-");
         const d = new Date(normalized);
         if (isNaN(d.getTime())) return false;
