@@ -158,13 +158,18 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
     try {
-      const { data, error } = await supabase
+      const queryPromise = supabase
         .from("bi_data_cache")
         .select("data")
         .eq("page_id", "_shared")
         .eq("cache_key", cacheKey)
-        .maybeSingle()
-        .abortSignal(controller.signal);
+        .maybeSingle();
+      
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("CACHE_TIMEOUT")), 10000)
+      );
+
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
       clearTimeout(timeoutId);
       if (error) {
         console.warn(`Cache fetch error (${cacheKey}):`, error.message);
@@ -174,7 +179,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       return null;
     } catch (err: any) {
       clearTimeout(timeoutId);
-      if (err.name === 'AbortError') console.warn(`Cache fetch timed out (${cacheKey})`);
+      if (err.message === 'CACHE_TIMEOUT') console.warn(`Cache fetch timed out (${cacheKey})`);
       else console.warn(`Cache fetch failed (${cacheKey}):`, err.message);
       return null;
     }
