@@ -245,7 +245,7 @@ export const useEstoqueData = (codCli: string) => {
         m3: 0,
         m3Total: 0,
         totalValue: 0,
-        imageUrl: undefined,
+        imageUrl: wl.foto_url || undefined,
         kitCompleto: wl.kit_completo ?? true,
         kitBasico: wl.kit_basico ?? false,
       };
