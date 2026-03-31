@@ -49,7 +49,13 @@ const Auth = () => {
     
     setIsLoading(true);
     try {
-      const result = await login(email, senha);
+      // Wrap login in a 20s client-side timeout as ultimate safety net
+      const loginPromise = login(email, senha);
+      const timeoutPromise = new Promise<{ success: false; message: string }>((resolve) =>
+        setTimeout(() => resolve({ success: false, message: "Servidor temporariamente indisponível. Tente novamente em alguns segundos." }), 20000)
+      );
+      
+      const result = await Promise.race([loginPromise, timeoutPromise]);
       
       if (result.success) {
         toast.success(result.message);
@@ -57,9 +63,13 @@ const Auth = () => {
       } else {
         toast.error(result.message);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login error:", err);
-      toast.error("Erro ao conectar. Tente novamente.");
+      if (err?.message?.includes("Failed to fetch") || err?.message?.includes("timeout")) {
+        toast.error("Servidor indisponível. Tente novamente em alguns segundos.");
+      } else {
+        toast.error("Erro ao conectar. Tente novamente.");
+      }
     } finally {
       setIsLoading(false);
     }
