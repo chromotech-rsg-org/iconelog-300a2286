@@ -188,25 +188,37 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   // Track which historical fragments have been loaded
   const [loadedFragments, setLoadedFragments] = useState<Set<string>>(new Set());
 
-  // Load ONLY main cache on mount — no historical fragments (lazy-loaded on demand)
+  // Load current month fragment on mount — not the giant main cache
   useEffect(() => {
     const loadCache = async () => {
       if (!codCli || cacheLoaded || cacheLoading) return;
       setCacheLoading(true);
       try {
-        // Load main followup cache only (current data)
-        const mainFollowup = await fetchCacheWithTimeout(`followup_${codCli}`);
-        if (mainFollowup && mainFollowup.length > 0) {
-          console.log(`Loaded ${mainFollowup.length} followup records from main cache`);
-          setFollowupData(mainFollowup);
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const currentFragKey = `followup_${codCli}_${y}_${m}`;
+
+        // Try current month fragment first, fall back to main cache
+        let followup = await fetchCacheWithTimeout(currentFragKey);
+        if (!followup || followup.length === 0) {
+          followup = await fetchCacheWithTimeout(`followup_${codCli}`);
+        }
+        if (followup && followup.length > 0) {
+          console.log(`Loaded ${followup.length} followup records from cache`);
+          setFollowupData(followup);
         }
 
-        // Load main produtos cache only (if needed)
+        // Load produtos for minutas/tracking
         if (pageId === "minutas" || pageId === "tracking") {
-          const mainProdutos = await fetchCacheWithTimeout(`produtosdistribuidos_${codCli}`);
-          if (mainProdutos && mainProdutos.length > 0) {
-            console.log(`Loaded ${mainProdutos.length} produtos records from main cache`);
-            setProdutosData(mainProdutos);
+          const prodFragKey = `produtosdistribuidos_${codCli}_${y}_${m}`;
+          let produtos = await fetchCacheWithTimeout(prodFragKey);
+          if (!produtos || produtos.length === 0) {
+            produtos = await fetchCacheWithTimeout(`produtosdistribuidos_${codCli}`);
+          }
+          if (produtos && produtos.length > 0) {
+            console.log(`Loaded ${produtos.length} produtos records from cache`);
+            setProdutosData(produtos);
           }
         }
       } catch (err) {
