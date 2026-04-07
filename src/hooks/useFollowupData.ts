@@ -408,6 +408,9 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           await saveToCache(`produtosdistribuidos_${monthKey}`, items);
         }
       }
+      // Clean up old giant main cache entries (replaced by per-month fragments)
+      await supabase.from("bi_data_cache").delete().eq("page_id", "_shared").eq("cache_key", `followup_${codCli}`);
+      await supabase.from("bi_data_cache").delete().eq("page_id", "_shared").eq("cache_key", `produtosdistribuidos_${codCli}`);
       await saveLastUpdate();
     } else {
       setLastUpdateAt(new Date());
