@@ -1,0 +1,1 @@
+DELETE FROM bi_data_cache WHERE cache_key IN ('followup_099', 'produtosdistribuidos_099') AND cached_at < '2026-04-01';

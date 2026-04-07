@@ -188,25 +188,37 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   // Track which historical fragments have been loaded
   const [loadedFragments, setLoadedFragments] = useState<Set<string>>(new Set());
 
-  // Load ONLY main cache on mount — no historical fragments (lazy-loaded on demand)
+  // Load current month fragment on mount — not the giant main cache
   useEffect(() => {
     const loadCache = async () => {
       if (!codCli || cacheLoaded || cacheLoading) return;
       setCacheLoading(true);
       try {
-        // Load main followup cache only (current data)
-        const mainFollowup = await fetchCacheWithTimeout(`followup_${codCli}`);
-        if (mainFollowup && mainFollowup.length > 0) {
-          console.log(`Loaded ${mainFollowup.length} followup records from main cache`);
-          setFollowupData(mainFollowup);
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const currentFragKey = `followup_${codCli}_${y}_${m}`;
+
+        // Try current month fragment first, fall back to main cache
+        let followup = await fetchCacheWithTimeout(currentFragKey);
+        if (!followup || followup.length === 0) {
+          followup = await fetchCacheWithTimeout(`followup_${codCli}`);
+        }
+        if (followup && followup.length > 0) {
+          console.log(`Loaded ${followup.length} followup records from cache`);
+          setFollowupData(followup);
         }
 
-        // Load main produtos cache only (if needed)
+        // Load produtos for minutas/tracking
         if (pageId === "minutas" || pageId === "tracking") {
-          const mainProdutos = await fetchCacheWithTimeout(`produtosdistribuidos_${codCli}`);
-          if (mainProdutos && mainProdutos.length > 0) {
-            console.log(`Loaded ${mainProdutos.length} produtos records from main cache`);
-            setProdutosData(mainProdutos);
+          const prodFragKey = `produtosdistribuidos_${codCli}_${y}_${m}`;
+          let produtos = await fetchCacheWithTimeout(prodFragKey);
+          if (!produtos || produtos.length === 0) {
+            produtos = await fetchCacheWithTimeout(`produtosdistribuidos_${codCli}`);
+          }
+          if (produtos && produtos.length > 0) {
+            console.log(`Loaded ${produtos.length} produtos records from cache`);
+            setProdutosData(produtos);
           }
         }
       } catch (err) {
@@ -367,15 +379,38 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     setRefreshStage("saving");
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      // Save current year data to main cache key
-      const currentYearOnly = allFollowup.filter(i => Number(i._fetch_year) === currentYear);
-      if (currentYearOnly.length > 0) {
-        await saveToCache("followup", currentYearOnly);
+      // Save per-month fragments instead of one giant blob to reduce DB load
+      const followupByMonth = new Map<string, FollowupItem[]>();
+      for (const item of allFollowup) {
+        const y = Number(item._fetch_year) || currentYear;
+        const m = Number(item._fetch_month) || 1;
+        const key = `${y}_${String(m).padStart(2, "0")}`;
+        const arr = followupByMonth.get(key) || [];
+        arr.push(item);
+        followupByMonth.set(key, arr);
+      }
+      for (const [monthKey, items] of followupByMonth) {
+        await saveToCache(`followup_${monthKey}`, items);
       }
 
       if ((pageId === "minutas" || pageId === "tracking") && allProdutos.length > 0) {
-        await saveToCache("produtosdistribuidos", allProdutos);
+        const produtosByMonth = new Map<string, FollowupItem[]>();
+        for (const item of allProdutos) {
+          const dtExp = safeParseDate(String(item.dt_expedicao || ""));
+          const y = dtExp ? dtExp.getFullYear() : currentYear;
+          const m = dtExp ? dtExp.getMonth() + 1 : 1;
+          const key = `${y}_${String(m).padStart(2, "0")}`;
+          const arr = produtosByMonth.get(key) || [];
+          arr.push(item);
+          produtosByMonth.set(key, arr);
+        }
+        for (const [monthKey, items] of produtosByMonth) {
+          await saveToCache(`produtosdistribuidos_${monthKey}`, items);
+        }
       }
+      // Clean up old giant main cache entries (replaced by per-month fragments)
+      await supabase.from("bi_data_cache").delete().eq("page_id", "_shared").eq("cache_key", `followup_${codCli}`);
+      await supabase.from("bi_data_cache").delete().eq("page_id", "_shared").eq("cache_key", `produtosdistribuidos_${codCli}`);
       await saveLastUpdate();
     } else {
       setLastUpdateAt(new Date());
