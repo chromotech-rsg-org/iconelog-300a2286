@@ -367,14 +367,34 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     setRefreshStage("saving");
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      // Save current year data to main cache key
-      const currentYearOnly = allFollowup.filter(i => Number(i._fetch_year) === currentYear);
-      if (currentYearOnly.length > 0) {
-        await saveToCache("followup", currentYearOnly);
+      // Save per-month fragments instead of one giant blob to reduce DB load
+      const followupByMonth = new Map<string, FollowupItem[]>();
+      for (const item of allFollowup) {
+        const y = Number(item._fetch_year) || currentYear;
+        const m = Number(item._fetch_month) || 1;
+        const key = `${y}_${String(m).padStart(2, "0")}`;
+        const arr = followupByMonth.get(key) || [];
+        arr.push(item);
+        followupByMonth.set(key, arr);
+      }
+      for (const [monthKey, items] of followupByMonth) {
+        await saveToCache(`followup_${monthKey}`, items);
       }
 
       if ((pageId === "minutas" || pageId === "tracking") && allProdutos.length > 0) {
-        await saveToCache("produtosdistribuidos", allProdutos);
+        const produtosByMonth = new Map<string, FollowupItem[]>();
+        for (const item of allProdutos) {
+          const dtExp = safeParseDate(String(item.dt_expedicao || ""));
+          const y = dtExp ? dtExp.getFullYear() : currentYear;
+          const m = dtExp ? dtExp.getMonth() + 1 : 1;
+          const key = `${y}_${String(m).padStart(2, "0")}`;
+          const arr = produtosByMonth.get(key) || [];
+          arr.push(item);
+          produtosByMonth.set(key, arr);
+        }
+        for (const [monthKey, items] of produtosByMonth) {
+          await saveToCache(`produtosdistribuidos_${monthKey}`, items);
+        }
       }
       await saveLastUpdate();
     } else {
