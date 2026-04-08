@@ -325,23 +325,17 @@ async function enqueueDueScheduleJobs(supabase: any, now: Date, brtTime: Date, c
       const isDateRange = DATE_RANGE_APIS.includes(apiName.toUpperCase());
 
       if (isDateRange) {
-        // Create one job per month for heavy APIs
-        const chunks = getMonthChunks(getBrtTime(new Date()));
-        for (const chunk of chunks) {
-          const monthNum = parseInt(chunk.data_inicial.substring(5, 7), 10);
-          const yearNum = parseInt(chunk.data_inicial.substring(0, 4), 10);
-          const monthSuffix = `_${yearNum}_${String(monthNum).padStart(2, "0")}`;
-          queueRows.push({
-            schedule_id: schedule.id,
-            page_id: schedule.page_id,
-            cod_cli: codCli,
-            api_integration_id: apiIntegrationId,
-            status: "pending",
-            attempts: 0,
-            available_at: now.toISOString(),
-            queue_key: buildQueueKey(schedule, apiIntegrationId, codCli) + monthSuffix,
-          });
-        }
+        // Single job for full-year fetch (same strategy as manual refresh)
+        queueRows.push({
+          schedule_id: schedule.id,
+          page_id: schedule.page_id,
+          cod_cli: codCli,
+          api_integration_id: apiIntegrationId,
+          status: "pending",
+          attempts: 0,
+          available_at: now.toISOString(),
+          queue_key: buildQueueKey(schedule, apiIntegrationId, codCli) + "_FULLYEAR",
+        });
       } else {
         queueRows.push({
           schedule_id: schedule.id,
@@ -545,7 +539,7 @@ async function processPendingQueueBatches(supabase: any, now: Date, globalStart:
     processedBatches += 1;
   }
 
-  // Process date-range jobs individually (one month per job)
+  // Process date-range jobs: fetch full year in one request, split into monthly fragments
   for (const job of dateRangeJobs) {
     const elapsed = Date.now() - globalStart;
     if (elapsed > MAX_EXECUTION_MS) {
@@ -561,18 +555,6 @@ async function processPendingQueueBatches(supabase: any, now: Date, globalStart:
       continue;
     }
 
-    const monthInfo = extractMonthFromQueueKey(job.queue_key);
-    if (!monthInfo) {
-      // Legacy job without month suffix — process all months (fallback)
-      console.warn(`Legacy date-range job without month suffix: ${job.queue_key}`);
-      await retryBatch(supabase, [job], now, "legacy_queue_key_no_month");
-      hasErrors = true;
-      processedBatches += 1;
-      continue;
-    }
-
-    const fragmentKey = `${integration.name.toLowerCase()}_${job.cod_cli}_${monthInfo.year}_${String(monthInfo.month).padStart(2, "0")}`;
-
     try {
       const startTime = Date.now();
 
@@ -581,49 +563,83 @@ async function processPendingQueueBatches(supabase: any, now: Date, globalStart:
         .update({ status: "running", started_at: new Date().toISOString(), error_message: null } as never)
         .eq("id", job.id);
 
-      // Check freshness of this specific month fragment
-      const cacheAge = await getCacheAgeMinutes(supabase, fragmentKey, now);
-      if (cacheAge !== null && cacheAge < FRESHNESS_THRESHOLD_MINUTES) {
-        await completeBatch(supabase, [job], { execution_ms: Date.now() - startTime, records_processed: 0, pageIds: [job.page_id] });
-        await finalizeSchedulesForJobs(supabase, [job], now);
-        results.push({ type: "month_chunk", api: integration.name, cod_cli: job.cod_cli, month: `${monthInfo.year}/${String(monthInfo.month).padStart(2, "0")}`, status: "skipped", reason: "cache_fresh", cache_age_minutes: Math.round(cacheAge!) });
-        processedBatches += 1;
-        continue;
-      }
+      // Fetch full year in one request (same as manual refresh)
+      const currentYear = getBrtTime(now).getFullYear();
+      const yearStart = new Date(currentYear, 0, 1);
+      const dataInicial = `${formatDate(yearStart)} 00:00`;
+      const dataFinal = `${formatDate(now)} 23:59`;
 
-      // Build date range for this specific month
-      const firstDay = new Date(monthInfo.year, monthInfo.month - 1, 1);
-      const lastDay = new Date(monthInfo.year, monthInfo.month, 0);
-      const dataInicial = `${formatDate(firstDay)} 00:00`;
-      const dataFinal = `${formatDate(lastDay)} 23:59`;
-
-      const chunkData = await fetchSingleApiCall(integration, job.cod_cli, { data_inicial: dataInicial, data_final: dataFinal }, true);
+      const allData = await fetchSingleApiCall(integration, job.cod_cli, { data_inicial: dataInicial, data_final: dataFinal }, true);
       const execTime = Date.now() - startTime;
 
-      // Tag records with month/year
-      const tagged = chunkData.map((row: any) => ({
-        ...row,
-        _fetch_month: monthInfo.month,
-        _fetch_year: monthInfo.year,
-      }));
+      const apiName = integration.name.toLowerCase();
 
-      // Save directly with fragmented key
-      await supabase.from("bi_data_cache").upsert(
-        { page_id: "_shared", cache_key: fragmentKey, data: tagged as never, cached_at: new Date().toISOString() },
-        { onConflict: "page_id,cache_key" }
-      );
+      // Deduplicate by cod_conhecimento
+      const seen = new Set<string>();
+      const deduped = allData.filter((item: any) => {
+        const key = item.cod_conhecimento ? String(item.cod_conhecimento) : JSON.stringify(item);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Split into monthly fragments and save with unified key format: {api}_{year}_{month}_{codCli}
+      const byMonth = new Map<string, any[]>();
+      for (const item of deduped) {
+        const dtExp = item.dt_expedicao ? String(item.dt_expedicao).trim().split(/[\sT]/)[0] : null;
+        const dtBaixa = item.dt_baixa_minuta ? String(item.dt_baixa_minuta).trim().split(/[\sT]/)[0] : null;
+        let y = currentYear, m = 1;
+        const refDt = dtExp || dtBaixa;
+        if (refDt) {
+          const parts = refDt.split(/[\/\-]/);
+          if (parts.length >= 3) {
+            if (parts[0].length === 4) { y = parseInt(parts[0]); m = parseInt(parts[1]); }
+            else { y = parseInt(parts[2]); m = parseInt(parts[1]); }
+          }
+        }
+        const monthKey = `${y}_${String(m).padStart(2, "0")}`;
+        const arr = byMonth.get(monthKey) || [];
+        arr.push({ ...item, _fetch_month: m, _fetch_year: y });
+        byMonth.set(monthKey, arr);
+      }
+
+      // Save each fragment with unified key: {api}_{year}_{month}_{codCli}
+      let totalSaved = 0;
+      for (const [monthKey, items] of byMonth) {
+        const fragmentKey = `${apiName}_${monthKey}_${job.cod_cli}`;
+        await supabase.from("bi_data_cache").upsert(
+          { page_id: "_shared", cache_key: fragmentKey, data: items as never, cached_at: new Date().toISOString() },
+          { onConflict: "page_id,cache_key" }
+        );
+        totalSaved += items.length;
+      }
+
+      // Clean up old-format keys: {api}_{codCli}_YYYY_MM and {api}_{codCli}
+      const { data: oldKeys } = await supabase
+        .from("bi_data_cache")
+        .select("cache_key")
+        .eq("page_id", "_shared")
+        .like("cache_key", `${apiName}_${job.cod_cli}%`);
+      if (oldKeys && oldKeys.length > 0) {
+        const keysToDelete = oldKeys
+          .map((r: any) => r.cache_key)
+          .filter((k: string) => k !== `${apiName}_${job.cod_cli}` || true); // delete all old-format
+        if (keysToDelete.length > 0) {
+          await supabase.from("bi_data_cache").delete().eq("page_id", "_shared").in("cache_key", keysToDelete);
+        }
+      }
 
       const pageIds = [job.page_id];
-      await completeBatch(supabase, [job], { execution_ms: execTime, records_processed: tagged.length, pageIds });
+      await completeBatch(supabase, [job], { execution_ms: execTime, records_processed: totalSaved, pageIds });
       await finalizeSchedulesForJobs(supabase, [job], now);
 
-      console.log(`Done month chunk: ${integration.name} ${monthInfo.year}/${String(monthInfo.month).padStart(2, "0")} (${job.cod_cli}) => ${tagged.length} records, ${execTime}ms`);
-      results.push({ type: "month_chunk", api: integration.name, cod_cli: job.cod_cli, month: `${monthInfo.year}/${String(monthInfo.month).padStart(2, "0")}`, status: 200, records: tagged.length, time_ms: execTime });
+      console.log(`Done full-year: ${integration.name} (${job.cod_cli}) => ${totalSaved} records in ${byMonth.size} fragments, ${execTime}ms`);
+      results.push({ type: "full_year", api: integration.name, cod_cli: job.cod_cli, status: 200, records: totalSaved, fragments: byMonth.size, time_ms: execTime });
     } catch (error: any) {
       hasErrors = true;
-      console.error(`Month chunk error: ${integration.name} ${monthInfo.year}/${String(monthInfo.month).padStart(2, "0")} (${job.cod_cli}) => ${error.message}`);
+      console.error(`Full-year error: ${integration.name} (${job.cod_cli}) => ${error.message}`);
       await retryBatch(supabase, [job], now, error.message);
-      results.push({ type: "month_chunk", api: integration.name, cod_cli: job.cod_cli, month: `${monthInfo.year}/${String(monthInfo.month).padStart(2, "0")}`, status: "error", error: error.message });
+      results.push({ type: "full_year", api: integration.name, cod_cli: job.cod_cli, status: "error", error: error.message });
     }
     processedBatches += 1;
   }
