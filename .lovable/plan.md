@@ -1,45 +1,60 @@
 
 
-## Diagnóstico Completo
+## Diagnóstico: Atualização Automática com Dados Incorretos
 
-**Causa raiz confirmada**: O banco de dados está com **queries pesadas travadas** na tabela `bi_data_cache` que consomem todas as conexões disponíveis (pool de 10 conexões). Isso impede que a autenticação complete:
+### Causa Raiz (2 problemas graves)
 
-- Query travada há **3 minutos** (estado: aborted, ocupando conexão)
-- Query ativa há **1 min 15s** carregando cache de 1.8MB
-- A tabela `bi_data_cache` tem **16MB** com registros individuais de até **1.8MB** de JSON
+**1. Formato de cache_key diferente entre automático e manual**
 
-Quando um usuário abre a página de login, o `BiSettingsProvider` e `LanguageProvider` já disparam queries ao banco. Quando múltiplos usuários fazem isso simultaneamente, as 10 conexões se esgotam, e o endpoint de autenticação (`/auth/v1/token`) retorna **504 timeout** após 35 segundos.
+O cache salvo pela atualização automática e pela manual usam chaves DIFERENTES:
 
-## Solução em 3 Partes
+```text
+Automático: followup_099_2026_04  (490 registros)
+Manual:     followup_2026_04_099  (4046 registros)
+```
 
-### 1. Matar queries travadas (imediato)
-Não é possível via código — precisa ser feito via migração com `SELECT pg_terminate_backend(pid)` para liberar as conexões bloqueadas.
+- Automático: `{api}_{codCli}_{year}_{month}` (linha 574 do edge function)
+- Manual: `{api}_{year}_{month}_{codCli}` (saveToCache no hook: `followup_${monthKey}` + `_${codCli}`)
 
-### 2. Otimizar carregamento do cache (código)
-O problema é que `useFollowupData` carrega **todos os fragmentos de cache sequencialmente** no mount, cada um com 500KB-1.8MB de JSON. Isso satura o banco.
+Quando o usuário abre o BI, o frontend carrega `followup_${codCli}_${year}_${month}` (formato automático com 490 registros), ignorando os 4046 registros salvos pelo manual.
 
-**Arquivo: `src/hooks/useFollowupData.ts`**
-- Carregar apenas o cache principal (`followup_{codCli}`) no mount
-- Carregar fragmentos históricos (`followup_{codCli}_YYYY_MM`) somente sob demanda (quando o usuário filtra por mês/ano específico)
-- Adicionar `AbortController` com timeout de 10s para cada query de cache
+**2. Atualização automática busca mês a mês, manual busca o ano inteiro**
 
-### 3. Adicionar statement_timeout nas queries pesadas (migração)
-Criar uma migração que define `statement_timeout` no role `authenticator` para evitar que queries de cache bloqueiem a autenticação indefinidamente.
+- Manual: Uma única requisição `Jan 1 → hoje` → captura TUDO
+- Automático: Requisições separadas por mês exato (ex: `2026-04-01 → 2026-04-30`) → perde registros que a API filtra por outros campos de data
 
-### 4. Melhorar resiliência do login (código)
-**Arquivo: `src/pages/Auth.tsx`**
-- O `handleLogin` já tem o timeout de 5s, mas o `signInWithPassword` do Supabase SDK não tem timeout próprio — ele espera até 35s+ pelo servidor
-- Envolver a chamada `login()` em um `Promise.race` com timeout de 15s, mostrando mensagem amigável "Servidor lento, tente novamente em alguns segundos"
+Exemplo real no banco:
+| Cache Key | Registros | Fonte |
+|---|---|---|
+| `followup_099_2026_04` | 490 | Automático |
+| `followup_2026_04_099` | 4046 | Manual |
 
-**Arquivo: `src/hooks/useSupabaseAuth.ts`**
-- No `signIn`, envolver o `signInWithPassword` em um timeout de 15s (atualmente só o fetchProfile tem timeout)
+**3. Frontend só carrega o mês atual no mount**
 
-## Resumo de Mudanças
+Ao abrir o BI, o hook carrega apenas `followup_{codCli}_{currentYear}_{currentMonth}`, mostrando dados parciais mesmo que todos os meses estejam corretos no banco.
+
+### Solução
+
+**Parte 1: Edge Function `scheduled-update/index.ts`**
+- Para APIs pesadas (FOLLOWUP, PRODUTOSDISTRIBUIDOS), trocar a estratégia de busca mensal para busca do ano inteiro (igual ao manual)
+- Unificar o formato do cache_key para `{api}_{year}_{month}_{codCli}` (mesmo formato que o manual)
+- Após buscar o ano inteiro, dividir os resultados por mês e salvar cada fragmento separadamente
+- Isso garante que automático e manual produzam os mesmos dados
+
+**Parte 2: Hook `useFollowupData.ts`**  
+- No mount, carregar TODOS os fragmentos disponíveis para o codCli (não apenas o mês atual)
+- Usar uma query com `.like("cache_key", "followup_%_${codCli}")` para buscar todos os fragmentos de uma vez
+- Limpar os fragmentos antigos no formato errado (`followup_${codCli}_*`)
+
+**Parte 3: Migração SQL**
+- Deletar os fragmentos duplicados no formato antigo (`followup_099_*`) para evitar confusão
+- Manter apenas os do formato correto (`followup_*_099`)
+
+### Resumo de Mudanças
 
 | Arquivo | Mudança |
-|---------|---------|
-| Migração SQL | `pg_terminate_backend` para matar queries travadas + `statement_timeout` de 30s |
-| `src/hooks/useFollowupData.ts` | Lazy-load de fragmentos históricos, timeout de 10s por query |
-| `src/hooks/useSupabaseAuth.ts` | Timeout de 15s no `signInWithPassword` |
-| `src/pages/Auth.tsx` | Mensagem amigável quando servidor está lento |
+|---|---|
+| `supabase/functions/scheduled-update/index.ts` | Buscar ano inteiro para FOLLOWUP/PRODUTOSDISTRIBUIDOS, salvar com cache_key unificada |
+| `src/hooks/useFollowupData.ts` | Carregar todos os fragmentos no mount (não só mês atual) |
+| Migração SQL | Limpar cache_keys duplicadas no formato antigo |
 
