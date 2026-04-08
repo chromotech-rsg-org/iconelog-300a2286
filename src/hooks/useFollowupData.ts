@@ -214,7 +214,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
           const allFollowup: FollowupItem[] = [];
           for (const frag of allFragments) {
             if (Array.isArray(frag.data)) {
-              allFollowup.push(...frag.data);
+              allFollowup.push(...(frag.data as FollowupItem[]));
             }
           }
           // Deduplicate
@@ -246,7 +246,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
             const allProdutos: FollowupItem[] = [];
             for (const frag of prodFragments) {
               if (Array.isArray(frag.data)) {
-                allProdutos.push(...frag.data);
+                allProdutos.push(...(frag.data as FollowupItem[]));
               }
             }
             const seen = new Set<string>();
