@@ -122,58 +122,61 @@ export const useSupabaseAuth = () => {
       error?.code === '57014';
   };
 
+  // Single query with timeout wrapper to reduce connection time
+  const queryWithTimeout = useCallback(async <T>(
+    queryFn: () => Promise<{ data: T | null; error: any }>,
+    timeoutMs: number = 8000
+  ): Promise<{ data: T | null; error: any }> => {
+    const timeout = new Promise<{ data: null; error: { message: string } }>((resolve) =>
+      setTimeout(() => resolve({ data: null, error: { message: 'query_timeout' } }), timeoutMs)
+    );
+    return Promise.race([queryFn(), timeout]);
+  }, []);
+
   const fetchProfile = useCallback(async (userId: string, retryCount = 0): Promise<Profile | null> => {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .maybeSingle();
-
+      const { data, error } = await queryWithTimeout(() =>
+        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+        5000
+      );
       if (error) throw error;
       return data as Profile | null;
     } catch (error: any) {
       console.error("Error fetching profile:", error);
-      if (retryCount < 3 && isRetryableError(error)) {
-        console.log(`Retrying profile fetch (attempt ${retryCount + 2}/4)...`);
-        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+      if (retryCount < 2 && isRetryableError(error)) {
+        await new Promise(r => setTimeout(r, 1500 * (retryCount + 1)));
         return fetchProfile(userId, retryCount + 1);
       }
       return null;
     }
-  }, []);
+  }, [queryWithTimeout]);
 
   const fetchUserRoles = useCallback(async (userId: string, retryCount = 0): Promise<Role[]> => {
     try {
-      const { data, error } = await supabase
-        .from("user_roles")
-        .select(`role_id, roles (id, nome, descricao)`)
-        .eq("user_id", userId);
-
+      const { data, error } = await queryWithTimeout(() =>
+        supabase.from("user_roles").select(`role_id, roles (id, nome, descricao)`).eq("user_id", userId),
+        5000
+      );
       if (error) throw error;
       return data?.map((ur: any) => ur.roles).filter(Boolean) as Role[] || [];
     } catch (error: any) {
       console.error("Error fetching user roles:", error);
-      if (retryCount < 3 && isRetryableError(error)) {
-        console.log(`Retrying user roles fetch (attempt ${retryCount + 2}/4)...`);
-        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+      if (retryCount < 2 && isRetryableError(error)) {
+        await new Promise(r => setTimeout(r, 1500 * (retryCount + 1)));
         return fetchUserRoles(userId, retryCount + 1);
       }
       return [];
     }
-  }, []);
+  }, [queryWithTimeout]);
 
   const fetchPagePermissions = useCallback(async (roleIds: string[], retryCount = 0): Promise<Record<string, PagePermission>> => {
     if (roleIds.length === 0) return {};
-
     try {
-      const { data, error } = await supabase
-        .from("page_permissions")
-        .select("*")
-        .in("role_id", roleIds);
-
+      const { data, error } = await queryWithTimeout(() =>
+        supabase.from("page_permissions").select("*").in("role_id", roleIds),
+        5000
+      );
       if (error) throw error;
-
       const perms: Record<string, PagePermission> = {};
       data?.forEach((p) => {
         if (!perms[p.page_id]) {
@@ -188,26 +191,22 @@ export const useSupabaseAuth = () => {
       return perms;
     } catch (error: any) {
       console.error("Error fetching page permissions:", error);
-      if (retryCount < 3 && isRetryableError(error)) {
-        console.log(`Retrying page permissions fetch (attempt ${retryCount + 2}/4)...`);
-        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+      if (retryCount < 2 && isRetryableError(error)) {
+        await new Promise(r => setTimeout(r, 1500 * (retryCount + 1)));
         return fetchPagePermissions(roleIds, retryCount + 1);
       }
       return {};
     }
-  }, []);
+  }, [queryWithTimeout]);
 
   const fetchAdminPermissions = useCallback(async (roleIds: string[], retryCount = 0): Promise<AdminPermissionsState> => {
     if (roleIds.length === 0) return defaultAdminPermissions();
-
     try {
-      const { data, error } = await supabase
-        .from("admin_permissions")
-        .select("*")
-        .in("role_id", roleIds);
-
+      const { data, error } = await queryWithTimeout(() =>
+        supabase.from("admin_permissions").select("*").in("role_id", roleIds),
+        5000
+      );
       if (error) throw error;
-
       const result = defaultAdminPermissions();
       data?.forEach((p) => {
         const sectionKey = dbTypeToSection[p.permission_type] || p.permission_type;
@@ -222,46 +221,42 @@ export const useSupabaseAuth = () => {
       return result;
     } catch (error: any) {
       console.error("Error fetching admin permissions:", error);
-      if (retryCount < 3 && isRetryableError(error)) {
-        console.log(`Retrying admin permissions fetch (attempt ${retryCount + 2}/4)...`);
-        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+      if (retryCount < 2 && isRetryableError(error)) {
+        await new Promise(r => setTimeout(r, 1500 * (retryCount + 1)));
         return fetchAdminPermissions(roleIds, retryCount + 1);
       }
       return defaultAdminPermissions();
     }
-  }, []);
+  }, [queryWithTimeout]);
 
-  const fetchPublicAccess = useCallback(async (retryCount = 0): Promise<Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }>> => {
+  const fetchPublicAccess = useCallback(async (): Promise<Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }>> => {
     try {
-      const { data, error } = await supabase.from("public_page_settings").select("*");
+      const { data, error } = await queryWithTimeout(() =>
+        supabase.from("public_page_settings").select("*"),
+        5000
+      );
       if (error) throw error;
       const result: Record<string, { is_public: boolean; allow_export: boolean; allow_refresh: boolean }> = {};
       data?.forEach((p) => { result[p.page_id] = { is_public: p.is_public, allow_export: p.allow_export, allow_refresh: p.allow_refresh }; });
       return result;
     } catch (error: any) {
       console.error("Error fetching public access:", error);
-      if (retryCount < 3 && isRetryableError(error)) {
-        console.log(`Retrying public access fetch (attempt ${retryCount + 2}/4)...`);
-        await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
-        return fetchPublicAccess(retryCount + 1);
-      }
       return {};
     }
-  }, []);
+  }, [queryWithTimeout]);
 
   const loadUserData = useCallback(async (userId: string) => {
     try {
-      const [profileData, roles] = await Promise.all([
-        fetchProfile(userId),
-        fetchUserRoles(userId),
-      ]);
-
-      // If DB failed (null profile AND no roles), try localStorage cache
-      if (!profileData && roles.length === 0) {
-        console.warn("DB returned no data, trying local cache...");
+      // SEQUENTIAL loading to minimize concurrent DB connections
+      // Step 1: Profile (most critical)
+      const profileData = await fetchProfile(userId);
+      
+      // If profile failed, try cache immediately
+      if (!profileData) {
+        console.warn("Profile fetch failed, trying local cache...");
         const cached = loadPermissionsCache();
         if (cached) {
-          console.log("Using cached permissions");
+          console.log("Using cached permissions (profile failed)");
           setProfile(cached.profile);
           setUserRoles(cached.roles);
           setPagePermissions(cached.pagePerms);
@@ -269,18 +264,23 @@ export const useSupabaseAuth = () => {
           return;
         }
       }
-
+      
       setProfile(profileData);
+
+      // Step 2: Roles (needed for permissions)
+      const roles = await fetchUserRoles(userId);
       setUserRoles(roles);
 
       const roleIds = roles.map((r) => r.id);
       if (roleIds.length > 0) {
-        const [pagePerm, adminPerm] = await Promise.all([
-          fetchPagePermissions(roleIds),
-          fetchAdminPermissions(roleIds),
-        ]);
+        // Step 3: Page permissions first
+        const pagePerm = await fetchPagePermissions(roleIds);
         setPagePermissions(pagePerm);
+        
+        // Step 4: Admin permissions
+        const adminPerm = await fetchAdminPermissions(roleIds);
         setAdminPermissions(adminPerm);
+        
         // Save to cache for resilience
         savePermissionsCache({ profile: profileData, roles, pagePerms: pagePerm, adminPerms: adminPerm });
       } else {
@@ -306,26 +306,32 @@ export const useSupabaseAuth = () => {
     }
   }, [fetchProfile, fetchUserRoles, fetchPagePermissions, fetchAdminPermissions]);
 
-  // Use ref to track if initial data load happened - survives re-renders without causing effect re-runs
+  // Use ref to track if initial data load happened
   const initialLoadDoneRef = useRef(false);
   const loadUserDataRef = useRef(loadUserData);
   loadUserDataRef.current = loadUserData;
+  // Track if public access has been fetched to avoid duplicate calls
+  const publicAccessFetchedRef = useRef(false);
 
   useEffect(() => {
-    // OPTIMIZATION: Defer fetchPublicAccess - don't run on mount for unauthenticated visitors
-    // This saves a DB connection on every page load
-    // fetchPublicAccess will be called after authentication succeeds
-
-    // Safety timeout: if loading takes more than 15 seconds, force it to finish
+    // Safety timeout: if loading takes more than 12 seconds, force it to finish
     const loadingTimeout = setTimeout(() => {
       setLoading(prev => {
         if (prev) {
           console.warn("Auth loading timeout - forcing loading to false");
+          // Try cache as last resort
+          const cached = loadPermissionsCache();
+          if (cached) {
+            setProfile(cached.profile);
+            setUserRoles(cached.roles);
+            setPagePermissions(cached.pagePerms);
+            setAdminPermissions(cached.adminPerms);
+          }
           return false;
         }
         return prev;
       });
-    }, 15000);
+    }, 12000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -338,6 +344,7 @@ export const useSupabaseAuth = () => {
 
         if (event === "SIGNED_OUT") {
           initialLoadDoneRef.current = false;
+          publicAccessFetchedRef.current = false;
           setProfile(null);
           setUserRoles([]);
           setPagePermissions({});
@@ -351,16 +358,19 @@ export const useSupabaseAuth = () => {
             initialLoadDoneRef.current = true;
             setLoading(true);
             setTimeout(() => { 
-              // Load public access ONLY after we know user is authenticated
-              fetchPublicAccess().then(setPublicAccessState).catch(() => {});
               loadUserDataRef.current(session.user.id).finally(() => setLoading(false)); 
+              // Fetch public access AFTER user data, with delay to not compete
+              if (!publicAccessFetchedRef.current) {
+                publicAccessFetchedRef.current = true;
+                setTimeout(() => {
+                  fetchPublicAccess().then(setPublicAccessState).catch(() => {});
+                }, 2000);
+              }
             }, 0);
           }
         } else if (event === "INITIAL_SESSION" && !session) {
-          // No session - load public access lazily with a delay to not block the pool
-          setTimeout(() => {
-            fetchPublicAccess().then(setPublicAccessState).catch(() => {});
-          }, 3000);
+          // No session - DON'T fetch public access eagerly, save DB connection
+          // Only fetch when user navigates to a public page
           setLoading(false);
         }
       }
@@ -371,8 +381,14 @@ export const useSupabaseAuth = () => {
         setSession(session);
         setUser(session.user);
         initialLoadDoneRef.current = true;
-        fetchPublicAccess().then(setPublicAccessState).catch(() => {});
         loadUserDataRef.current(session.user.id).finally(() => setLoading(false));
+        // Delayed public access fetch
+        if (!publicAccessFetchedRef.current) {
+          publicAccessFetchedRef.current = true;
+          setTimeout(() => {
+            fetchPublicAccess().then(setPublicAccessState).catch(() => {});
+          }, 2000);
+        }
       } else if (!session) {
         setLoading(false);
       }
@@ -401,7 +417,6 @@ export const useSupabaseAuth = () => {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    // Wrap signInWithPassword in a 15s timeout to prevent infinite hang when DB is down
     const signInPromise = supabase.auth.signInWithPassword({ email, password });
     const timeoutSignIn = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("LOGIN_TIMEOUT")), 15000)
@@ -431,7 +446,6 @@ export const useSupabaseAuth = () => {
 
     if (data.user) {
       try {
-        // Timeout de 5s para verificação de perfil - evita login preso quando DB está lento
         const profilePromise = fetchProfile(data.user.id, 0);
         const timeoutPromise = new Promise<null>((_, reject) => 
           setTimeout(() => reject(new Error("timeout")), 5000)
@@ -443,7 +457,6 @@ export const useSupabaseAuth = () => {
           return { success: false, message: "Usuário inativo. Contate o administrador." };
         }
       } catch (err) {
-        // Se timeout, prosseguir com login - dados carregarão via onAuthStateChange
         console.warn("Profile check timed out or failed, proceeding with login:", err);
       }
     }
@@ -486,7 +499,14 @@ export const useSupabaseAuth = () => {
   const canRefresh = useCallback((pageId: string) => pagePermissions[pageId]?.atualizar ?? false, [pagePermissions]);
   const isDevOnly = useCallback((pageId: string) => pagePermissions[pageId]?.apenas_dev ?? false, [pagePermissions]);
   const canIdioma = useCallback((pageId: string) => pagePermissions[pageId]?.idioma ?? false, [pagePermissions]);
-  const isPublicAccess = useCallback((pageId: string) => publicAccess[pageId]?.is_public === true, [publicAccess]);
+  const isPublicAccess = useCallback((pageId: string) => {
+    // If public access hasn't been fetched yet, try to fetch it lazily
+    if (Object.keys(publicAccess).length === 0 && !publicAccessFetchedRef.current) {
+      publicAccessFetchedRef.current = true;
+      fetchPublicAccess().then(setPublicAccessState).catch(() => {});
+    }
+    return publicAccess[pageId]?.is_public === true;
+  }, [publicAccess, fetchPublicAccess]);
   const isPublicExport = useCallback((pageId: string) => publicAccess[pageId]?.allow_export === true, [publicAccess]);
   const isPublicRefresh = useCallback((pageId: string) => publicAccess[pageId]?.allow_refresh === true, [publicAccess]);
 
@@ -506,7 +526,6 @@ export const useSupabaseAuth = () => {
     return adminPermissions[section]?.excluir ?? false;
   }, [adminPermissions]);
 
-  // Check if user has any admin sub-permission (any section)
   const canViewAnyConfig = useCallback(() => {
     return Object.values(adminPermissions).some(p => p?.ver);
   }, [adminPermissions]);
