@@ -197,11 +197,11 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     const loadCache = async () => {
       if (!codCli || cacheLoaded || cacheLoading) return;
       // Debounce: if another instance is loading, wait
-      if (cacheLoadLockRef.current) {
+      if (globalCacheLoadLock) {
         console.log("Cache load debounced, another instance is loading");
         return;
       }
-      cacheLoadLockRef.current = true;
+      globalCacheLoadLock = true;
       setCacheLoading(true);
       try {
         const now = new Date();
@@ -247,7 +247,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       } finally {
         setCacheLoaded(true);
         setCacheLoading(false);
-        cacheLoadLockRef.current = false;
+        globalCacheLoadLock = false;
       }
     };
     loadCache();
