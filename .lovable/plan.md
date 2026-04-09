@@ -1,60 +1,41 @@
 
 
-## Diagnóstico: Atualização Automática com Dados Incorretos
+## Diagnóstico: Banco de dados com pool de conexões esgotado (novamente)
 
-### Causa Raiz (2 problemas graves)
+O banco está retornando "Connection terminated due to connection timeout" em todas as queries. Isso impede o carregamento de permissões após o login, e o SmartRedirect redireciona para `/no-access` após 3 tentativas falhadas.
 
-**1. Formato de cache_key diferente entre automático e manual**
+### Causa raiz recorrente
 
-O cache salvo pela atualização automática e pela manual usam chaves DIFERENTES:
+A query `.or()` com padrões LIKE na tabela `bi_data_cache` (16MB+ de JSONB) no mount de cada BI consome múltiplas conexões simultaneamente. Com o pool pequeno (10 conexões), basta 2-3 abas abertas para esgotar tudo. O scheduled-update agrava o problema ao rodar queries pesadas no mesmo pool.
 
-```text
-Automático: followup_099_2026_04  (490 registros)
-Manual:     followup_2026_04_099  (4046 registros)
-```
+### Solução definitiva (3 partes)
 
-- Automático: `{api}_{codCli}_{year}_{month}` (linha 574 do edge function)
-- Manual: `{api}_{year}_{month}_{codCli}` (saveToCache no hook: `followup_${monthKey}` + `_${codCli}`)
+**Parte 1: Migração SQL — Matar conexões travadas + criar índice**
+- Executar `pg_terminate_backend()` para liberar conexões bloqueadas (igual fizemos antes)
+- Criar um **índice parcial** na tabela `bi_data_cache` para acelerar as queries LIKE:
+  ```sql
+  CREATE INDEX IF NOT EXISTS idx_bi_data_cache_shared_key 
+  ON bi_data_cache (cache_key) 
+  WHERE page_id = '_shared';
+  ```
+- Isso reduz drasticamente o tempo de cada query de cache, liberando conexões mais rápido
 
-Quando o usuário abre o BI, o frontend carrega `followup_${codCli}_${year}_${month}` (formato automático com 490 registros), ignorando os 4046 registros salvos pelo manual.
+**Parte 2: Limitar queries concorrentes no frontend (`useFollowupData.ts`)**
+- Substituir as 2 queries paralelas (followup + produtos) por queries sequenciais
+- Adicionar um **debounce global**: se outro componente já está fazendo query de cache, esperar em vez de abrir nova conexão
+- Reduzir o timeout de 15s para 8s — se o cache não carregou em 8s, desistir e esperar o refresh manual
 
-**2. Atualização automática busca mês a mês, manual busca o ano inteiro**
+**Parte 3: Proteger o fluxo de login contra saturação do cache (`useSupabaseAuth.ts`)**
+- As queries de auth (profiles, roles, permissions) são leves e rápidas, mas ficam em fila atrás das queries pesadas de cache
+- Mover o `fetchPublicAccess` para depois do login (não no mount do app) — essa query roda para todos os visitantes, inclusive não autenticados, consumindo conexões desnecessariamente
+- No `SmartRedirect`, se o cache local tem permissões válidas (< 24h), usá-las imediatamente sem esperar o banco
 
-- Manual: Uma única requisição `Jan 1 → hoje` → captura TUDO
-- Automático: Requisições separadas por mês exato (ex: `2026-04-01 → 2026-04-30`) → perde registros que a API filtra por outros campos de data
-
-Exemplo real no banco:
-| Cache Key | Registros | Fonte |
-|---|---|---|
-| `followup_099_2026_04` | 490 | Automático |
-| `followup_2026_04_099` | 4046 | Manual |
-
-**3. Frontend só carrega o mês atual no mount**
-
-Ao abrir o BI, o hook carrega apenas `followup_{codCli}_{currentYear}_{currentMonth}`, mostrando dados parciais mesmo que todos os meses estejam corretos no banco.
-
-### Solução
-
-**Parte 1: Edge Function `scheduled-update/index.ts`**
-- Para APIs pesadas (FOLLOWUP, PRODUTOSDISTRIBUIDOS), trocar a estratégia de busca mensal para busca do ano inteiro (igual ao manual)
-- Unificar o formato do cache_key para `{api}_{year}_{month}_{codCli}` (mesmo formato que o manual)
-- Após buscar o ano inteiro, dividir os resultados por mês e salvar cada fragmento separadamente
-- Isso garante que automático e manual produzam os mesmos dados
-
-**Parte 2: Hook `useFollowupData.ts`**  
-- No mount, carregar TODOS os fragmentos disponíveis para o codCli (não apenas o mês atual)
-- Usar uma query com `.like("cache_key", "followup_%_${codCli}")` para buscar todos os fragmentos de uma vez
-- Limpar os fragmentos antigos no formato errado (`followup_${codCli}_*`)
-
-**Parte 3: Migração SQL**
-- Deletar os fragmentos duplicados no formato antigo (`followup_099_*`) para evitar confusão
-- Manter apenas os do formato correto (`followup_*_099`)
-
-### Resumo de Mudanças
+### Resumo de mudanças
 
 | Arquivo | Mudança |
 |---|---|
-| `supabase/functions/scheduled-update/index.ts` | Buscar ano inteiro para FOLLOWUP/PRODUTOSDISTRIBUIDOS, salvar com cache_key unificada |
-| `src/hooks/useFollowupData.ts` | Carregar todos os fragmentos no mount (não só mês atual) |
-| Migração SQL | Limpar cache_keys duplicadas no formato antigo |
+| Migração SQL | `pg_terminate_backend` + índice em `bi_data_cache(cache_key)` |
+| `src/hooks/useFollowupData.ts` | Queries sequenciais, timeout 8s, debounce global |
+| `src/hooks/useSupabaseAuth.ts` | Lazy-load do `fetchPublicAccess`, priorizar cache local |
+| `src/components/auth/SmartRedirect.tsx` | Usar cache de permissões local antes de consultar o banco |
 
