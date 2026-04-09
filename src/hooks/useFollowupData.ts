@@ -255,7 +255,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   // Lazy-load historical fragments when user filters by specific month/year
   const loadHistoricalFragments = useCallback(async (year: number, month: number) => {
     if (!codCli) return;
-    const fragKey = `followup_${codCli}_${year}_${String(month).padStart(2, "0")}`;
+    // Use UNIFIED key format: {api}_{year}_{month}_{codCli}
+    const fragKey = `followup_${year}_${String(month).padStart(2, "0")}_${codCli}`;
     if (loadedFragments.has(fragKey)) return; // Already loaded
 
     console.log(`Lazy-loading historical fragment: ${fragKey}`);
@@ -263,7 +264,6 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     if (fragData && fragData.length > 0) {
       setFollowupData(prev => {
         const combined = [...prev, ...fragData];
-        // Deduplicate
         const seen = new Set<string>();
         return combined.filter(item => {
           const key = item.cod_conhecimento ? String(item.cod_conhecimento) : JSON.stringify(item);
@@ -276,7 +276,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
 
     // Also load produtos fragment if applicable
     if (pageId === "minutas" || pageId === "tracking") {
-      const prodFragKey = `produtosdistribuidos_${codCli}_${year}_${String(month).padStart(2, "0")}`;
+      const prodFragKey = `produtosdistribuidos_${year}_${String(month).padStart(2, "0")}_${codCli}`;
       const prodFragData = await fetchCacheWithTimeout(prodFragKey);
       if (prodFragData && prodFragData.length > 0) {
         setProdutosData(prev => {
