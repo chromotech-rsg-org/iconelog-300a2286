@@ -21,7 +21,7 @@ export const SmartRedirect = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [retrying, setRetrying] = useState(false);
 
-  // Try to get first accessible page from local cache when DB is down
+  // Try to get first accessible page from local cache IMMEDIATELY
   const cachedRedirect = useMemo(() => {
     try {
       const raw = localStorage.getItem(PERM_CACHE_KEY);
@@ -29,12 +29,10 @@ export const SmartRedirect = () => {
       const parsed = JSON.parse(raw);
       if (Date.now() - parsed.ts > 24 * 60 * 60 * 1000) return null;
       const { pagePerms, adminPerms } = parsed;
-      // Check admin access from cache
       if (adminPerms) {
         const hasAdmin = Object.values(adminPerms).some((p: any) => p.ver);
         if (hasAdmin) return "/admin";
       }
-      // Check page access from cache
       if (pagePerms) {
         for (const page of PAGE_ORDER) {
           if (page.id === "admin_panel") continue;
@@ -57,10 +55,10 @@ export const SmartRedirect = () => {
   };
 
   useEffect(() => {
-    if (!loading && isAuthenticated && !hasAnyAccess() && retryCount < 3) {
+    if (!loading && isAuthenticated && !hasAnyAccess() && retryCount < 2) {
       setRetrying(true);
       const timer = setTimeout(() => {
-        console.log(`SmartRedirect: retrying permission load (attempt ${retryCount + 1}/3)...`);
+        console.log(`SmartRedirect: retrying permission load (attempt ${retryCount + 1}/2)...`);
         refreshUserData();
         setRetryCount(prev => prev + 1);
         setRetrying(false);
@@ -95,14 +93,14 @@ export const SmartRedirect = () => {
     }
   }
 
-  // If no live permissions but we have a valid cached redirect, use it
-  if (cachedRedirect && retryCount >= 3) {
+  // If no live permissions, use cached redirect IMMEDIATELY (don't wait for retries)
+  if (cachedRedirect) {
     console.log("Using cached redirect:", cachedRedirect);
     return <Navigate to={cachedRedirect} replace />;
   }
 
   // Still waiting for permissions after retries but not exhausted yet
-  if (!hasAnyAccess() && isAuthenticated && retryCount < 3) {
+  if (!hasAnyAccess() && isAuthenticated && retryCount < 2) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">

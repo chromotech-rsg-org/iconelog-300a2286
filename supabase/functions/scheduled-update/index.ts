@@ -614,20 +614,9 @@ async function processPendingQueueBatches(supabase: any, now: Date, globalStart:
         totalSaved += items.length;
       }
 
-      // Clean up old-format keys: {api}_{codCli}_YYYY_MM and {api}_{codCli}
-      const { data: oldKeys } = await supabase
-        .from("bi_data_cache")
-        .select("cache_key")
-        .eq("page_id", "_shared")
-        .like("cache_key", `${apiName}_${job.cod_cli}%`);
-      if (oldKeys && oldKeys.length > 0) {
-        const keysToDelete = oldKeys
-          .map((r: any) => r.cache_key)
-          .filter((k: string) => k !== `${apiName}_${job.cod_cli}` || true); // delete all old-format
-        if (keysToDelete.length > 0) {
-          await supabase.from("bi_data_cache").delete().eq("page_id", "_shared").in("cache_key", keysToDelete);
-        }
-      }
+      // Clean up legacy single-blob keys (no more .like() scans)
+      const legacyKey = `${apiName}_${job.cod_cli}`;
+      await supabase.from("bi_data_cache").delete().eq("page_id", "_shared").eq("cache_key", legacyKey);
 
       const pageIds = [job.page_id];
       await completeBatch(supabase, [job], { execution_ms: execTime, records_processed: totalSaved, pageIds });
@@ -823,36 +812,29 @@ async function retryBatch(supabase: any, jobs: QueueJob[], now: Date, errorMessa
 }
 
 async function finalizeSchedulesForJobs(supabase: any, jobs: QueueJob[], now: Date) {
-  const scheduleMarkers = new Map<string, string>();
+  // Collect unique schedule IDs from completed jobs
+  const scheduleIds = [...new Set(jobs.map(j => j.schedule_id))];
 
-  jobs.forEach((job) => {
-    const parts = job.queue_key.split("|");
-    // For date-range jobs, the marker is the 4th segment (before _YYYY_MM suffix)
-    // Original format: scheduleId|apiId|codCli|marker or scheduleId|apiId|codCli|marker_YYYY_MM
-    const marker = parts.length >= 4 ? parts[3].replace(/_\d{4}_\d{2}$/, "") : "never";
-    scheduleMarkers.set(job.schedule_id, marker);
-  });
-
-  for (const [scheduleId, marker] of scheduleMarkers.entries()) {
-    const likePattern = `${scheduleId}|%|${marker}%`;
+  for (const scheduleId of scheduleIds) {
+    // Check if ALL jobs for this schedule are completed (using exact eq, no LIKE)
     const { data, error } = await supabase
       .from("bi_scheduled_update_queue")
       .select("status")
       .eq("schedule_id", scheduleId)
-      .like("queue_key", likePattern);
+      .in("status", ["pending", "running"]);
 
     if (error) {
-      throw new Error(`Error finalizing schedule ${scheduleId}: ${error.message}`);
+      console.warn(`Error checking schedule ${scheduleId} completion: ${error.message}`);
+      continue;
     }
 
-    if (!data || data.length === 0) continue;
-    const allCompleted = data.every((row: { status: string }) => row.status === "completed");
-    if (!allCompleted) continue;
-
-    await supabase
-      .from("bi_scheduled_updates")
-      .update({ last_executed_at: now.toISOString() } as never)
-      .eq("id", scheduleId);
+    // If no pending/running jobs remain, schedule is complete
+    if (!data || data.length === 0) {
+      await supabase
+        .from("bi_scheduled_updates")
+        .update({ last_executed_at: now.toISOString() } as never)
+        .eq("id", scheduleId);
+    }
   }
 }
 

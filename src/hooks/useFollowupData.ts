@@ -117,6 +117,8 @@ const dateMatchesPeriod = (
 
   return dateMatchesMonthYear(dt, months, years);
 };
+// Module-level lock: shared across ALL hook instances (not per-component)
+let globalCacheLoadLock = false;
 
 export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   const { callMainApi, error } = useApiProxy();
@@ -188,19 +190,18 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   // Track which historical fragments have been loaded
   const [loadedFragments, setLoadedFragments] = useState<Set<string>>(new Set());
 
-  // Load ALL fragments for this client on mount using .like() query
-  // Global debounce: only one cache load at a time across all instances
-  const cacheLoadLockRef = useRef(false);
+  // TRUE global lock: module-level variable shared across all hook instances
+  // (useRef is per-instance, this is per-module)
 
   useEffect(() => {
     const loadCache = async () => {
       if (!codCli || cacheLoaded || cacheLoading) return;
       // Debounce: if another instance is loading, wait
-      if (cacheLoadLockRef.current) {
+      if (globalCacheLoadLock) {
         console.log("Cache load debounced, another instance is loading");
         return;
       }
-      cacheLoadLockRef.current = true;
+      globalCacheLoadLock = true;
       setCacheLoading(true);
       try {
         const now = new Date();
@@ -246,7 +247,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
       } finally {
         setCacheLoaded(true);
         setCacheLoading(false);
-        cacheLoadLockRef.current = false;
+        globalCacheLoadLock = false;
       }
     };
     loadCache();
@@ -255,7 +256,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   // Lazy-load historical fragments when user filters by specific month/year
   const loadHistoricalFragments = useCallback(async (year: number, month: number) => {
     if (!codCli) return;
-    const fragKey = `followup_${codCli}_${year}_${String(month).padStart(2, "0")}`;
+    // Use UNIFIED key format: {api}_{year}_{month}_{codCli}
+    const fragKey = `followup_${year}_${String(month).padStart(2, "0")}_${codCli}`;
     if (loadedFragments.has(fragKey)) return; // Already loaded
 
     console.log(`Lazy-loading historical fragment: ${fragKey}`);
@@ -263,7 +265,6 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
     if (fragData && fragData.length > 0) {
       setFollowupData(prev => {
         const combined = [...prev, ...fragData];
-        // Deduplicate
         const seen = new Set<string>();
         return combined.filter(item => {
           const key = item.cod_conhecimento ? String(item.cod_conhecimento) : JSON.stringify(item);
@@ -276,7 +277,7 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
 
     // Also load produtos fragment if applicable
     if (pageId === "minutas" || pageId === "tracking") {
-      const prodFragKey = `produtosdistribuidos_${codCli}_${year}_${String(month).padStart(2, "0")}`;
+      const prodFragKey = `produtosdistribuidos_${year}_${String(month).padStart(2, "0")}_${codCli}`;
       const prodFragData = await fetchCacheWithTimeout(prodFragKey);
       if (prodFragData && prodFragData.length > 0) {
         setProdutosData(prev => {
