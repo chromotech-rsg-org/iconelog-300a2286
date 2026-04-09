@@ -312,7 +312,9 @@ export const useSupabaseAuth = () => {
   loadUserDataRef.current = loadUserData;
 
   useEffect(() => {
-    fetchPublicAccess().then(setPublicAccessState);
+    // OPTIMIZATION: Defer fetchPublicAccess - don't run on mount for unauthenticated visitors
+    // This saves a DB connection on every page load
+    // fetchPublicAccess will be called after authentication succeeds
 
     // Safety timeout: if loading takes more than 15 seconds, force it to finish
     const loadingTimeout = setTimeout(() => {
@@ -331,7 +333,6 @@ export const useSupabaseAuth = () => {
         setUser(session?.user ?? null);
 
         if (event === "TOKEN_REFRESHED") {
-          // Token refresh: no data reload needed
           return;
         }
 
@@ -345,28 +346,32 @@ export const useSupabaseAuth = () => {
           return;
         }
 
-        // INITIAL_SESSION or SIGNED_IN: load user data if not already loaded
         if ((event === "INITIAL_SESSION" || event === "SIGNED_IN") && session?.user) {
           if (!initialLoadDoneRef.current) {
             initialLoadDoneRef.current = true;
             setLoading(true);
             setTimeout(() => { 
+              // Load public access ONLY after we know user is authenticated
+              fetchPublicAccess().then(setPublicAccessState).catch(() => {});
               loadUserDataRef.current(session.user.id).finally(() => setLoading(false)); 
             }, 0);
           }
         } else if (event === "INITIAL_SESSION" && !session) {
-          // No session on initial load
+          // No session - load public access lazily with a delay to not block the pool
+          setTimeout(() => {
+            fetchPublicAccess().then(setPublicAccessState).catch(() => {});
+          }, 3000);
           setLoading(false);
         }
       }
     );
 
-    // Fallback: getSession for cases where onAuthStateChange didn't fire yet
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user && !initialLoadDoneRef.current) {
         setSession(session);
         setUser(session.user);
         initialLoadDoneRef.current = true;
+        fetchPublicAccess().then(setPublicAccessState).catch(() => {});
         loadUserDataRef.current(session.user.id).finally(() => setLoading(false));
       } else if (!session) {
         setLoading(false);
