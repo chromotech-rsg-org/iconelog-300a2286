@@ -117,6 +117,8 @@ const dateMatchesPeriod = (
 
   return dateMatchesMonthYear(dt, months, years);
 };
+// Module-level lock: shared across ALL hook instances (not per-component)
+let globalCacheLoadLock = false;
 
 export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   const { callMainApi, error } = useApiProxy();
