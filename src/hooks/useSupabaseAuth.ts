@@ -123,14 +123,14 @@ export const useSupabaseAuth = () => {
   };
 
   // Single query with timeout wrapper to reduce connection time
-  const queryWithTimeout = useCallback(async <T>(
-    queryFn: () => Promise<{ data: T | null; error: any }>,
+  const queryWithTimeout = useCallback(async (
+    queryFn: () => PromiseLike<{ data: any; error: any }>,
     timeoutMs: number = 8000
-  ): Promise<{ data: T | null; error: any }> => {
+  ): Promise<{ data: any; error: any }> => {
     const timeout = new Promise<{ data: null; error: { message: string } }>((resolve) =>
       setTimeout(() => resolve({ data: null, error: { message: 'query_timeout' } }), timeoutMs)
     );
-    return Promise.race([queryFn(), timeout]);
+    return Promise.race([Promise.resolve(queryFn()), timeout]);
   }, []);
 
   const fetchProfile = useCallback(async (userId: string, retryCount = 0): Promise<Profile | null> => {
