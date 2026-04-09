@@ -614,20 +614,9 @@ async function processPendingQueueBatches(supabase: any, now: Date, globalStart:
         totalSaved += items.length;
       }
 
-      // Clean up old-format keys: {api}_{codCli}_YYYY_MM and {api}_{codCli}
-      const { data: oldKeys } = await supabase
-        .from("bi_data_cache")
-        .select("cache_key")
-        .eq("page_id", "_shared")
-        .like("cache_key", `${apiName}_${job.cod_cli}%`);
-      if (oldKeys && oldKeys.length > 0) {
-        const keysToDelete = oldKeys
-          .map((r: any) => r.cache_key)
-          .filter((k: string) => k !== `${apiName}_${job.cod_cli}` || true); // delete all old-format
-        if (keysToDelete.length > 0) {
-          await supabase.from("bi_data_cache").delete().eq("page_id", "_shared").in("cache_key", keysToDelete);
-        }
-      }
+      // Clean up legacy single-blob keys (no more .like() scans)
+      const legacyKey = `${apiName}_${job.cod_cli}`;
+      await supabase.from("bi_data_cache").delete().eq("page_id", "_shared").eq("cache_key", legacyKey);
 
       const pageIds = [job.page_id];
       await completeBatch(supabase, [job], { execution_ms: execTime, records_processed: totalSaved, pageIds });
