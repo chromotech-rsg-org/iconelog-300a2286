@@ -188,9 +188,8 @@ export const useFollowupData = (codCli: string, pageId: string = "minutas") => {
   // Track which historical fragments have been loaded
   const [loadedFragments, setLoadedFragments] = useState<Set<string>>(new Set());
 
-  // Load ALL fragments for this client on mount using .like() query
-  // Global debounce: only one cache load at a time across all instances
-  const cacheLoadLockRef = useRef(false);
+  // TRUE global lock: module-level variable shared across all hook instances
+  // (useRef is per-instance, this is per-module)
 
   useEffect(() => {
     const loadCache = async () => {
